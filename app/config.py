@@ -11,6 +11,8 @@ SMB_LEADS_PATH = DATA_DIR / "smb_leads.csv"
 KYC_DOCUMENTS_DIR = DATA_DIR / "kyc_documents"
 
 DB_PATH = BASE_DIR / "udyam_orders.db"
+UPLOAD_DIR = BASE_DIR / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Official Case Study Reference Date for Date-based validation (README line 65)
 CASE_REFERENCE_DATE = "2026-07-15"

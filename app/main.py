@@ -14,6 +14,7 @@ from app.modules.kyc.validator import KYCValidator
 from app.modules.kyc.ocr_engine import OCREngine
 from app.modules.orders.state_machine import OrderStateMachine
 from app.modules.partner.portal import PartnerPortal
+from app.modules.whatsapp.router import router as whatsapp_router
 from app.data_loader import DataLoader
 from app.config import KYC_DOCUMENTS_DIR
 
@@ -352,6 +353,17 @@ def get_partner_leads():
 @app.get("/api/partner/referral")
 def get_partner_referral():
     return partner_portal.generate_partner_referral_link()
+
+# 7. WhatsApp Integration Router
+app.include_router(whatsapp_router)
+
+@app.get("/whatsapp-simulator")
+def serve_whatsapp_simulator():
+    from fastapi.responses import FileResponse
+    sim_path = STATIC_DIR / "whatsapp_simulator.html"
+    if sim_path.exists():
+        return FileResponse(sim_path)
+    raise HTTPException(status_code=404, detail="Simulator UI not found")
 
 # Static Mounts
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
