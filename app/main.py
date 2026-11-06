@@ -13,6 +13,7 @@ from app.modules.pricing.calculator import PricingCalculator
 from app.modules.kyc.validator import KYCValidator
 from app.modules.kyc.ocr_engine import OCREngine
 from app.modules.orders.state_machine import OrderStateMachine
+from app.modules.payment import PaymentGateway
 from app.modules.partner.portal import PartnerPortal
 from app.modules.whatsapp.router import router as whatsapp_router
 from app.modules.auth import (
@@ -48,6 +49,7 @@ pricing_calculator = PricingCalculator()
 kyc_validator = KYCValidator()
 ocr_engine = OCREngine()
 order_sm = OrderStateMachine()
+payment_gw = PaymentGateway(order_sm=order_sm)
 partner_portal = PartnerPortal()
 loader = DataLoader.get_instance()
 
@@ -114,6 +116,19 @@ class NPSRequest(BaseModel):
 
 class SwitchRoleRequest(BaseModel):
     role: str
+
+class PaymentIntentRequest(BaseModel):
+    order_id: Optional[str] = "PENDING_QUOTE"
+    amount_inr: float = 499.0
+    business_name: Optional[str] = ""
+    phone: Optional[str] = ""
+
+class PaymentConfirmRequest(BaseModel):
+    order_id: Optional[str] = None
+    txn_id: str
+    payment_method: str = "UPI_PHONEPE"
+    mandate_active: bool = True
+    amount_inr: float = 499.0
 
 # --- API ENDPOINTS ---
 
@@ -356,6 +371,33 @@ def submit_nps(order_id: str, req: NPSRequest):
     if not success:
         raise HTTPException(status_code=404, detail="Order not found")
     return {"status": "success", "order_id": order_id, "nps_rating": req.rating}
+
+# 5b. Payment Gateway & UPI AutoPay Mandate
+@app.post("/api/payment/create-intent")
+def create_payment_intent(req: PaymentIntentRequest):
+    return payment_gw.create_payment_intent(
+        order_id=req.order_id or "PENDING_QUOTE",
+        amount_inr=req.amount_inr,
+        business_name=req.business_name or "",
+        phone=req.phone or ""
+    )
+
+@app.post("/api/payment/confirm")
+def confirm_payment(req: PaymentConfirmRequest):
+    return payment_gw.confirm_payment(
+        order_id=req.order_id or "",
+        txn_id=req.txn_id,
+        payment_method=req.payment_method,
+        mandate_active=req.mandate_active,
+        amount_inr=req.amount_inr
+    )
+
+@app.get("/api/payment/receipt/{order_id}")
+def get_order_receipt(order_id: str):
+    order = order_sm.get_order(order_id)
+    if not order or not order.get("receipt"):
+        raise HTTPException(status_code=404, detail="Receipt not found for this order")
+    return order["receipt"]
 
 # 6. Auth & RBAC (Role-Based Access Control)
 @app.post("/api/auth/switch-role")

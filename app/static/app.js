@@ -12,6 +12,12 @@ const STATE = {
       role: 'MERCHANT'
     }
   },
+  payment: {
+    selectedMethod: 'UPI_PHONEPE',
+    mandateOptIn: true,
+    activeIntent: null,
+    receipt: null
+  },
   profile: {
     business_type: null,
     employee_count: null,
@@ -134,6 +140,22 @@ function applyLanguage(lang) {
   setText("t-admin-btn", dict.admin_btn);
   setText("t-admin-title", dict.admin_title);
   setText("t-admin-sub", dict.admin_sub);
+
+  // Payment Modal & Receipt i18n
+  setText("t-pay-modal-title", dict.pay_modal_title);
+  setText("t-pay-modal-sub", dict.pay_modal_sub);
+  setText("t-pay-summary-heading", dict.pay_summary_heading);
+  setText("t-pay-refundable-badge", dict.pay_refundable_badge);
+  setText("t-pay-inclusive-gst", dict.pay_inclusive_gst);
+  setText("t-pay-select-app", dict.pay_select_app);
+  setText("t-pay-mandate-title", dict.pay_mandate_title);
+  setText("t-pay-mandate-desc", dict.pay_mandate_desc);
+  setText("t-pay-simulate-btn", dict.pay_simulate_btn);
+  setText("t-pay-receipt-btn", dict.pay_receipt_btn);
+  setText("t-receipt-title", dict.receipt_title);
+  setText("t-receipt-sub", dict.receipt_sub);
+  setText("t-receipt-close", dict.receipt_close);
+
   updateRoleSwitcherUI();
 
   // Update initial welcome message if no user conversation started yet
@@ -403,6 +425,41 @@ function initEventListeners() {
       if (e.key === "Enter") handlePincodeCheck();
     });
   }
+
+  // Payment Modal Triggers
+  const openPayQuoteBtn = document.getElementById("openPaymentModalFromQuoteBtn");
+  if (openPayQuoteBtn) openPayQuoteBtn.addEventListener("click", () => openPaymentModal());
+  const closePayModalBtn = document.getElementById("closePaymentModalBtn");
+  if (closePayModalBtn) closePayModalBtn.addEventListener("click", closePaymentModal);
+  const execPayBtn = document.getElementById("executePaymentBtn");
+  if (execPayBtn) execPayBtn.addEventListener("click", handlePaymentExecute);
+
+  // UPI App Selection
+  document.querySelectorAll(".pay-app-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".pay-app-btn").forEach(b => {
+        b.className = "pay-app-btn p-2 rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center space-x-2 text-left transition";
+      });
+      btn.className = "pay-app-btn p-2 rounded-lg border border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500 flex items-center space-x-2 text-left transition";
+      STATE.payment.selectedMethod = btn.getAttribute("data-method");
+    });
+  });
+
+  // Mandate Checkbox
+  const mandateCb = document.getElementById("mandateConsentCheckbox");
+  if (mandateCb) {
+    mandateCb.addEventListener("change", (e) => {
+      STATE.payment.mandateOptIn = e.target.checked;
+    });
+  }
+
+  // Receipt Modal
+  const viewReceiptBtn = document.getElementById("viewReceiptBtn");
+  if (viewReceiptBtn) viewReceiptBtn.addEventListener("click", () => openReceiptModal());
+  const closeReceiptModalBtn = document.getElementById("closeReceiptModalBtn");
+  if (closeReceiptModalBtn) closeReceiptModalBtn.addEventListener("click", closeReceiptModal);
+  const closeReceiptBtn = document.getElementById("closeReceiptBtn");
+  if (closeReceiptBtn) closeReceiptBtn.addEventListener("click", closeReceiptModal);
 
   // Voice Recognition (Web Speech API)
   initVoiceRecognition();
@@ -1084,6 +1141,13 @@ async function handleConfirmOrder() {
     document.getElementById("trackerCard").classList.remove("hidden");
 
     renderTracker(order);
+
+    // If order has unconfirmed token deposit, open payment modal to secure the booking
+    if (!order.token_paid) {
+      setTimeout(() => {
+        openPaymentModal(order.order_id);
+      }, 400);
+    }
   } catch (err) {
     alert("Order creation failed.");
     confirmBtn.disabled = false;
@@ -1096,12 +1160,16 @@ function renderTracker(order) {
 
   const dict = LOCALES[STATE.language] || LOCALES.en;
   const timeline = document.getElementById("timelineList");
+
+  const isTokenPaid = !!(order.token_paid || (order.receipt && order.receipt.payment_status === "SUCCESS"));
+  const txnText = order.payment_txn_id || (order.receipt ? order.receipt.txn_id : "TXN-UPI-AUTO");
+
   timeline.innerHTML = `
     <div class="flex items-center space-x-3 text-xs">
       <span class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold">✔</span>
       <div>
         <strong class="text-slate-900 block">${dict.step1_title}</strong>
-        <span class="text-slate-500">${dict.step1_sub}</span>
+        <span class="text-slate-500">${isTokenPaid ? `<span class="text-emerald-700 font-bold">Ref: ${txnText} &bull; ${dict.step1_sub}</span>` : dict.step1_sub}</span>
       </div>
     </div>
     <div class="flex items-center space-x-3 text-xs">
@@ -1126,6 +1194,134 @@ function renderTracker(order) {
       </div>
     </div>
   `;
+}
+
+// --- SIMULATED PAYMENT GATEWAY & UPI AUTOPAY ---
+async function openPaymentModal(orderId = null) {
+  const modal = document.getElementById("paymentModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+
+  const effectiveOrderId = orderId || (STATE.activeOrder ? STATE.activeOrder.order_id : "PENDING_QUOTE");
+  const businessName = document.getElementById("extractedNameInput")?.value || "Airtel MSME Customer";
+
+  try {
+    const res = await fetch("/api/payment/create-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        order_id: effectiveOrderId,
+        amount_inr: 499.0,
+        business_name: businessName,
+        phone: "+91 98765 12345"
+      })
+    });
+    const intent = await res.json();
+    STATE.payment.activeIntent = intent;
+
+    const amtEl = document.getElementById("payModalAmount");
+    if (amtEl) amtEl.innerText = `₹${intent.amount_inr.toFixed(2)}`;
+
+    const dateEl = document.getElementById("payScheduledDate");
+    if (dateEl && STATE.activeOrder) {
+      dateEl.innerText = `${STATE.activeOrder.scheduled_install_date} (Guaranteed Slot)`;
+    }
+  } catch (err) {
+    console.error("Payment intent error:", err);
+  }
+}
+
+function closePaymentModal() {
+  const modal = document.getElementById("paymentModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function handlePaymentExecute() {
+  const execBtn = document.getElementById("executePaymentBtn");
+  if (execBtn) {
+    execBtn.disabled = true;
+    execBtn.innerText = STATE.language === 'hi' ? "भुगतान सत्यापित हो रहा है..." : "Processing UPI PIN...";
+  }
+
+  const orderId = STATE.activeOrder ? STATE.activeOrder.order_id : "UDYAM-PREPAID";
+  const txnId = STATE.payment.activeIntent ? STATE.payment.activeIntent.txn_id : `TXN-UPI-${Date.now()}`;
+
+  try {
+    const res = await fetch("/api/payment/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        order_id: orderId,
+        txn_id: txnId,
+        payment_method: STATE.payment.selectedMethod || "UPI_PHONEPE",
+        mandate_active: STATE.payment.mandateOptIn,
+        amount_inr: 499.0
+      })
+    });
+
+    const receipt = await res.json();
+    STATE.payment.receipt = receipt;
+
+    if (STATE.activeOrder) {
+      STATE.activeOrder.token_paid = true;
+      STATE.activeOrder.payment_txn_id = receipt.txn_id;
+      STATE.activeOrder.receipt = receipt;
+      renderTracker(STATE.activeOrder);
+    }
+
+    closePaymentModal();
+
+    // Show instant receipt modal
+    openReceiptModal(receipt);
+
+    if (execBtn) {
+      execBtn.disabled = false;
+      const dict = LOCALES[STATE.language] || LOCALES.en;
+      execBtn.innerText = dict.pay_simulate_btn;
+    }
+  } catch (err) {
+    console.error("Payment confirmation failed:", err);
+    if (execBtn) execBtn.disabled = false;
+    alert("Payment confirmation failed.");
+  }
+}
+
+function openReceiptModal(customReceipt = null) {
+  const modal = document.getElementById("receiptModal");
+  if (!modal) return;
+
+  const r = customReceipt || STATE.payment.receipt || (STATE.activeOrder ? STATE.activeOrder.receipt : null);
+  if (!r) {
+    alert("No receipt found for this order yet.");
+    return;
+  }
+
+  const numEl = document.getElementById("rcptNum");
+  const ordEl = document.getElementById("rcptOrderId");
+  const txnEl = document.getElementById("rcptTxnId");
+  const dateEl = document.getElementById("rcptDate");
+  const modeEl = document.getElementById("rcptMode");
+  const baseEl = document.getElementById("rcptBase");
+  const cgstEl = document.getElementById("rcptCgst");
+  const sgstEl = document.getElementById("rcptSgst");
+  const totalEl = document.getElementById("rcptTotal");
+
+  if (numEl) numEl.innerText = r.receipt_number;
+  if (ordEl) ordEl.innerText = r.order_id || (STATE.activeOrder ? STATE.activeOrder.order_id : "N/A");
+  if (txnEl) txnEl.innerText = r.txn_id;
+  if (dateEl) dateEl.innerText = (r.timestamp || "").split("T")[0] || "2026-11-07";
+  if (modeEl) modeEl.innerText = `${r.payment_method} (${r.mandate_status === 'ACTIVE' ? 'AutoPay Enabled' : 'Single Token'})`;
+  if (baseEl) baseEl.innerText = `₹${r.base_amount_inr ? r.base_amount_inr.toFixed(2) : '422.88'}`;
+  if (cgstEl) cgstEl.innerText = `₹${r.gst_18_inr ? (r.gst_18_inr / 2).toFixed(2) : '38.06'}`;
+  if (sgstEl) sgstEl.innerText = `₹${r.gst_18_inr ? (r.gst_18_inr / 2).toFixed(2) : '38.06'}`;
+  if (totalEl) totalEl.innerText = `₹${r.amount_paid_inr ? r.amount_paid_inr.toFixed(2) : '499.00'}`;
+
+  modal.classList.remove("hidden");
+}
+
+function closeReceiptModal() {
+  const modal = document.getElementById("receiptModal");
+  if (modal) modal.classList.add("hidden");
 }
 
 // Reschedule

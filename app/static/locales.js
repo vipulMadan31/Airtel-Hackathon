@@ -79,7 +79,21 @@ const LOCALES = {
     role_admin_label: "Ops Admin",
     admin_btn: "Ops Console",
     admin_title: "Airtel Enterprise Operations Center",
-    admin_sub: "National MSME Funnel Telemetry & Escalation Review"
+    admin_sub: "National MSME Funnel Telemetry & Escalation Review",
+    pay_modal_title: "Priority Slot Booking & ₹499 Refundable Token",
+    pay_modal_sub: "100% credited against your Month 1 invoice upon line activation",
+    pay_summary_heading: "Order & Dispatch Summary",
+    pay_refundable_badge: "100% Refundable Guarantee",
+    pay_token_amount: "₹499.00",
+    pay_inclusive_gst: "Inclusive of 18% GST (Base ₹422.88 + ₹76.12 GST)",
+    pay_select_app: "Select UPI Payment App or Scan QR:",
+    pay_mandate_title: "Recurring UPI AutoPay e-Mandate",
+    pay_mandate_desc: "Enable automatic zero-touch monthly bill deduction after physical line activation.",
+    pay_simulate_btn: "⚡ Simulate Instant UPI PIN Approval",
+    pay_receipt_btn: "📄 View Official Tax Receipt",
+    receipt_title: "Airtel Business — Token Payment Receipt",
+    receipt_sub: "Official Advance Booking Tax Invoice & SAC 998411 Record",
+    receipt_close: "Close Receipt"
   },
   hi: {
     brand_sub: "एयरटेल बिज़नेस",
@@ -160,7 +174,21 @@ const LOCALES = {
     role_admin_label: "ऑप्स एडमिन",
     admin_btn: "ऑप्स कंसोल",
     admin_title: "एयरटेल एंटरप्राइज ऑपरेशंस सेंटर",
-    admin_sub: "राष्ट्रीय एमएसएमई फनल मेट्रिक्स एवं एस्केलेशन समीक्षा"
+    admin_sub: "राष्ट्रीय एमएसएमई फनल मेट्रिक्स एवं एस्केलेशन समीक्षा",
+    pay_modal_title: "प्राथमिकता स्लॉट बुकिंग एवं ₹499 रिफंडेबल टोकन",
+    pay_modal_sub: "लाइन चालू होते ही आपके पहले महीने के बिल में 100% क्रेडिट",
+    pay_summary_heading: "ऑर्डर एवं डिस्पैच सारांश",
+    pay_refundable_badge: "100% रिफंडेबल गारंटी",
+    pay_token_amount: "₹499.00",
+    pay_inclusive_gst: "18% जीएसटी सहित (मूल ₹422.88 + ₹76.12 जीएसटी)",
+    pay_select_app: "यूपीआई ऐप चुनें या क्यूआर कोड स्कैन करें:",
+    pay_mandate_title: "रीकरिंग यूपीआई ऑटोपे ई-मैंडेट",
+    pay_mandate_desc: "लाइन चालू होने के बाद मासिक बिल का स्वतः सुरक्षित भुगतान।",
+    pay_simulate_btn: "⚡ यूपीआई पिन से तत्काल भुगतान अनुकरण करें",
+    pay_receipt_btn: "📄 आधिकारिक टैक्स रसीद देखें",
+    receipt_title: "एयरटेल बिज़नेस — टोकन भुगतान रसीद",
+    receipt_sub: "आधिकारिक एडवांस बुकिंग टैक्स इनवॉइस (SAC 998411)",
+    receipt_close: "रसीद बंद करें"
   }
 };
 

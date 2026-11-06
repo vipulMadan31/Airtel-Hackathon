@@ -43,6 +43,20 @@ class OrderStateMachine:
                 timestamp TEXT
             )
             """)
+            
+            # Dynamic schema migrations for payment columns
+            cursor = conn.execute("PRAGMA table_info(orders)")
+            cols = [col[1] for col in cursor.fetchall()]
+            if "token_paid" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN token_paid INTEGER DEFAULT 0")
+            if "token_amount_inr" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN token_amount_inr REAL DEFAULT 0.0")
+            if "payment_txn_id" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN payment_txn_id TEXT")
+            if "payment_method" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN payment_method TEXT")
+            if "receipt_json" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN receipt_json TEXT")
             conn.commit()
 
     def create_order(
@@ -104,7 +118,41 @@ class OrderStateMachine:
             res = dict(row)
             res["bundle"] = json.loads(res["bundle_json"])
             res["dpdp_consent_recorded"] = True
+            if res.get("receipt_json"):
+                try:
+                    res["receipt"] = json.loads(res["receipt_json"])
+                except Exception:
+                    res["receipt"] = None
+            else:
+                res["receipt"] = None
             return res
+
+    def record_payment(
+        self,
+        order_id: str,
+        amount_inr: float,
+        txn_id: str,
+        payment_method: str,
+        receipt: Dict[str, Any]
+    ) -> bool:
+        with self._get_connection() as conn:
+            cursor = conn.execute("""
+            UPDATE orders 
+            SET token_paid = 1,
+                token_amount_inr = ?,
+                payment_txn_id = ?,
+                payment_method = ?,
+                receipt_json = ?
+            WHERE order_id = ?
+            """, (
+                amount_inr,
+                txn_id,
+                payment_method,
+                json.dumps(receipt),
+                order_id
+            ))
+            conn.commit()
+            return cursor.rowcount > 0
 
     def reschedule_installation(self, order_id: str, new_date: str) -> bool:
         with self._get_connection() as conn:

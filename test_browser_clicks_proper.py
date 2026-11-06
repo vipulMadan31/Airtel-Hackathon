@@ -183,8 +183,31 @@ async def test():
             assert "5,000" in total_leads_text
             print(f"   ✔ Admin Console Modal open & telemetry display (Leads: {total_leads_text}): SUCCESS")
 
+            # Test 12: Simulated ₹499 UPI Payment Gateway & Tax Receipt Click
+            print("\n12. Testing Simulated ₹499 UPI Payment Gateway & Tax Receipt...")
+            await run_eval("openPaymentModal();")
+            await asyncio.sleep(0.5)
+            pay_modal_open = await run_eval("return !document.getElementById('paymentModal').classList.contains('hidden');")
+            assert pay_modal_open is True
+            print("   ✔ Payment Checkout Modal open: SUCCESS")
+
+            # Click execute payment
+            await run_eval("document.getElementById('executePaymentBtn').click();")
+            # Wait for receipt modal
+            for _ in range(15):
+                receipt_open = await run_eval("return !document.getElementById('receiptModal').classList.contains('hidden');")
+                if receipt_open:
+                    break
+                await asyncio.sleep(0.5)
+            rcpt_total_text = await run_eval("return document.getElementById('rcptTotal').innerText;")
+            await run_eval("closeReceiptModal();")
+            rcpt_closed = await run_eval("return document.getElementById('receiptModal').classList.contains('hidden');")
+            assert receipt_open and rcpt_closed
+            assert "499" in rcpt_total_text
+            print(f"   ✔ Instant UPI PIN simulation & GST Tax Receipt (Total: {rcpt_total_text}): SUCCESS")
+
             print("\n" + "=" * 65)
-            print("ALL 11 FRONTEND BROWSER CLICKS ARE FULLY TESTED & 100% RESPONSIVE!")
+            print("ALL 12 FRONTEND BROWSER CLICKS ARE FULLY TESTED & 100% RESPONSIVE!")
             print("=" * 65)
 
     finally:

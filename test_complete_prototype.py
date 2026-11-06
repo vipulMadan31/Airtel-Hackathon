@@ -204,6 +204,39 @@ def test_prototype():
     assert admin_metrics["operational_efficiency"]["legacy_cac_inr"] == 15000
     print("✔ [8b/8] Enterprise RBAC & Multi-profile Security: OK (Customer: 403 BLOCKED, Partner: 200 PASS, Admin: 200 PASS)")
 
+    # 8c. Simulated ₹499 UPI Payment Gateway & Mandate Verification
+    print("\n[Step 8c] Testing Simulated ₹499 UPI Payment Gateway & Mandate...")
+    intent_res = requests.post(f"{BASE_URL}/api/payment/create-intent", json={
+        "order_id": order_id,
+        "amount_inr": 499.0,
+        "business_name": "Star Electronics",
+        "phone": "+91 98765 12345"
+    }).json()
+    assert intent_res["status"] == "INITIATED"
+    assert intent_res["amount_inr"] == 499.0
+    assert intent_res["base_amount_inr"] == 422.88
+    assert intent_res["gst_18_inr"] == 76.12
+    assert "upi://" in intent_res["upi_intent_url"]
+    assert len(intent_res["supported_apps"]) == 4
+
+    # Confirm Payment
+    confirm_res = requests.post(f"{BASE_URL}/api/payment/confirm", json={
+        "order_id": order_id,
+        "txn_id": intent_res["txn_id"],
+        "payment_method": "UPI_PHONEPE",
+        "mandate_active": True,
+        "amount_inr": 499.0
+    }).json()
+    assert confirm_res["payment_status"] == "SUCCESS"
+    assert confirm_res["receipt_number"].startswith("RCT-")
+    assert confirm_res["mandate_status"] == "ACTIVE"
+
+    # Fetch Order Receipt
+    rcpt_res = requests.get(f"{BASE_URL}/api/payment/receipt/{order_id}").json()
+    assert rcpt_res["receipt_number"] == confirm_res["receipt_number"]
+    assert rcpt_res["sac_code"] == "998411"
+    print(f"✔ [8c/8] ₹499 UPI Payment & Mandate: OK (Receipt: {confirm_res['receipt_number']}, Mandate: ACTIVE, SAC: 998411)")
+
     print("\n" + "=" * 60)
     print("ALL PROJECT UDYAM DIGITAL SUITES PASSED FLAWLESSLY (100% GREEN)")
     print("=" * 60)
