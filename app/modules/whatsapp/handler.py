@@ -175,10 +175,12 @@ class WhatsAppHandler:
             web_url = f"/?token={token}#kyc"
             kyc_link_msg = (
                 f"🌐 *वेबसाइट पर तुरंत KYC और एक्टिवेशन पूरा करें:*\n{web_url}\n\n"
-                "_(आपका चुना हुआ प्लान और 18% GST कोटेशन लॉक है। 60 सेकंड में बिना किसी रुकावट के एक्टिवेशन के लिए ऊपर दिए गए लिंक पर क्लिक करें)_"
+                "_(आपका चुना हुआ प्लान और 18% GST कोटेशन लॉक है। 60 सेकंड में बिना किसी रुकावट के एक्टिवेशन के लिए ऊपर दिए गए लिंक पर क्लिक करें)_\n\n"
+                "💬 *नोट:* यदि आपका कोई अन्य प्रश्न है या आप अन्य प्लान्स या बजट विकल्पों के बारे में जानना चाहते हैं, तो कृपया बताएं!"
                 if is_hi else
                 f"🌐 *Complete KYC & Fast-Track Activation on Website:*\n{web_url}\n\n"
-                "_(Your selected bundle & 18% GST quote are locked in. Click the link above to complete instant 60-second paperless KYC on our web portal)_"
+                "_(Your selected bundle & 18% GST quote are locked in. Click the link above to complete instant 60-second paperless KYC on our web portal)_\n\n"
+                "💬 *Note:* Please let me know if you have any other questions or want to know about other plans or budget options!"
             )
             return {
                 "messages": [price_msg, quote_card, kyc_link_msg],
@@ -319,10 +321,12 @@ class WhatsAppHandler:
 
             kyc_link_msg = (
                 f"🌐 *वेबसाइट पर तुरंत KYC पूरा करें:*\n{web_url}\n\n"
-                "_(आपका चुना हुआ प्लान और 18% GST कोटेशन लॉक है। 60 सेकंड में बिना किसी रुकावट के एक्टिवेशन के लिए ऊपर दिए गए लिंक पर क्लिक करें)_"
+                "_(आपका चुना हुआ प्लान और 18% GST कोटेशन लॉक है। 60 सेकंड में बिना किसी रुकावट के एक्टिवेशन के लिए ऊपर दिए गए लिंक पर क्लिक करें)_\n\n"
+                "💬 *नोट:* यदि आपका कोई अन्य प्रश्न है या आप अन्य प्लान्स या बजट विकल्पों के बारे में जानना चाहते हैं, तो कृपया बताएं!"
                 if is_hi else
                 f"🌐 *Complete KYC & Fast-Track Activation on Website:*\n{web_url}\n\n"
-                "_(Your selected bundle & 18% GST quote are locked in. Click the link above to complete instant 60-second paperless KYC on our web portal)_"
+                "_(Your selected bundle & 18% GST quote are locked in. Click the link above to complete instant 60-second paperless KYC on our web portal)_\n\n"
+                "💬 *Note:* Please let me know if you have any questions or want to know about other plans or budget options!"
             )
             messages.append(kyc_link_msg)
 
