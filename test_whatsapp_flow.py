@@ -9,6 +9,10 @@ def test_whatsapp():
     print("VERIFYING WHATSAPP CONVERSATIONAL FLOW & STRAIGHT-THROUGH KYC")
     print("=" * 65)
 
+    test_phone = "919999000001"
+    # Ensure fresh test session
+    requests.post(f"{base}/api/whatsapp/simulate", json={"phone": test_phone, "message": "reset"})
+
     # 1. Meta Webhook Handshake Verification (GET)
     print("\n[Step 1] Testing Meta Webhook Verification Challenge...")
     r1 = requests.get(f"{base}/api/whatsapp/webhook", params={
@@ -25,7 +29,7 @@ def test_whatsapp():
     # 2. Vague Query (Progressive Clarification over WhatsApp)
     print("\n[Step 2] Sending WhatsApp message: 'I need wifi'...")
     r2 = requests.post(f"{base}/api/whatsapp/simulate", json={
-        "phone": "919876543210",
+        "phone": test_phone,
         "message": "I need wifi",
         "language": "en"
     }).json()
@@ -38,7 +42,7 @@ def test_whatsapp():
     # 3. Specific Business Bundle Recommendation + WhatsApp Quote Card
     print("\n[Step 3] Sending: 'Kirana store in Indore, 2 staff, UPI payments'...")
     r3 = requests.post(f"{base}/api/whatsapp/simulate", json={
-        "phone": "919876543210",
+        "phone": test_phone,
         "message": "Kirana store in Indore, 2 staff, UPI payments",
         "language": "en"
     }).json()
@@ -54,7 +58,7 @@ def test_whatsapp():
     # 4. Tap 'Proceed to KYC'
     print("\n[Step 4] User taps: 'Proceed to KYC'...")
     r4 = requests.post(f"{base}/api/whatsapp/simulate", json={
-        "phone": "919876543210",
+        "phone": test_phone,
         "button_payload": "action:proceed_kyc",
         "language": "en"
     }).json()
@@ -70,7 +74,7 @@ def test_whatsapp():
     with open(specimen_path, "rb") as f:
         r5 = requests.post(
             f"{base}/api/whatsapp/simulate/upload",
-            data={"phone": "919876543210", "language": "en"},
+            data={"phone": test_phone, "language": "en"},
             files={"file": ("K12_gst_certificate.png", f, "image/png")}
         ).json()
 
@@ -82,7 +86,7 @@ def test_whatsapp():
     # 6. Tap 'Pay ₹100 Token & Confirm'
     print("\n[Step 6] User taps: 'Pay ₹100 & Confirm'...")
     r6 = requests.post(f"{base}/api/whatsapp/simulate", json={
-        "phone": "919876543210",
+        "phone": test_phone,
         "button_payload": "action:confirm_order",
         "language": "en"
     }).json()

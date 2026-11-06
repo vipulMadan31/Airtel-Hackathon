@@ -197,6 +197,29 @@ class WhatsAppHandler:
 
         # 7. Conversational Chat & AI Advisor Flow
         profile = session.get("current_profile") or {}
+
+        # If user states a fresh discovery request (e.g. "I need wifi", "I need a wifi for my shop"),
+        # do not inherit stale city or scale from previous completed conversations
+        fresh_starters = [
+            "need wifi", "need a wifi", "need internet", "wifi chahiye", "internet chahiye",
+            "new connection", "broadband chahiye", "wifi for my", "wifi for shop", "wifi for office"
+        ]
+        if any(w in lower_text for w in fresh_starters):
+            city_keywords = [
+                "delhi", "mumbai", "bangalore", "bengaluru", "chennai", "hyderabad",
+                "pune", "kolkata", "indore", "jaipur", "ludhiana", "kochi",
+                "nagpur", "bhopal", "vizag", "patna", "surat", "lucknow", "chandigarh"
+            ]
+            import re
+            has_city_in_msg = any(c in lower_text for c in city_keywords)
+            has_emp_in_msg = bool(re.search(r'\d+\s*(people|staff|employees|workers|log|devices|pc|systems)', lower_text))
+
+            if not has_city_in_msg:
+                profile["city"] = None
+                profile["city_tier"] = None
+            if not has_emp_in_msg:
+                profile["employee_count"] = None
+
         advisor_res = self.advisor.process_user_message(raw_text, profile, language)
         new_profile = advisor_res.get("profile") or profile
         intent = advisor_res.get("intent", "recommendation")

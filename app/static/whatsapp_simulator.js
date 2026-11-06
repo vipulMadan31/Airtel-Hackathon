@@ -1,6 +1,11 @@
 // Project Udyam Digital - WhatsApp Simulator Client Logic
 
-let WA_PHONE = "919876543210";
+// Each browser session gets its own isolated simulated phone number
+let WA_PHONE = sessionStorage.getItem("wa_sim_phone");
+if (!WA_PHONE) {
+  WA_PHONE = "91" + Math.floor(6000000000 + Math.random() * 3999999999).toString();
+  sessionStorage.setItem("wa_sim_phone", WA_PHONE);
+}
 let WA_LANG = "en";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -69,6 +74,29 @@ function initWaEventListeners() {
   const resetBtn = document.getElementById("resetWaBtn");
   if (resetBtn) {
     resetBtn.addEventListener("click", () => {
+      // Rotate to fresh simulated phone number and clear storage
+      WA_PHONE = "91" + Math.floor(6000000000 + Math.random() * 3999999999).toString();
+      sessionStorage.setItem("wa_sim_phone", WA_PHONE);
+
+      const box = document.getElementById("waChatBox");
+      if (box) {
+        box.innerHTML = `
+          <div class="flex justify-center">
+            <div class="bg-amber-100/95 text-amber-900 border border-amber-200 px-3 py-1 rounded-lg text-[10px] max-w-[90%] text-center shadow-xs">
+              🔒 Messages and calls are end-to-end encrypted. No one outside of this chat can read them.
+            </div>
+          </div>
+          <div class="flex justify-center">
+            <span class="bg-white/90 text-slate-500 text-[10px] px-2.5 py-0.5 rounded-md shadow-xs uppercase font-bold tracking-wider">Today</span>
+          </div>
+          <div class="flex justify-start">
+            <div class="wa-bubble-bot p-3 text-xs text-slate-800 max-w-[88%] shadow-xs leading-relaxed whitespace-pre-line border border-slate-100">
+              Namaste! Welcome to Airtel Business. 🙏\n\nTell me about your business (shop, clinic, office, etc.) and I will craft the ideal digital bundle with zero paperwork.
+              <div class="text-[9px] text-slate-400 text-right mt-1 font-mono">${getTimeString()}</div>
+            </div>
+          </div>
+        `;
+      }
       sendToWhatsApp("reset");
     });
   }
