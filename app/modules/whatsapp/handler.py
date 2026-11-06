@@ -135,6 +135,60 @@ class WhatsAppHandler:
                 ]
             }
 
+        # 3c. Check Price / Cost Inquiry (e.g. "ok, what would be the price for that", "price kya hai", "how much")
+        price_keywords = [
+            "price", "cost", "how much", "charges", "charge", "rate", "tariff",
+            "rental", "monthly bill", "kitna", "kharcha", "kimat", "kya rate",
+            "what would be the price", "what is the price"
+        ]
+        is_downsell = any(w in lower_text for w in ["sasta", "cheap", "expensive", "discount", "kam karo", "kam budget"])
+        if any(w in lower_text for w in price_keywords) and not is_downsell:
+            active_bundle = session.get("active_bundle")
+            if not active_bundle or len(active_bundle) == 0:
+                active_bundle = {"P01": 1}
+            quote = self.pricing.calculate_quote(
+                active_bundle,
+                apply_digital_discount=True,
+                waive_setup_fee=True
+            )
+            profile = session.get("current_profile") or {}
+            self.session_mgr.update_session(
+                phone_number,
+                stage="QUOTED",
+                profile=profile,
+                bundle=active_bundle,
+                quote=quote
+            )
+            is_hi = (language == "hi")
+            plan_name = "Biz Fibre 100" if "P01" in active_bundle else "Biz Fibre 300"
+            price_msg = (
+                f"एयरटेल बिज़नेस '{plan_name}' का मासिक किराया मात्र *₹{int(quote['monthly_subtotal_inr'])}/माह* है।\n"
+                f"18% जीएसटी जोड़कर कुल मासिक बिल *₹{quote['total_monthly_inr']:.2f}* होता है।\n"
+                "🎁 स्थापना शुल्क (~₹2,500) 100% माफ है!"
+                if is_hi else
+                f"The rental for Airtel Business '{plan_name}' (high-speed enterprise internet) is *₹{int(quote['monthly_subtotal_inr'])}/month*.\n"
+                f"With 18% GST, the total consolidated monthly commitment is *₹{quote['total_monthly_inr']:.2f}*.\n"
+                "🎁 One-time setup fee (~₹2,500) is 100% WAIVED!"
+            )
+            quote_card = self.formatter.format_quote_card(quote, language)
+            token = f"TK-{phone_number[-4:]}" if len(phone_number) >= 4 else "TK-3210"
+            web_url = f"/?token={token}#kyc"
+            kyc_link_msg = (
+                f"🌐 *वेबसाइट पर तुरंत KYC और एक्टिवेशन पूरा करें:*\n{web_url}\n\n"
+                "_(आपका चुना हुआ प्लान और 18% GST कोटेशन लॉक है। 60 सेकंड में बिना किसी रुकावट के एक्टिवेशन के लिए ऊपर दिए गए लिंक पर क्लिक करें)_"
+                if is_hi else
+                f"🌐 *Complete KYC & Fast-Track Activation on Website:*\n{web_url}\n\n"
+                "_(Your selected bundle & 18% GST quote are locked in. Click the link above to complete instant 60-second paperless KYC on our web portal)_"
+            )
+            return {
+                "messages": [price_msg, quote_card, kyc_link_msg],
+                "buttons": [
+                    {"id": "btn_web_kyc", "title": "🌐 Complete KYC on Web" if not is_hi else "🌐 वेबसाइट पर KYC करें", "payload": f"url:{web_url}"},
+                    {"id": "btn_proceed", "title": "📸 Upload Photo in Chat" if not is_hi else "📸 चैट में फोटो अपलोड", "payload": "action:proceed_kyc"},
+                    {"id": "btn_sasta", "title": "💸 Sasta Plan" if not is_hi else "💸 सस्ता प्लान", "payload": "sasta plan dikhao"}
+                ]
+            }
+
         # 4. Check Button Action: Proceed to KYC
         if lower_text in ["action:proceed_kyc", "proceed to kyc", "kyc karein", "⚡ proceed to kyc"]:
             session = self.session_mgr.update_session(phone_number, stage="KYC_UPLOAD")
@@ -226,17 +280,19 @@ class WhatsAppHandler:
         bot_message = advisor_res.get("message", "")
         bundle = advisor_res.get("recommended_bundle")
 
+        # ALWAYS persist customer context (city, scale, business type) to DB on every turn
+        self.session_mgr.update_session(phone_number, profile=new_profile)
+
+        # If recommendation intent, guarantee a valid bundle so pricing quote card is always sent
+        if intent == "recommendation" and (not bundle or len(bundle) == 0):
+            bundle = {"P01": 1}
+
         messages = [bot_message]
         buttons = []
 
         if intent == "clarification":
             self.session_mgr.update_session(phone_number, stage="DISCOVERY", profile=new_profile)
-            is_hi = (language == "hi")
-            buttons = [
-                {"id": "btn_q1", "title": "🛒 Kirana / Retail" if not is_hi else "🛒 किराना दुकान", "payload": "Retail shop"},
-                {"id": "btn_q2", "title": "🏥 Clinic / Medical" if not is_hi else "🏥 क्लिनिक", "payload": "Clinic with 4 staff in Pune"},
-                {"id": "btn_q3", "title": "🏢 Office" if not is_hi else "🏢 ऑफिस", "payload": "Office with 6 staff in Jaipur"}
-            ]
+            buttons = []
 
         elif intent == "inquiry":
             self.session_mgr.update_session(phone_number, profile=new_profile)
@@ -273,8 +329,7 @@ class WhatsAppHandler:
             buttons = [
                 {"id": "btn_web_kyc", "title": "🌐 Complete KYC on Web" if not is_hi else "🌐 वेबसाइट पर KYC करें", "payload": f"url:{web_url}"},
                 {"id": "btn_proceed", "title": "📸 Upload Photo in Chat" if not is_hi else "📸 चैट में फोटो अपलोड", "payload": "action:proceed_kyc"},
-                {"id": "btn_downsell", "title": "💸 Sasta Plan" if not is_hi else "💸 सस्ता प्लान", "payload": "sasta plan dikhao"},
-                {"id": "btn_call_exec", "title": "📞 Call Executive" if not is_hi else "📞 एग्जीक्यूटिव से बात", "payload": "call an executive"}
+                {"id": "btn_downsell", "title": "💸 Sasta Plan" if not is_hi else "💸 सस्ता प्लान", "payload": "sasta plan dikhao"}
             ]
 
         return {"messages": messages, "buttons": buttons}

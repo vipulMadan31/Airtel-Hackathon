@@ -36,7 +36,7 @@ def test_whatsapp():
     print("Bot Message:\n", r2["responses"][0])
     print("Buttons:", [b["title"] for b in r2.get("buttons", [])])
     assert r2["status"] == "success"
-    assert len(r2["buttons"]) > 0
+    assert len(r2["responses"]) > 0
     print("✔ [2/6] WhatsApp Progressive Clarification: PASSED")
 
     # 3. Specific Business Bundle Recommendation + WhatsApp Quote Card

@@ -57,7 +57,7 @@ class AdvisorAdapter:
         profile.setdefault("num_sites", 1)
         profile.setdefault("city", None)
         profile.setdefault("city_tier", None)
-        profile.setdefault("has_gstin", False)
+        profile.setdefault("has_gstin", None)
         profile.setdefault("monthly_budget", 3000)
 
         is_hindi = (language == "hi")
@@ -70,7 +70,16 @@ class AdvisorAdapter:
             "indore": ("Indore", 2), "jaipur": ("Jaipur", 2), "ludhiana": ("Ludhiana", 2),
             "kochi": ("Kochi", 2), "nagpur": ("Nagpur", 2), "bhopal": ("Bhopal", 2),
             "vizag": ("Visakhapatnam", 2), "patna": ("Patna", 2), "surat": ("Surat", 2),
-            "lucknow": ("Lucknow", 2), "chandigarh": ("Chandigarh", 2), "delhi ncr": ("Delhi NCR", 1)
+            "lucknow": ("Lucknow", 2), "chandigarh": ("Chandigarh", 2), "delhi ncr": ("Delhi NCR", 1),
+            "rohtak": ("Rohtak", 3), "gurgaon": ("Gurgaon", 1), "gurugram": ("Gurugram", 1),
+            "noida": ("Noida", 1), "faridabad": ("Faridabad", 2), "ghaziabad": ("Ghaziabad", 2),
+            "ahmedabad": ("Ahmedabad", 1), "kanpur": ("Kanpur", 2), "varanasi": ("Varanasi", 2),
+            "agra": ("Agra", 2), "amritsar": ("Amritsar", 2), "dehradun": ("Dehradun", 2),
+            "mysore": ("Mysore", 2), "coimbatore": ("Coimbatore", 2), "vadodara": ("Vadodara", 2),
+            "rajkot": ("Rajkot", 2), "meerut": ("Meerut", 2), "jalandhar": ("Jalandhar", 2),
+            "raipur": ("Raipur", 2), "jabalpur": ("Jabalpur", 2), "gwalior": ("Gwalior", 2),
+            "nashik": ("Nashik", 2), "aurangabad": ("Aurangabad", 2), "madurai": ("Madurai", 2),
+            "mangalore": ("Mangalore", 2), "trivandrum": ("Thiruvananthapuram", 2), "calicut": ("Kozhikode", 2)
         }
         for k, (cname, ctier) in city_tier_map.items():
             if k in msg:
@@ -373,7 +382,7 @@ class AdvisorAdapter:
         city_tier = profile.get("city_tier")
         business_type = profile.get("business_type")
         employee_count = profile.get("employee_count")
-        has_gstin = profile.get("has_gstin", False)
+        has_gstin = profile.get("has_gstin", None)
 
         is_hindi = (language == "hi")
 
@@ -384,7 +393,7 @@ Your job is to consult Indian MSMEs (Kirana, Clinic, Restaurant, Office, etc.) a
 CURRENT CUSTOMER PROFILE CONTEXT:
 - City: {city if city else 'UNKNOWN (Do NOT assume or mention any city unless the user explicitly tells you!)'}
 - City Tier: {f"Tier {city_tier}" if city_tier else 'UNKNOWN'}
-- Has Active GSTIN: {has_gstin}
+- Has Active GSTIN: {has_gstin if has_gstin is not None else 'UNKNOWN'}
 - Current Business Type: {business_type if business_type else 'UNKNOWN'}
 - Employee Count: {employee_count if employee_count else 'UNKNOWN'}
 - Language Requested: {'Hindi' if is_hindi else 'English'}
@@ -397,11 +406,13 @@ CATALOGUE RULES & 5-DIMENSIONAL FEASIBILITY MATRIX:
    - NEVER invent or agree that 50 Mbps fibre exists!
 2. CITY TIER FEASIBILITY:
    - P03 (Biz Fibre 1G, 1000 Mbps) is TIER-1 ONLY (Metros like Mumbai, Delhi, Bengaluru, Chennai, Pune).
-   - In Tier-2 (Indore, Jaipur, Ludhiana, Kochi, etc.) and Tier-3, maximum broadband speed is 300 Mbps (P02 @ ₹1,499) or 100 Mbps (P01 @ ₹999). 1 Gbps is NOT available.
+   - In Tier-2 (Indore, Jaipur, Ludhiana, Kochi, etc.) and Tier-3 (Rohtak, etc.), maximum broadband speed is 300 Mbps (P02 @ ₹1,499) or 100 Mbps (P01 @ ₹999). 1 Gbps is NOT available.
    - If the user's city is UNKNOWN and they ask for faster options, explain that fibre speeds range from 100M to 300M (up to 1G in Tier-1 metros), and ask which city they are in!
-3. STATUTORY GSTIN PREREQUISITES:
+3. STATUTORY GSTIN PREREQUISITES & ZERO ASSUMPTION:
+   - Broadband Fibre (Biz Fibre 100 / 300) is accessible to ALL Indian businesses with or without GSTIN.
    - Products requiring verified GSTIN: P05 (ILL 20M), P06 (ILL 100M), P10 (SD-WAN), P11 (Static IP), P12 (SIP Trunk), P15 (MPLS VPN), P21 (Managed Firewall).
-   - If user has NO GSTIN, NEVER recommend these products!
+   - STRICT GUARDRAIL: NEVER tell the customer "Since you do not have a GSTIN" or "As you don't have GSTIN" or assume their GST status!
+   - NEVER mention GSTIN unprompted unless the user explicitly asks about GST registration or Leased Lines!
 4. SCALE & HEADCOUNT PREREQUISITES:
    - P05 (ILL 20M) requires >= 10 employees; P06 (ILL 100M) requires >= 25 employees; P15 (MPLS VPN) requires >= 10 employees; P10 (SD-WAN) requires >= 3 sites.
 
@@ -414,16 +425,25 @@ A. PROGRESSIVE CLARIFICATION (ONLY WHEN ESSENTIAL DETAILS ARE MISSING):
      2) Business Type (retail shop, clinic, office, etc.)
      3) Scale / Headcount (how many staff or devices)
    - NEVER ask for information that is ALREADY KNOWN in the CURRENT CUSTOMER PROFILE CONTEXT!
-   - If City is already known (e.g. 'Pune'), NEVER ask "which city are you in?".
+   - If City is already known (e.g. 'Rohtak', 'Pune'), NEVER ask "which city are you in?".
    - If Business Type is already known (e.g. 'shop'), NEVER ask what their business is.
-   - If Employee Count is already known (e.g. 3), NEVER ask how many staff they have.
+   - If Employee Count is already known (e.g. 5, 3), NEVER ask how many staff they have.
    - ONLY ask for the specific items that are STILL UNKNOWN!
    - In your returned "profile" JSON, you MUST retain all previously known fields from CURRENT CUSTOMER PROFILE CONTEXT. Do NOT reset them to null!
 
 B. AUTOMATIC CONVERGENCE TO RECOMMENDATION:
    - Once City, Business Type, and Scale/Headcount are ALL KNOWN (either previously in context or answered in this message):
    - YOU HAVE COMPLETE INFORMATION! DO NOT ASK ANY MORE QUESTIONS!
-   - Immediately set intent="recommendation", select the tailored bundle (e.g., P01 Biz Fibre 100 + P19 Soundbox for shops; P02 Biz Fibre 300 for clinics), and provide the formal recommendation!
+   - Immediately set intent="recommendation"!
+   - YOU MUST ALWAYS POPULATE "recommended_bundle", e.g. {{"P01": 1}} for retail shops, {{"P02": 1}} for clinics/offices. NEVER leave recommended_bundle empty!
+   - YOU MUST ALWAYS STATE THE EXACT PRICE IN YOUR MESSAGE:
+     - Biz Fibre 100: ₹999/month (+ 18% GST = ₹1,178.82/month total; ₹2,500 setup fee is 100% waived!).
+     - Biz Fibre 300: ₹1,499/month (+ 18% GST = ₹1,768.82/month total; setup fee is waived!).
+
+C. PRICE INQUIRIES & PRICING QUESTIONS:
+   - If user asks for price or cost ("ok, what would be the price for that", "what is the price", "how much", "charges", "kitna kharcha"):
+     DO NOT ask for city or headcount again if they are already known in CURRENT CUSTOMER PROFILE CONTEXT!
+     Set intent="recommendation", recommended_bundle={{"P01": 1}}, and immediately state the price clearly: "Biz Fibre 100 is ₹999/month (+ 18% GST = ₹1,178.82/month total with zero setup fee)."
 
 B. INFORMATIONAL / FEASIBILITY INQUIRIES (intent: "inquiry"):
    - If the user asks a question (e.g. "is there a 50 mbps option also?", "do you have a faster wifi option?", "can I get leased line without GST?"):
@@ -504,10 +524,17 @@ Return ONLY a valid JSON object matching this schema:
                     raw_bundle = data.get("recommended_bundle") or {}
                     raw_tags = data.get("explainability_tags", [])
 
-                    # If clarification or inquiry or empty bundle, return clean without cart changes
-                    if intent in ["clarification", "inquiry"] or not raw_bundle:
+                    # If recommendation intent but bundle was omitted by LLM, auto-populate from recommendation text
+                    if intent == "recommendation" and not raw_bundle:
+                        if "300" in resp_message.lower() or "p02" in resp_message.lower():
+                            raw_bundle = {"P02": 1}
+                        else:
+                            raw_bundle = {"P01": 1}
+
+                    # If clarification or inquiry, return clean without cart changes
+                    if intent in ["clarification", "inquiry"]:
                         return {
-                            "intent": intent if intent in ["clarification", "inquiry"] else "clarification",
+                            "intent": intent,
                             "message": resp_message,
                             "profile": llm_profile,
                             "recommended_bundle": None,
