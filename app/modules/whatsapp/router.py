@@ -79,6 +79,65 @@ async def receive_meta_webhook(request: Request):
 
     return {"status": "success"}
 
+@router.post("/twilio")
+async def receive_twilio_webhook(request: Request):
+    """
+    Production Webhook for Twilio WhatsApp Sandbox / Twilio WhatsApp Numbers.
+    Accepts application/x-www-form-urlencoded from Twilio, executes discovery/advisor/KYC,
+    and returns a compliant TwiML XML response for direct zero-latency delivery.
+    """
+    form = await request.form()
+    from_user = form.get("From", "")
+    phone = from_user.replace("whatsapp:", "").strip()
+    body_text = form.get("Body", "").strip()
+    num_media = int(form.get("NumMedia", 0) or 0)
+    media_url = form.get("MediaUrl0")
+
+    image_path = None
+    if num_media > 0 and media_url:
+        try:
+            import requests as req
+            resp = req.get(str(media_url), timeout=15)
+            if resp.status_code == 200:
+                content_type = form.get("MediaContentType0", "image/jpeg")
+                ext = ".png" if "png" in content_type else ".jpg"
+                file_id = f"twilio_{uuid.uuid4().hex[:8]}{ext}"
+                saved_path = UPLOAD_DIR / file_id
+                with open(saved_path, "wb") as f:
+                    f.write(resp.content)
+                image_path = str(saved_path)
+        except Exception as e:
+            print("Twilio media download error:", e)
+
+    result = whatsapp_handler.process_incoming_message(
+        phone_number=phone or "twilio_user",
+        message_text=body_text if not image_path else None,
+        image_path=image_path
+    )
+
+    messages = result.get("messages", [])
+    buttons = result.get("buttons", [])
+
+    # Compose all messages into single TwiML message
+    combined_body = "\n\n".join(messages)
+    if buttons:
+        btn_hints = "\n".join([f"👉 *{b['title']}* (Reply: {b['payload']})" for b in buttons])
+        combined_body += f"\n\n*Quick Actions:*\n{btn_hints}"
+
+    # Return valid TwiML XML
+    escaped_body = (
+        combined_body.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+    twiml_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Message>
+        <Body>{escaped_body}</Body>
+    </Message>
+</Response>"""
+    return Response(content=twiml_xml, media_type="application/xml")
+
 @router.post("/simulate")
 async def simulate_chat(req: SimulatorChatRequest):
     """
@@ -136,3 +195,37 @@ def get_session_info(phone: str):
     Retrieves the current state of a WhatsApp conversation session.
     """
     return whatsapp_handler.session_mgr.get_session(phone)
+
+@router.get("/token/{token}")
+def get_token_session(token: str):
+    """
+    Returns the pre-filled bundle, quote, and customer profile associated with a WhatsApp lead token.
+    Enables zero-friction handoff to the web portal for DoT-compliant Smart KYC.
+    """
+    import json
+    suffix = token.replace("TK-", "").replace("token_", "")
+    with whatsapp_handler.session_mgr._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM whatsapp_sessions WHERE phone_number LIKE ?", (f"%{suffix}",))
+        row = cur.fetchone()
+        if row:
+            bundle_data = json.loads(row["active_bundle"] or "{}")
+            if not bundle_data:
+                bundle_data = {"P01": 1}
+            return {
+                "status": "success",
+                "token": token,
+                "phone_number": row["phone_number"],
+                "stage": row["current_stage"],
+                "profile": json.loads(row["current_profile"] or "{}"),
+                "bundle": bundle_data,
+                "quote": json.loads(row["active_quote"] or "{}")
+            }
+
+    # Fallback to standard starter bundle
+    return {
+        "status": "fallback",
+        "token": token,
+        "bundle": {"P01": 1, "P07": 2, "P19": 1},
+        "profile": {"business_type": "Retail", "city": "Indore", "employee_count": 3}
+    }

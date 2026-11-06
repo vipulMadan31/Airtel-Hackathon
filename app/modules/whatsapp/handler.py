@@ -112,16 +112,29 @@ class WhatsAppHandler:
         if lower_text in ["action:proceed_kyc", "proceed to kyc", "kyc karein", "⚡ proceed to kyc"]:
             session = self.session_mgr.update_session(phone_number, stage="KYC_UPLOAD")
             is_hi = (language == "hi")
-            msg = (
-                "📸 *केवाईसी सत्यापन के लिए दस्तावेज़ अपलोड करें*\n\n"
-                "कृपया अपनी दुकान/ऑफिस के *बिजली बिल* (Electricity Bill) या *जीएसटी प्रमाणपत्र* (GST Certificate) की एक साफ फोटो यहां भेजें।\n\n"
-                "_(हमारी एआई तकनीक तुरंत फोटो को स्कैन कर straight-through वेरिफिकेशन करेगी)_"
-                if is_hi else
-                "📸 *Upload Document for Instant KYC Verification*\n\n"
-                "Please take or upload a clear photo of your *Electricity Bill* or *GST Certificate* directly in this chat.\n\n"
-                "_(Our AI engine will instantly OCR-extract and verify your details for 48-hour installation)_"
-            )
-            return {"messages": [msg], "buttons": []}
+            token = f"TK-{phone_number[-4:]}"
+            web_url = f"http://127.0.0.1:8000/?token={token}#kyc"
+            if is_hi:
+                msg = (
+                    "📸 *केवाईसी सत्यापन के दो सुरक्षित विकल्प:*\n\n"
+                    "1️⃣ *चैट में तुरंत फोटो अपलोड:* अपने *बिजली बिल* या *जीएसटी प्रमाणपत्र* की फोटो सीधे यहां भेजें।\n\n"
+                    f"2️⃣ *वेब पोर्टल पर 60 सेकंड केवाईसी (DoT अनुपालन):*\n{web_url}\n\n"
+                    "_(आपका कोटेशन लॉक है। वेब पोर्टल बिना किसी फोटो संपीड़न के हाई-रेज़ोल्यूशन ओसीआर स्कैन करता है)_"
+                )
+                buttons = [
+                    {"id": "btn_web_kyc", "title": "🌐 वेब पर KYC करें", "payload": f"url:{web_url}"}
+                ]
+            else:
+                msg = (
+                    "📸 *Upload Document for Instant KYC Verification:*\n\n"
+                    "1️⃣ *Direct in Chat:* Take or upload a clear photo of your *Electricity Bill* or *GST Certificate* directly in this chat.\n\n"
+                    f"2️⃣ *Pre-Filled Web Portal (DoT Compliant & High-Res OCR):*\n{web_url}\n\n"
+                    "_(Your quote is locked in. Telecom regulations support direct lossless upload for fast 48h activation)_"
+                )
+                buttons = [
+                    {"id": "btn_web_kyc", "title": "🌐 Open Web KYC Portal", "payload": f"url:{web_url}"}
+                ]
+            return {"messages": [msg], "buttons": buttons}
 
         # 5. Check Button Action: Confirm Order & Pay Token
         if lower_text in ["action:confirm_order", "pay token", "confirm", "book installation", "💳 pay ₹100 & confirm"]:
