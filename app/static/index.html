@@ -109,6 +109,15 @@
     </div>
   </header>
 
+  <!-- PARTNER ATTRIBUTION BANNER (Shown when ?ref=PTR-IND-882 is present) -->
+  <div id="partnerAttributionBanner" class="hidden bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white text-xs font-bold py-2 px-4 shadow-sm flex items-center justify-between">
+    <div class="flex items-center space-x-2">
+      <span class="text-sm">🤝</span>
+      <span id="t-partner-attribution-banner">Assisted by Mitra Partner: Vikram Telecom (PTR-IND-882) • Special Digital Onboarding Benefits Active</span>
+    </div>
+    <span class="text-[10px] bg-black/20 text-white px-2 py-0.5 rounded font-mono uppercase tracking-wider">15% Recurring Trail Tagged</span>
+  </div>
+
   <!-- MAIN CONTAINER -->
   <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
 
@@ -476,18 +485,65 @@
       </div>
 
       <div class="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
-        <!-- Partner Referral Link Section -->
-        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-center justify-between">
-          <div>
-            <span class="font-bold text-amber-900 block" id="t-partner-code">Your Partner Referral Code: REF-PTR-IND-882</span>
-            <p class="text-amber-700" id="t-partner-desc">Customers who onboard using your link or QR code earn you 15% recurring commission.</p>
+        <!-- Partner Commercial Earnings KPI Grid -->
+        <div>
+          <h4 class="font-extrabold text-slate-900 text-sm mb-2" id="t-partner-commission-title">Commercial Earnings & Recovery Summary</h4>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <span class="text-amber-700 block font-semibold text-[11px]" id="t-partner-active-referrals">Active Monthly Connections</span>
+              <span class="text-xl font-black text-amber-950" id="partnerActiveReferrals">28</span>
+              <span class="text-[10px] text-amber-700 block mt-0.5">15% Recurring Trail</span>
+            </div>
+            <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+              <span class="text-emerald-700 block font-semibold text-[11px]" id="t-partner-recurring-trail">Monthly Recurring Trail</span>
+              <span class="text-xl font-black text-emerald-950" id="partnerRecurringTrail">₹42,850/mo</span>
+              <span class="text-[10px] text-emerald-700 block mt-0.5">12 Months Lifetime</span>
+            </div>
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+              <span class="text-blue-700 block font-semibold text-[11px]" id="t-partner-recovery-bounties">Lead Recovery Bounties</span>
+              <span class="text-xl font-black text-blue-950" id="partnerRecoveryBounties">₹4,000</span>
+              <span class="text-[10px] text-blue-700 block mt-0.5">₹1,000 Spot Per Lead</span>
+            </div>
+            <div class="p-3 bg-purple-50 border border-purple-200 rounded-xl">
+              <span class="text-purple-700 block font-semibold text-[11px]">Total Pending Payout</span>
+              <span class="text-xl font-black text-purple-950" id="partnerPendingPayout">₹16,450</span>
+              <span class="text-[10px] text-purple-700 block mt-0.5">Bank Mandate Linked</span>
+            </div>
           </div>
-          <button class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg" id="t-partner-copy">Copy Link</button>
         </div>
 
-        <!-- Stalled Leads Table with Propensity Score -->
+        <!-- Partner Referral Link & Downloadable Store Sticker QR Section -->
+        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-16 h-16 bg-white border border-amber-300 rounded-xl p-1.5 flex flex-col items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-13 h-13 text-amber-900" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2 2h8v8H2V2zm2 2v4h4V4H4zm10-2h8v8h-8V2zm2 2v4h4V4h-4zM2 14h8v8H2v-8zm2 2v4h4v-4H4zm14-2h4v2h-4v-2zm-4 0h2v4h-2v-4zm2 4h4v4h-4v-4zm2-2h2v2h-2v-2zm-6 2h2v2h-2v-2zm0-4h2v2h-2v-2zm4 4v2h-2v-2h2z"/>
+              </svg>
+            </div>
+            <div>
+              <span class="font-extrabold text-amber-950 block text-sm" id="t-partner-qr-title">Mitra Partner Acquisition QR Code</span>
+              <p class="text-amber-800 text-[11px]" id="t-partner-qr-desc">Customers who scan your physical sticker or link receive instant digital discount, while you earn 15% recurring trail commission on all 12 monthly bills.</p>
+              <div class="mt-1 font-mono text-[10px] text-amber-900 bg-white/80 px-2 py-0.5 rounded border border-amber-200 inline-block" id="partnerRefCodeBadge">REF-PTR-IND-882</div>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2 shrink-0">
+            <button id="copyPartnerLinkBtn" type="button" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-2 rounded-xl transition shadow-xs flex items-center space-x-1">
+              <span>📋</span>
+              <span id="t-partner-copy">Copy Link</span>
+            </button>
+            <button id="downloadPartnerQrBtn" type="button" class="bg-slate-900 hover:bg-black text-white font-bold px-3 py-2 rounded-xl transition shadow-xs flex items-center space-x-1">
+              <span>🖼️</span>
+              <span id="t-partner-download-qr">Download Store Sticker (QR)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Stalled Leads Table with Propensity Score & ₹1,000 Spot Bounties -->
         <div>
-          <h4 class="font-extrabold text-slate-900 text-sm mb-2" id="t-partner-table-title">Unresolved Leads Queue (Calibrated Propensity Scores)</h4>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-extrabold text-slate-900 text-sm" id="t-partner-table-title">Unresolved Leads Queue (Calibrated Propensity Scores)</h4>
+            <span class="text-[10px] bg-amber-100 text-amber-900 font-bold px-2.5 py-0.5 rounded-full">₹1,000 Spot Bounty on 24h Recovery</span>
+          </div>
           <div class="border border-slate-200 rounded-xl overflow-hidden">
             <table class="w-full text-left border-collapse">
               <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
@@ -497,7 +553,7 @@
                   <th class="p-2.5">Last Stage</th>
                   <th class="p-2.5">Drop Reason</th>
                   <th class="p-2.5">Propensity</th>
-                  <th class="p-2.5">Action</th>
+                  <th class="p-2.5">Bounty & Recovery Action</th>
                 </tr>
               </thead>
               <tbody id="partnerLeadsTableBody" class="divide-y divide-slate-100">

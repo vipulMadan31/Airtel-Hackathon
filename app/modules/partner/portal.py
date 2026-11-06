@@ -1,9 +1,18 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from datetime import datetime
 from app.data_loader import DataLoader
 
 class PartnerPortal:
     def __init__(self):
         self.loader = DataLoader.get_instance()
+        self.claimed_leads: Dict[str, Dict[str, Any]] = {
+            "L00001": {
+                "partner_id": "PTR-IND-882",
+                "claimed_at": "2026-11-06T18:30:00",
+                "bounty_inr": 1000,
+                "status": "IN_PROGRESS"
+            }
+        }
 
     def calculate_propensity_score(self, lead: Dict[str, Any]) -> int:
         """
@@ -36,8 +45,10 @@ class PartnerPortal:
         results = []
         for l in raw_leads:
             p_score = self.calculate_propensity_score(l)
+            lid = l["lead_id"]
+            claim_info = self.claimed_leads.get(lid)
             results.append({
-                "lead_id": l["lead_id"],
+                "lead_id": lid,
                 "business_name": l["business_name"],
                 "city": l["city"],
                 "stage_reached": l["stage_reached"],
@@ -45,15 +56,55 @@ class PartnerPortal:
                 "monthly_spend_inr": l.get("monthly_telecom_spend_inr", 0),
                 "has_gstin": l.get("has_gstin", "N"),
                 "propensity_score": p_score,
-                "priority": "HIGH" if p_score >= 70 else ("MEDIUM" if p_score >= 50 else "STANDARD")
+                "priority": "HIGH" if p_score >= 70 else ("MEDIUM" if p_score >= 50 else "STANDARD"),
+                "is_claimed": bool(claim_info),
+                "claimed_by": claim_info.get("partner_id") if claim_info else None,
+                "recovery_bounty_inr": 1000
             })
         return sorted(results, key=lambda x: x["propensity_score"], reverse=True)
 
-    def generate_partner_referral_link(self, partner_id: str = "PTR-IND-882") -> Dict[str, str]:
+    def claim_stalled_lead(self, lead_id: str, partner_id: str = "PTR-IND-882") -> Dict[str, Any]:
+        self.claimed_leads[lead_id] = {
+            "partner_id": partner_id,
+            "claimed_at": datetime.now().isoformat(),
+            "bounty_inr": 1000,
+            "status": "CLAIMED"
+        }
+        return {
+            "status": "SUCCESS",
+            "claim_status": "CLAIMED",
+            "message": f"Lead {lead_id} successfully claimed. ₹1,000 spot recovery bounty locked upon activation within 24h.",
+            "lead_id": lead_id,
+            "partner_id": partner_id,
+            "bounty_inr": 1000,
+            "recovery_sla_hours": 24
+        }
+
+    def generate_partner_referral_link(self, partner_id: str = "PTR-IND-882") -> Dict[str, Any]:
         return {
             "partner_id": partner_id,
+            "partner_name": "Vikram Telecom (Mitra Channel Partner)",
             "referral_code": f"REF-{partner_id}",
             "referral_url": f"http://localhost:8000/?ref={partner_id}",
-            "commission_tier": "15% of first-month bundle value"
+            "commission_tier": "15% recurring trail commission on all 12 monthly bills",
+            "qr_label": "Scan to order Airtel Business with dedicated Mitra Partner on-site support"
         }
+
+    def get_partner_commissions(self, partner_id: str = "PTR-IND-882") -> Dict[str, Any]:
+        claimed_count = sum(1 for c in self.claimed_leads.values() if c.get("partner_id") == partner_id)
+        return {
+            "partner_id": partner_id,
+            "partner_name": "Vikram Telecom",
+            "assigned_pincode": "452001",
+            "active_referrals_count": 28,
+            "monthly_recurring_trail_inr": 42850.0,
+            "spot_recovery_bounty_per_lead_inr": 1000.0,
+            "stalled_recovery_bounties_inr": 4000.0 + (claimed_count * 1000.0),
+            "recovery_bounties_count": claimed_count,
+            "recovery_bounties_earned_inr": claimed_count * 1000.0,
+            "pending_payout_inr": 16450.0 + (claimed_count * 1000.0),
+            "total_pending_payout_inr": 16450.0 + (claimed_count * 1000.0),
+            "commission_rate": "15% Recurring Trail"
+        }
+
 

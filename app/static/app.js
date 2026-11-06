@@ -18,6 +18,10 @@ const STATE = {
     activeIntent: null,
     receipt: null
   },
+  attribution: {
+    partner_id: null,
+    is_assisted: false
+  },
   profile: {
     business_type: null,
     employee_count: null,
@@ -46,6 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
   recalculateQuote();
   initNpsButtons();
   checkKycTokenHandoff();
+  checkPartnerAttribution();
 });
 
 // --- WHATSAPP TO WEB KYC HANDOFF ---
@@ -89,6 +94,20 @@ async function checkKycTokenHandoff() {
       `;
       kycCard.insertBefore(banner, kycCard.firstChild);
     }
+  }
+}
+
+// --- CHANNEL PARTNER QUERY ATTRIBUTION ---
+function checkPartnerAttribution() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const refCode = urlParams.get("ref") || urlParams.get("partner_id");
+  const banner = document.getElementById("partnerAttributionBanner");
+
+  if (refCode) {
+    STATE.attribution.partner_id = refCode;
+    STATE.attribution.is_assisted = true;
+    if (banner) banner.classList.remove("hidden");
+    console.log(`Channel Partner referral attribution active: ${refCode}`);
   }
 }
 
@@ -200,6 +219,16 @@ function applyLanguage(lang) {
   setText("t-receipt-title", dict.receipt_title);
   setText("t-receipt-sub", dict.receipt_sub);
   setText("t-receipt-close", dict.receipt_close);
+
+  // Partner Attribution & Recovery i18n
+  setText("t-partner-attribution-banner", dict.partner_attribution_banner);
+  setText("t-partner-qr-title", dict.partner_qr_title);
+  setText("t-partner-qr-desc", dict.partner_qr_desc);
+  setText("t-partner-download-qr", dict.partner_download_qr);
+  setText("t-partner-commission-title", dict.partner_commission_title);
+  setText("t-partner-active-referrals", dict.partner_active_referrals);
+  setText("t-partner-recurring-trail", dict.partner_recurring_trail);
+  setText("t-partner-recovery-bounties", dict.partner_recovery_bounties);
 
   updateRoleSwitcherUI();
 
@@ -505,6 +534,21 @@ function initEventListeners() {
   if (closeReceiptModalBtn) closeReceiptModalBtn.addEventListener("click", closeReceiptModal);
   const closeReceiptBtn = document.getElementById("closeReceiptBtn");
   if (closeReceiptBtn) closeReceiptBtn.addEventListener("click", closeReceiptModal);
+
+  // Partner Link & QR Actions
+  const copyLinkBtn = document.getElementById("copyPartnerLinkBtn");
+  if (copyLinkBtn) {
+    copyLinkBtn.addEventListener("click", () => {
+      navigator.clipboard?.writeText("http://localhost:8000/?ref=PTR-IND-882");
+      alert("Partner Referral link copied to clipboard: http://localhost:8000/?ref=PTR-IND-882");
+    });
+  }
+  const dlQrBtn = document.getElementById("downloadPartnerQrBtn");
+  if (dlQrBtn) {
+    dlQrBtn.addEventListener("click", () => {
+      alert("Downloading official store counter QR sticker asset for Mitra Partner PTR-IND-882...");
+    });
+  }
 
   // Voice Recognition (Web Speech API)
   initVoiceRecognition();
@@ -1176,7 +1220,8 @@ async function handleConfirmOrder() {
         contact_phone: "+91 98765 12345",
         bundle_data: STATE.activeQuote,
         kyc_status: "VERIFIED",
-        language: STATE.language
+        language: STATE.language,
+        partner_id: STATE.attribution.partner_id || (STATE.auth.role === 'PARTNER' ? STATE.auth.user.user_id : null)
       })
     });
     const order = await res.json();
@@ -1425,6 +1470,31 @@ async function openPartnerModal() {
   modal.classList.remove("hidden");
 
   try {
+    // 1. Fetch Partner Commissions & Telemetry
+    try {
+      const commRes = await fetch("/api/partner/commissions", {
+        headers: {
+          "Authorization": `Bearer ${STATE.auth.token}`,
+          "X-Session-Token": STATE.auth.token
+        }
+      });
+      if (commRes.ok) {
+        const commData = await commRes.json();
+        const refCountEl = document.getElementById("partnerActiveReferrals");
+        const trailEl = document.getElementById("partnerRecurringTrail");
+        const bountyEl = document.getElementById("partnerRecoveryBounties");
+        const payoutEl = document.getElementById("partnerPendingPayout");
+
+        if (refCountEl) refCountEl.innerText = commData.active_referrals_count;
+        if (trailEl) trailEl.innerText = `₹${commData.monthly_recurring_trail_inr.toLocaleString()}/mo`;
+        if (bountyEl) bountyEl.innerText = `₹${commData.stalled_recovery_bounties_inr.toLocaleString()}`;
+        if (payoutEl) payoutEl.innerText = `₹${commData.total_pending_payout_inr.toLocaleString()}`;
+      }
+    } catch (cErr) {
+      console.warn("Commissions fetch warning:", cErr);
+    }
+
+    // 2. Fetch Stalled & Inbound Leads
     const res = await fetch("/api/partner/leads", {
       headers: {
         "Authorization": `Bearer ${STATE.auth.token}`,
@@ -1448,28 +1518,86 @@ async function openPartnerModal() {
     }
 
     const leads = await res.json();
-    tbody.innerHTML = leads.map(l => `
-      <tr class="hover:bg-slate-50/80">
-        <td class="p-2.5 font-mono font-bold">${l.lead_id}</td>
-        <td class="p-2.5 font-semibold text-slate-900">${l.business_name} <span class="text-slate-400 block text-[10px]">${l.city}</span></td>
-        <td class="p-2.5 text-slate-600">${l.stage_reached}</td>
-        <td class="p-2.5 text-red-600 font-medium">${l.drop_reason}</td>
-        <td class="p-2.5">
-          <span class="px-2 py-0.5 rounded-full font-bold text-[10px] ${l.propensity_score >= 70 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
-            Score: ${l.propensity_score}/100 (${l.priority})
-          </span>
-        </td>
-        <td class="p-2.5">
-          <button class="bg-slate-900 hover:bg-black text-white px-2 py-1 rounded text-[10px] font-bold" onclick="alert('Partner callback initiated for ${l.business_name}')">
-            ${STATE.language === 'hi' ? 'कॉल करें' : 'Call Lead'}
-          </button>
-        </td>
-      </tr>
-    `).join('');
+    const isHi = STATE.language === 'hi';
+    tbody.innerHTML = leads.map(l => {
+      const isClaimed = l.is_claimed || false;
+      const scoreBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] ${l.propensity_score >= 70 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">Score: ${l.propensity_score}/100 (${l.priority})</span>`;
+
+      let actionButtons = '';
+      if (isClaimed) {
+        actionButtons = `
+          <div class="flex items-center space-x-1.5">
+            <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded text-[10px] font-extrabold flex items-center space-x-1">
+              <span>✔</span>
+              <span>₹1,000 ${isHi ? 'बाउंटी लॉक' : 'Bounty Locked'}</span>
+            </span>
+            <button class="bg-slate-900 hover:bg-black text-white px-2 py-1 rounded text-[10px] font-bold" onclick="alert('Calling claimed customer ${l.business_name} (${l.phone || '+91 98765 12345'})...')">
+              ${isHi ? 'कॉल करें' : 'Call'}
+            </button>
+          </div>
+        `;
+      } else {
+        actionButtons = `
+          <div class="flex items-center space-x-1.5">
+            <button class="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded text-[10px] font-extrabold shadow-xs transition" onclick="claimLeadBounty('${l.lead_id}')">
+              ${isHi ? 'लीड क्लेम (₹1,000)' : 'Claim Lead (₹1k)'}
+            </button>
+            <button class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-2 py-1 rounded text-[10px] font-bold" onclick="alert('Partner outreach initiated for ${l.business_name}')">
+              ${isHi ? 'कॉल' : 'Call'}
+            </button>
+          </div>
+        `;
+      }
+
+      return `
+        <tr class="hover:bg-slate-50/80 transition ${isClaimed ? 'bg-emerald-50/30' : ''}">
+          <td class="p-2.5 font-mono font-bold">${l.lead_id}</td>
+          <td class="p-2.5 font-semibold text-slate-900">
+            ${l.business_name}
+            <span class="text-slate-400 block text-[10px]">${l.city} &bull; ${l.phone || '+91 98765 12345'}</span>
+          </td>
+          <td class="p-2.5 text-slate-600">${l.stage_reached}</td>
+          <td class="p-2.5 text-red-600 font-medium">${l.drop_reason}</td>
+          <td class="p-2.5">${scoreBadge}</td>
+          <td class="p-2.5">${actionButtons}</td>
+        </tr>
+      `;
+    }).join('');
   } catch (err) {
     console.error("Partner leads error:", err);
   }
 }
+
+// Window handler for Claim Lead Bounty
+window.claimLeadBounty = async function(leadId) {
+  try {
+    const res = await fetch(`/api/partner/leads/${leadId}/claim`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${STATE.auth.token}`,
+        "X-Session-Token": STATE.auth.token,
+        "Content-Type": "application/json"
+      }
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert(`Claim failed: ${err.detail || 'Could not claim lead'}`);
+      return;
+    }
+
+    const data = await res.json();
+    const isHi = STATE.language === 'hi';
+    const alertMsg = isHi
+      ? `लीड ${leadId} को सफलतापूर्वक क्लेम कर लिया गया है!\n₹1,000 की रिकवरी बाउंटी लॉक कर दी गई है।\nकृपया 4 घंटे के भीतर ग्राहक से संपर्क करें।`
+      : `Lead ${leadId} claimed successfully!\n₹1,000 spot recovery bounty locked for Mitra Partner PTR-IND-882.\nOutreach SLA: 4 hours.`;
+    alert(alertMsg);
+    await openPartnerModal();
+  } catch (err) {
+    console.error("Claim error:", err);
+    alert("Network error while claiming lead.");
+  }
+};
 
 function closePartnerModal() {
   const modal = document.getElementById("partnerModal");

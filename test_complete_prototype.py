@@ -237,6 +237,46 @@ def test_prototype():
     assert rcpt_res["sac_code"] == "998411"
     print(f"✔ [8c/8] ₹499 UPI Payment & Mandate: OK (Receipt: {confirm_res['receipt_number']}, Mandate: ACTIVE, SAC: 998411)")
 
+    # 8d. Channel Partner QR Attribution, Assisted Selling & Stalled Lead Recovery Bounties
+    print("\n[Step 8d] Testing Partner Attribution, Commissions Telemetry & ₹1k Lead Bounties...")
+    # Partner Commissions Telemetry
+    p_comm = requests.get(f"{BASE_URL}/api/partner/commissions", headers={"Authorization": "Bearer tok_partner_demo"})
+    assert p_comm.status_code == 200
+    comm_json = p_comm.json()
+    assert comm_json["partner_id"] == "PTR-IND-882"
+    assert comm_json["active_referrals_count"] == 28
+    assert comm_json["monthly_recurring_trail_inr"] == 42850.0
+    assert comm_json["spot_recovery_bounty_per_lead_inr"] == 1000.0
+
+    # Merchant cannot view partner commissions -> 403
+    cust_comm = requests.get(f"{BASE_URL}/api/partner/commissions", headers={"Authorization": "Bearer tok_merchant_demo"})
+    assert cust_comm.status_code == 403
+
+    # Partner Stalled Lead Claim -> ₹1,000 spot bounty
+    claim_res = requests.post(
+        f"{BASE_URL}/api/partner/leads/L00003/claim",
+        headers={"Authorization": "Bearer tok_partner_demo"}
+    )
+    assert claim_res.status_code == 200
+    claim_json = claim_res.json()
+    assert claim_json["status"] == "SUCCESS"
+    assert claim_json["claim_status"] == "CLAIMED"
+    assert claim_json["bounty_inr"] == 1000.0
+    assert claim_json["partner_id"] == "PTR-IND-882"
+
+    # Partner Assisted Order Creation with Attribution Tag
+    partner_order = requests.post(f"{BASE_URL}/api/orders/create", json={
+        "business_name": "Kalyan Textiles",
+        "contact_phone": "+91 99887 76655",
+        "bundle_data": qdata,
+        "kyc_status": "VERIFIED",
+        "language": "hi",
+        "partner_id": "PTR-IND-882"
+    }).json()
+    assert partner_order["partner_attribution_id"] == "PTR-IND-882"
+    assert partner_order["is_assisted"] is True
+    print(f"✔ [8d/8] Partner Attribution & Recovery Bounty: OK (Claimed: SMB-0021, Bounty: ₹1,000, Attributed Order: {partner_order['order_id']})")
+
     print("\n" + "=" * 60)
     print("ALL PROJECT UDYAM DIGITAL SUITES PASSED FLAWLESSLY (100% GREEN)")
     print("=" * 60)

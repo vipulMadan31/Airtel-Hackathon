@@ -93,7 +93,17 @@ const LOCALES = {
     pay_receipt_btn: "📄 View Official Tax Receipt",
     receipt_title: "Airtel Business — Token Payment Receipt",
     receipt_sub: "Official Advance Booking Tax Invoice & SAC 998411 Record",
-    receipt_close: "Close Receipt"
+    receipt_close: "Close Receipt",
+    partner_attribution_banner: "🤝 Assisted by Mitra Partner: Vikram Telecom (PTR-IND-882) • Special Digital Onboarding Benefits Active",
+    partner_qr_title: "Mitra Partner Acquisition QR Code",
+    partner_qr_desc: "Customers who scan your physical sticker or link receive instant digital discount, while you earn 15% recurring trail commission on all 12 monthly bills.",
+    partner_download_qr: "Download Store Sticker (QR)",
+    partner_commission_title: "Commercial Earnings & Recovery Summary",
+    partner_active_referrals: "Active Monthly Connections",
+    partner_recurring_trail: "Monthly Recurring Trail",
+    partner_recovery_bounties: "Lead Recovery Bounties",
+    partner_claim_btn: "Claim Lead (₹1k Bounty)",
+    partner_claimed_badge: "Claimed (₹1,000 Locked)"
   },
   hi: {
     brand_sub: "एयरटेल बिज़नेस",
@@ -188,7 +198,17 @@ const LOCALES = {
     pay_receipt_btn: "📄 आधिकारिक टैक्स रसीद देखें",
     receipt_title: "एयरटेल बिज़नेस — टोकन भुगतान रसीद",
     receipt_sub: "आधिकारिक एडवांस बुकिंग टैक्स इनवॉइस (SAC 998411)",
-    receipt_close: "रसीद बंद करें"
+    receipt_close: "रसीद बंद करें",
+    partner_attribution_banner: "🤝 मित्र पार्टनर द्वारा सहायता प्राप्त: विक्रम टेलीकॉम (PTR-IND-882) • विशेष डिजिटल ऑनबोर्डिंग लाभ सक्रिय",
+    partner_qr_title: "मित्र पार्टनर अधिग्रहण क्यूआर कोड",
+    partner_qr_desc: "ग्राहक आपके क्यूआर से जुड़ेंगे तो उन्हें डिजिटल छूट मिलेगी, और आपको पूरे 12 महीनों तक 15% मासिक रीकरिंग कमीशन मिलेगा।",
+    partner_download_qr: "दुकान स्टीकर डाउनलोड करें (QR)",
+    partner_commission_title: "व्यावसायिक आय एवं रिकवरी सारांश",
+    partner_active_referrals: "सक्रिय मासिक कनेक्शन",
+    partner_recurring_trail: "मासिक रीकरिंग कमीशन",
+    partner_recovery_bounties: "लीड रिकवरी बाउंटी आय",
+    partner_claim_btn: "लीड क्लेम करें (₹1,000 बाउंटी)",
+    partner_claimed_badge: "क्लेम किया गया (₹1,000 सुरक्षित)"
   }
 };
 

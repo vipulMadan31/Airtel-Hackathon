@@ -32,7 +32,8 @@ async def test():
                     "id": curr,
                     "method": "Runtime.evaluate",
                     "params": {
-                        "expression": f"(() => {{ {expr} }})()",
+                        "expression": f"(async () => {{ {expr} }})()",
+                        "awaitPromise": True,
                         "returnByValue": True
                     }
                 }))
@@ -206,8 +207,34 @@ async def test():
             assert "499" in rcpt_total_text
             print(f"   ✔ Instant UPI PIN simulation & GST Tax Receipt (Total: {rcpt_total_text}): SUCCESS")
 
+            # Test 13: Partner Attribution, Commission Telemetry & Lead Bounty Claim
+            print("\n13. Testing Partner Attribution, Commission Telemetry & Lead Bounty...")
+            await run_eval("window.alert = (msg) => { console.log('ALERT:', msg); };")
+            await run_eval("switchUserRole('PARTNER');")
+            await asyncio.sleep(0.5)
+            await run_eval("openPartnerModal();")
+            await asyncio.sleep(1.0)
+
+            p_ref_text = await run_eval("return document.getElementById('partnerActiveReferrals').innerText;")
+            p_trail_text = await run_eval("return document.getElementById('partnerRecurringTrail').innerText;")
+            assert "28" in p_ref_text
+            assert "42,850" in p_trail_text
+            print(f"   -> Partner Commissions: Referrals={p_ref_text}, Monthly Trail={p_trail_text}")
+
+            await run_eval("await window.claimLeadBounty('L00003');")
+            table_html = ""
+            for _ in range(15):
+                table_html = await run_eval("return document.getElementById('partnerLeadsTableBody').innerHTML;")
+                if "Bounty Locked" in table_html or "Claimed" in table_html or "बाउंटी लॉक" in table_html:
+                    break
+                await asyncio.sleep(0.5)
+
+            assert "Bounty Locked" in table_html or "Claimed" in table_html or "बाउंटी लॉक" in table_html
+            await run_eval("closePartnerModal();")
+            print("   ✔ Partner Commission Telemetry & Lead Bounty Claim: SUCCESS")
+
             print("\n" + "=" * 65)
-            print("ALL 12 FRONTEND BROWSER CLICKS ARE FULLY TESTED & 100% RESPONSIVE!")
+            print("ALL 13 FRONTEND BROWSER CLICKS ARE FULLY TESTED & 100% RESPONSIVE!")
             print("=" * 65)
 
     finally:

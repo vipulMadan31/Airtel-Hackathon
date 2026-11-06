@@ -107,6 +107,7 @@ class CreateOrderRequest(BaseModel):
     bundle_data: Dict[str, Any]
     kyc_status: str = "VERIFIED"
     language: str = "en"
+    partner_id: Optional[str] = None
 
 class RescheduleRequest(BaseModel):
     new_date: str
@@ -348,7 +349,12 @@ def verify_extracted_data(req: VerifyExtractedRequest):
 @app.post("/api/orders/create")
 def create_order(req: CreateOrderRequest):
     return order_sm.create_order(
-        req.business_name, req.contact_phone, req.bundle_data, req.kyc_status, req.language
+        business_name=req.business_name,
+        contact_phone=req.contact_phone,
+        bundle_data=req.bundle_data,
+        kyc_status=req.kyc_status,
+        language=req.language,
+        partner_id=req.partner_id
     )
 
 @app.get("/api/orders/{order_id}")
@@ -448,6 +454,37 @@ def get_partner_referral(
     user = get_user_by_token(extracted)
     pid = user["user_id"] if user["role"] == ROLE_PARTNER else partner_id
     return partner_portal.generate_partner_referral_link(partner_id=pid)
+
+@app.post("/api/partner/leads/{lead_id}/claim")
+def claim_partner_lead(
+    lead_id: str,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    user = get_user_by_token(extracted)
+    if user["role"] not in [ROLE_PARTNER, ROLE_ADMIN]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Channel Partner credentials required to claim recovery bounties."
+        )
+    return partner_portal.claim_stalled_lead(lead_id=lead_id, partner_id=user["user_id"])
+
+@app.get("/api/partner/commissions")
+def get_partner_commissions(
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    user = get_user_by_token(extracted)
+    if user["role"] not in [ROLE_PARTNER, ROLE_ADMIN]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Channel Partner credentials required."
+        )
+    return partner_portal.get_partner_commissions(partner_id=user["user_id"])
 
 # 8. Admin Telemetry & Escalation Queue (RBAC Guarded)
 @app.get("/api/admin/metrics")

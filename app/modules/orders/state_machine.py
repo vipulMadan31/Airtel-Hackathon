@@ -57,6 +57,8 @@ class OrderStateMachine:
                 conn.execute("ALTER TABLE orders ADD COLUMN payment_method TEXT")
             if "receipt_json" not in cols:
                 conn.execute("ALTER TABLE orders ADD COLUMN receipt_json TEXT")
+            if "partner_attribution_id" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN partner_attribution_id TEXT")
             conn.commit()
 
     def create_order(
@@ -66,7 +68,8 @@ class OrderStateMachine:
         bundle_data: Dict[str, Any],
         kyc_status: str = "VERIFIED",
         language: str = "en",
-        typical_install_days: int = 5
+        typical_install_days: int = 5,
+        partner_id: Optional[str] = None
     ) -> Dict[str, Any]:
         order_id = f"UDYAM-{uuid.uuid4().hex[:6].upper()}"
         install_date = (datetime.now() + timedelta(days=typical_install_days)).strftime("%Y-%m-%d")
@@ -76,8 +79,8 @@ class OrderStateMachine:
             INSERT INTO orders (
                 order_id, business_name, contact_phone, language,
                 bundle_json, monthly_total, kyc_status, current_milestone,
-                scheduled_install_date, engineer_name, engineer_phone, nps_rating, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                scheduled_install_date, engineer_name, engineer_phone, nps_rating, partner_attribution_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 order_id,
                 business_name,
@@ -91,6 +94,7 @@ class OrderStateMachine:
                 "Ramesh Sharma (Field Lead)",
                 "+91 98765 43210",
                 None,
+                partner_id,
                 datetime.now().isoformat()
             ))
 
@@ -118,6 +122,7 @@ class OrderStateMachine:
             res = dict(row)
             res["bundle"] = json.loads(res["bundle_json"])
             res["dpdp_consent_recorded"] = True
+            res["is_assisted"] = bool(res.get("partner_attribution_id"))
             if res.get("receipt_json"):
                 try:
                     res["receipt"] = json.loads(res["receipt_json"])
