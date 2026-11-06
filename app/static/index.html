@@ -38,8 +38,8 @@
         </div>
       </div>
 
-      <!-- Controls: Safe Mode, Language, Partner -->
-      <div class="flex items-center space-x-2 sm:space-x-4">
+      <!-- Controls: Safe Mode, Language, WhatsApp, Role-specific Buttons, Role Switcher -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
         <!-- Non-GST Safe Mode Toggle -->
         <label class="flex items-center space-x-2 text-xs font-semibold cursor-pointer bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-full border border-slate-200 transition">
           <input type="checkbox" id="safeModeToggle" class="rounded text-airtel-red focus:ring-0">
@@ -53,14 +53,58 @@
         </div>
 
         <!-- WhatsApp Bot Link -->
-        <a href="/whatsapp-simulator" target="_blank" class="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-3 py-1.5 rounded-lg transition flex items-center space-x-1.5 shadow-xs">
-          <span>📱 WhatsApp Channel</span>
+        <a href="/whatsapp-simulator" target="_blank" class="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1.5 rounded-lg transition flex items-center space-x-1 shadow-xs">
+          <span>📱 WhatsApp</span>
         </a>
 
-        <!-- Partner Portal Link -->
-        <button id="partnerPortalBtn" class="text-xs font-bold text-slate-600 hover:text-airtel-red border border-slate-300 px-3 py-1.5 rounded-lg transition">
+        <!-- Role-specific Partner Portal Link (Visible only to Partner & Admin) -->
+        <button id="partnerPortalBtn" class="hidden text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2.5 py-1.5 rounded-lg transition items-center space-x-1">
+          <span>🤝</span>
           <span id="t-partner-btn">Partner Portal</span>
         </button>
+
+        <!-- Role-specific Admin Console Link (Visible only to Admin) -->
+        <button id="adminPortalBtn" class="hidden text-xs font-bold text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-300 px-2.5 py-1.5 rounded-lg transition items-center space-x-1">
+          <span>🛡️</span>
+          <span id="t-admin-btn">Ops Console</span>
+        </button>
+
+        <!-- Role Switcher Dropdown (Enterprise RBAC) -->
+        <div class="relative inline-block text-left" id="roleSwitcherWrapper">
+          <button id="roleDropdownBtn" type="button" class="flex items-center space-x-1.5 text-xs font-bold bg-slate-900 text-white hover:bg-black px-3 py-1.5 rounded-full shadow-sm transition">
+            <span id="roleBadgeIcon">🛒</span>
+            <span id="roleBadgeLabel">Customer Mode</span>
+            <svg class="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          <div id="roleDropdownMenu" class="hidden absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-white ring-1 ring-black/5 divide-y divide-slate-100 z-50 overflow-hidden">
+            <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Switch Persona / View
+            </div>
+            <div class="p-1 space-y-0.5">
+              <button id="switchRoleMerchant" type="button" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-slate-100 flex items-center space-x-2.5 transition">
+                <span class="text-base">🛒</span>
+                <div>
+                  <div class="font-extrabold text-slate-900">Customer Mode</div>
+                  <div class="text-[10px] text-slate-500">Rajesh Kirana (Self-Serve MSME)</div>
+                </div>
+              </button>
+              <button id="switchRolePartner" type="button" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-amber-50 flex items-center space-x-2.5 transition">
+                <span class="text-base">🤝</span>
+                <div>
+                  <div class="font-extrabold text-amber-950">Airtel Mitra Partner</div>
+                  <div class="text-[10px] text-amber-700">Vikram Telecom (PTR-IND-882)</div>
+                </div>
+              </button>
+              <button id="switchRoleAdmin" type="button" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-purple-50 flex items-center space-x-2.5 transition">
+                <span class="text-base">🛡️</span>
+                <div>
+                  <div class="font-extrabold text-purple-950">Airtel Ops Admin</div>
+                  <div class="text-[10px] text-purple-700">National Funnel Telemetry & Review</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -449,6 +493,108 @@
               </thead>
               <tbody id="partnerLeadsTableBody" class="divide-y divide-slate-100">
                 <!-- Dynamically populated from smb_leads.csv -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN OPERATIONS CENTER MODAL (RBAC Guarded) -->
+  <div id="adminModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-950 text-white">
+        <div class="flex items-center space-x-2.5">
+          <span class="p-1.5 bg-purple-600 rounded-lg text-sm">🛡️</span>
+          <div>
+            <span class="text-[11px] font-bold text-purple-400 uppercase tracking-wider" id="t-admin-sub">National MSME Funnel Telemetry & Escalation Review</span>
+            <h3 class="text-base font-extrabold" id="t-admin-title">Airtel Enterprise Operations Center</h3>
+          </div>
+        </div>
+        <button id="closeAdminModalBtn" class="text-slate-400 hover:text-white font-black text-xl">&times;</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-6 flex-1 text-xs">
+        <!-- KPI Telemetry Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="p-3 bg-purple-50 border border-purple-200 rounded-xl">
+            <span class="text-purple-700 block font-semibold text-[11px]">Total Inbound Leads</span>
+            <span class="text-xl font-black text-purple-950" id="adminTotalLeads">5,000</span>
+            <span class="text-[10px] text-purple-600 block mt-0.5">Top 50 Metros & Tier 2</span>
+          </div>
+          <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+            <span class="text-emerald-700 block font-semibold text-[11px]">Digital Conversion Rate</span>
+            <span class="text-xl font-black text-emerald-950" id="adminConvRate">24.8%</span>
+            <span class="text-[10px] text-emerald-600 block mt-0.5">vs 7.36% Legacy Baseline</span>
+          </div>
+          <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+            <span class="text-blue-700 block font-semibold text-[11px]">Avg Time to Activation</span>
+            <span class="text-xl font-black text-blue-950" id="adminTta">1.8 Days</span>
+            <span class="text-[10px] text-blue-600 block mt-0.5">vs 17.6d Legacy Funnel</span>
+          </div>
+          <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <span class="text-amber-700 block font-semibold text-[11px]">Blended CAC</span>
+            <span class="text-xl font-black text-amber-950" id="adminCac">₹3,450</span>
+            <span class="text-[10px] text-amber-600 block mt-0.5">77% Reduction (₹15k Base)</span>
+          </div>
+        </div>
+
+        <!-- MSME Segment Composition (Appendix A2) -->
+        <div>
+          <h4 class="font-extrabold text-slate-900 text-sm mb-2">MSME Market Composition & Propensity (Appendix A2)</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+            <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-bold text-slate-900">Micro Retail</span>
+                <span class="font-extrabold text-blue-600 text-xs">55%</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Kirana, apparel, food. Avg: ₹1,850/mo. Zero-wire 5G AirFiber target.</p>
+            </div>
+            <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-bold text-slate-900">Professional</span>
+                <span class="font-extrabold text-emerald-600 text-xs">25%</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Clinics, CAs, legal. Avg: ₹4,800/mo. High Static IP & Cloud retention.</p>
+            </div>
+            <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-bold text-slate-900">Multi-Site</span>
+                <span class="font-extrabold text-amber-600 text-xs">15%</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Retail chains, warehousing. Avg: ₹14,200/mo. Lowest churn (&lt;3% SD-WAN).</p>
+            </div>
+            <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-bold text-slate-900">Manufacturers</span>
+                <span class="font-extrabold text-purple-600 text-xs">5%</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Fabrication, auto parts. Avg: ₹28,500/mo. Dedicated ILL & IoT priority.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Manual KYC & Trap Escalation Queue -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-extrabold text-slate-900 text-sm">Automated Trap Escalation & Exception Queue</h4>
+            <span class="text-[10px] bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded-full">2 Exceptions Active</span>
+          </div>
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                <tr>
+                  <th class="p-2.5">Escalation ID</th>
+                  <th class="p-2.5">Business Name</th>
+                  <th class="p-2.5">Statutory Trap / Issue</th>
+                  <th class="p-2.5">Assigned Agent</th>
+                  <th class="p-2.5">SLA</th>
+                  <th class="p-2.5">Admin Action</th>
+                </tr>
+              </thead>
+              <tbody id="adminEscalationTableBody" class="divide-y divide-slate-100">
+                <!-- Injected by JS from /api/admin/metrics -->
               </tbody>
             </table>
           </div>

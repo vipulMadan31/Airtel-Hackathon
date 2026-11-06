@@ -44,6 +44,13 @@ async def test():
                             raise Exception(f"JS Eval Error: {res['exceptionDetails']}")
                         return res.get("result", {}).get("value")
 
+            # Wait for DOM ready
+            for _ in range(20):
+                ready = await run_eval("return document.readyState === 'complete' && !!document.getElementById('langHi');")
+                if ready:
+                    break
+                await asyncio.sleep(0.5)
+
             # Test 1: Click Hindi
             print("\n1. Testing Hindi Click...")
             lang = await run_eval("document.getElementById('langHi').click(); return window.STATE.language;")
@@ -94,8 +101,11 @@ async def test():
             # Test 5: Specimen K12 Load
             print("\n5. Testing Specimen K12 Chip Click...")
             await run_eval("document.querySelector(\".specimen-chip[data-code='K12']\").click();")
-            await asyncio.sleep(1.5)
-            gstin_val = await run_eval("return document.getElementById('extractedGstinInput').value;")
+            for _ in range(15):
+                gstin_val = await run_eval("return document.getElementById('extractedGstinInput').value;")
+                if gstin_val:
+                    break
+                await asyncio.sleep(0.5)
             print(f"   -> Extracted GSTIN: {gstin_val}")
             assert gstin_val == "37NBLXS1145E1ZU"
             print("   ✔ Specimen K12 OCR scan chip click: SUCCESS")
@@ -103,8 +113,11 @@ async def test():
             # Test 6: Verify Extracted Data Click
             print("\n6. Testing Verify Extracted Data Click...")
             await run_eval("document.getElementById('verifyExtractedBtn').click();")
-            await asyncio.sleep(1.0)
-            status = await run_eval("return window.STATE.kycDecision ? window.STATE.kycDecision.status : '';")
+            for _ in range(15):
+                status = await run_eval("return window.STATE.kycDecision ? window.STATE.kycDecision.status : '';")
+                if status:
+                    break
+                await asyncio.sleep(0.5)
             btn_disabled = await run_eval("return document.getElementById('confirmOrderBtn').disabled;")
             print(f"   -> Decision: {status}, Confirm button disabled: {btn_disabled}")
             assert status == "VERIFIED"
@@ -140,8 +153,38 @@ async def test():
             assert p_open and p_closed
             print("   ✔ Partner Portal Modal open/close: SUCCESS")
 
+            # Test 10: Role Persona Switcher Click
+            print("\n10. Testing Enterprise RBAC Persona Switcher Click...")
+            await run_eval("switchUserRole('PARTNER');")
+            await asyncio.sleep(0.5)
+            partner_role = await run_eval("return window.STATE.auth.role;")
+            partner_btn_visible = await run_eval("return !document.getElementById('partnerPortalBtn').classList.contains('hidden');")
+            assert partner_role == "PARTNER"
+            assert partner_btn_visible is True
+            print("   ✔ Switch to Partner Role & button reveal: SUCCESS")
+
+            await run_eval("switchUserRole('ADMIN');")
+            await asyncio.sleep(0.5)
+            admin_role = await run_eval("return window.STATE.auth.role;")
+            admin_btn_visible = await run_eval("return !document.getElementById('adminPortalBtn').classList.contains('hidden');")
+            assert admin_role == "ADMIN"
+            assert admin_btn_visible is True
+            print("   ✔ Switch to Admin Role & console reveal: SUCCESS")
+
+            # Test 11: Admin Operations Console Modal
+            print("\n11. Testing Admin Operations Console Modal Open/Close...")
+            await run_eval("openAdminModal();")
+            await asyncio.sleep(0.5)
+            admin_modal_open = await run_eval("return !document.getElementById('adminModal').classList.contains('hidden');")
+            total_leads_text = await run_eval("return document.getElementById('adminTotalLeads').innerText;")
+            await run_eval("closeAdminModal();")
+            admin_modal_closed = await run_eval("return document.getElementById('adminModal').classList.contains('hidden');")
+            assert admin_modal_open and admin_modal_closed
+            assert "5,000" in total_leads_text
+            print(f"   ✔ Admin Console Modal open & telemetry display (Leads: {total_leads_text}): SUCCESS")
+
             print("\n" + "=" * 65)
-            print("ALL 9 FRONTEND BROWSER CLICKS ARE FULLY TESTED & 100% RESPONSIVE!")
+            print("ALL 11 FRONTEND BROWSER CLICKS ARE FULLY TESTED & 100% RESPONSIVE!")
             print("=" * 65)
 
     finally:

@@ -180,8 +180,32 @@ def test_prototype():
     assert nps_res["nps_rating"] == 10
     print(f"✔ [8/8] Order Machine, Rescheduling & NPS: OK (Order ID: {order_id}, New Date: 2026-07-28, NPS: 10)")
 
+    # 8b. Enterprise RBAC & Role-Based Profile Separation
+    print("\n[Step 8b] Testing Multi-profile RBAC & Access Control...")
+    # Unauthenticated / Customer request to partner leads -> MUST FAIL with 403
+    unauth_partner = requests.get(f"{BASE_URL}/api/partner/leads")
+    assert unauth_partner.status_code == 403, f"Expected 403 for unauthenticated partner leads, got {unauth_partner.status_code}"
+    assert "Access denied" in unauth_partner.json()["detail"]
+
+    # Partner Token request -> MUST SUCCEED with 200
+    auth_partner = requests.get(f"{BASE_URL}/api/partner/leads", headers={"Authorization": "Bearer tok_partner_demo"})
+    assert auth_partner.status_code == 200, f"Expected 200 for partner auth, got {auth_partner.status_code}"
+    leads = auth_partner.json()
+    assert len(leads) > 0, "Partner should see stalled leads"
+
+    # Role Switch API -> Switch to Admin
+    switch_res = requests.post(f"{BASE_URL}/api/auth/switch-role", json={"role": "ADMIN"}).json()
+    assert switch_res["status"] == "success"
+    assert switch_res["token"] == "tok_admin_demo"
+
+    # Admin Metrics -> MUST SUCCEED with 200 for Admin
+    admin_metrics = requests.get(f"{BASE_URL}/api/admin/metrics", headers={"Authorization": "Bearer tok_admin_demo"}).json()
+    assert admin_metrics["funnel_metrics"]["total_inbound_leads"] == 5000
+    assert admin_metrics["operational_efficiency"]["legacy_cac_inr"] == 15000
+    print("✔ [8b/8] Enterprise RBAC & Multi-profile Security: OK (Customer: 403 BLOCKED, Partner: 200 PASS, Admin: 200 PASS)")
+
     print("\n" + "=" * 60)
-    print("ALL 8 PROJECT UDYAM DIGITAL SUITES PASSED FLAWLESSLY (100% GREEN)")
+    print("ALL PROJECT UDYAM DIGITAL SUITES PASSED FLAWLESSLY (100% GREEN)")
     print("=" * 60)
 
 if __name__ == "__main__":

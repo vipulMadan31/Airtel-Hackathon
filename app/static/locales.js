@@ -73,7 +73,13 @@ const LOCALES = {
     partner_code: "Your Partner Referral Code: REF-PTR-IND-882",
     partner_desc: "Customers who onboard using your link or QR code earn you 15% recurring commission.",
     partner_copy: "Copy Link",
-    partner_table_title: "Unresolved Leads Queue (Calibrated Propensity Scores)"
+    partner_table_title: "Unresolved Leads Queue (Calibrated Propensity Scores)",
+    role_merchant_label: "Customer Mode",
+    role_partner_label: "Mitra Partner",
+    role_admin_label: "Ops Admin",
+    admin_btn: "Ops Console",
+    admin_title: "Airtel Enterprise Operations Center",
+    admin_sub: "National MSME Funnel Telemetry & Escalation Review"
   },
   hi: {
     brand_sub: "एयरटेल बिज़नेस",
@@ -148,7 +154,13 @@ const LOCALES = {
     partner_code: "आपका पार्टनर रेफरल कोड: REF-PTR-IND-882",
     partner_desc: "जो ग्राहक आपके लिंक या क्यूआर से जुड़ेंगे, उन पर आपको 15% रीकरिंग कमीशन मिलेगा।",
     partner_copy: "लिंक कॉपी करें",
-    partner_table_title: "अपूर्ण लीड्स सूची (कैलिब्रेटेड प्रोपेंसिटी स्कोर)"
+    partner_table_title: "अपूर्ण लीड्स सूची (कैलिब्रेटेड प्रोपेंसिटी स्कोर)",
+    role_merchant_label: "ग्राहक मोड",
+    role_partner_label: "मित्र पार्टनर",
+    role_admin_label: "ऑप्स एडमिन",
+    admin_btn: "ऑप्स कंसोल",
+    admin_title: "एयरटेल एंटरप्राइज ऑपरेशंस सेंटर",
+    admin_sub: "राष्ट्रीय एमएसएमई फनल मेट्रिक्स एवं एस्केलेशन समीक्षा"
   }
 };
 

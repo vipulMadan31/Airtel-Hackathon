@@ -1,7 +1,7 @@
 import os
 import shutil
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -15,6 +15,15 @@ from app.modules.kyc.ocr_engine import OCREngine
 from app.modules.orders.state_machine import OrderStateMachine
 from app.modules.partner.portal import PartnerPortal
 from app.modules.whatsapp.router import router as whatsapp_router
+from app.modules.auth import (
+    ROLE_MERCHANT,
+    ROLE_PARTNER,
+    ROLE_ADMIN,
+    PERSONAS,
+    get_user_by_token,
+    extract_token_from_header,
+    get_admin_telemetry
+)
 from app.data_loader import DataLoader
 from app.config import KYC_DOCUMENTS_DIR
 
@@ -102,6 +111,9 @@ class RescheduleRequest(BaseModel):
 
 class NPSRequest(BaseModel):
     rating: int
+
+class SwitchRoleRequest(BaseModel):
+    role: str
 
 # --- API ENDPOINTS ---
 
@@ -345,14 +357,71 @@ def submit_nps(order_id: str, req: NPSRequest):
         raise HTTPException(status_code=404, detail="Order not found")
     return {"status": "success", "order_id": order_id, "nps_rating": req.rating}
 
-# 6. Partner Portal
+# 6. Auth & RBAC (Role-Based Access Control)
+@app.post("/api/auth/switch-role")
+def switch_role(req: SwitchRoleRequest):
+    role_key = req.role.strip().upper()
+    if role_key not in PERSONAS:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Supported: {list(PERSONAS.keys())}")
+    user = PERSONAS[role_key]
+    return {
+        "status": "success",
+        "token": user["token"],
+        "user": user
+    }
+
+@app.get("/api/auth/me")
+def get_current_user_profile(
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    return get_user_by_token(extracted)
+
+# 7. Partner Portal (RBAC Guarded)
 @app.get("/api/partner/leads")
-def get_partner_leads():
+def get_partner_leads(
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    user = get_user_by_token(extracted)
+    if user["role"] not in [ROLE_PARTNER, ROLE_ADMIN]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Channel Partner or Admin credentials required. Regular customer accounts cannot view unclosed leads."
+        )
     return partner_portal.get_stalled_leads_with_propensity(limit=15)
 
 @app.get("/api/partner/referral")
-def get_partner_referral():
-    return partner_portal.generate_partner_referral_link()
+def get_partner_referral(
+    partner_id: str = "PTR-IND-882",
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    user = get_user_by_token(extracted)
+    pid = user["user_id"] if user["role"] == ROLE_PARTNER else partner_id
+    return partner_portal.generate_partner_referral_link(partner_id=pid)
+
+# 8. Admin Telemetry & Escalation Queue (RBAC Guarded)
+@app.get("/api/admin/metrics")
+def get_admin_metrics(
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    user = get_user_by_token(extracted)
+    if user["role"] != ROLE_ADMIN:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: Enterprise Ops Admin credentials required."
+        )
+    return get_admin_telemetry()
 
 # 7. WhatsApp Integration Router
 app.include_router(whatsapp_router)

@@ -3,6 +3,15 @@
 const STATE = {
   language: 'en',
   safeModeNonGst: false,
+  auth: {
+    role: 'MERCHANT',
+    token: 'tok_merchant_demo',
+    user: {
+      user_id: 'USR-CUST-1001',
+      name: 'Rajesh Gupta (Rajesh Kirana)',
+      role: 'MERCHANT'
+    }
+  },
   profile: {
     business_type: null,
     employee_count: null,
@@ -122,6 +131,10 @@ function applyLanguage(lang) {
   setText("t-partner-desc", dict.partner_desc);
   setText("t-partner-copy", dict.partner_copy);
   setText("t-partner-table-title", dict.partner_table_title);
+  setText("t-admin-btn", dict.admin_btn);
+  setText("t-admin-title", dict.admin_title);
+  setText("t-admin-sub", dict.admin_sub);
+  updateRoleSwitcherUI();
 
   // Update initial welcome message if no user conversation started yet
   const chatMessages = document.getElementById("chatMessages");
@@ -148,6 +161,80 @@ function applyLanguage(lang) {
 function setText(elementId, text) {
   const el = document.getElementById(elementId);
   if (el && text !== undefined) el.innerText = text;
+}
+
+// --- ENTERPRISE RBAC & ROLE SWITCHER ---
+function updateRoleSwitcherUI() {
+  const dict = LOCALES[STATE.language] || LOCALES.en;
+  const roleBadgeIcon = document.getElementById("roleBadgeIcon");
+  const roleBadgeLabel = document.getElementById("roleBadgeLabel");
+  const partnerBtn = document.getElementById("partnerPortalBtn");
+  const adminBtn = document.getElementById("adminPortalBtn");
+
+  if (!roleBadgeIcon || !roleBadgeLabel) return;
+
+  if (STATE.auth.role === 'MERCHANT') {
+    roleBadgeIcon.innerText = "🛒";
+    roleBadgeLabel.innerText = dict.role_merchant_label || "Customer Mode";
+    if (partnerBtn) {
+      partnerBtn.classList.add("hidden");
+      partnerBtn.classList.remove("flex");
+    }
+    if (adminBtn) {
+      adminBtn.classList.add("hidden");
+      adminBtn.classList.remove("flex");
+    }
+  } else if (STATE.auth.role === 'PARTNER') {
+    roleBadgeIcon.innerText = "🤝";
+    roleBadgeLabel.innerText = dict.role_partner_label || "Mitra Partner";
+    if (partnerBtn) {
+      partnerBtn.classList.remove("hidden");
+      partnerBtn.classList.add("flex");
+    }
+    if (adminBtn) {
+      adminBtn.classList.add("hidden");
+      adminBtn.classList.remove("flex");
+    }
+  } else if (STATE.auth.role === 'ADMIN') {
+    roleBadgeIcon.innerText = "🛡️";
+    roleBadgeLabel.innerText = dict.role_admin_label || "Ops Admin";
+    if (partnerBtn) {
+      partnerBtn.classList.remove("hidden");
+      partnerBtn.classList.add("flex");
+    }
+    if (adminBtn) {
+      adminBtn.classList.remove("hidden");
+      adminBtn.classList.add("flex");
+    }
+  }
+}
+
+async function switchUserRole(roleName) {
+  const dropdown = document.getElementById("roleDropdownMenu");
+  if (dropdown) dropdown.classList.add("hidden");
+
+  try {
+    const res = await fetch("/api/auth/switch-role", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: roleName })
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      STATE.auth.role = data.user.role;
+      STATE.auth.token = data.token;
+      STATE.auth.user = data.user;
+      updateRoleSwitcherUI();
+
+      const isHi = STATE.language === 'hi';
+      const toastMsg = isHi
+        ? `सफलतापूर्वक प्रोफ़ाइल स्विच की गई: ${data.user.name} (${data.user.role})`
+        : `Switched profile to: ${data.user.name} (${data.user.role})`;
+      console.log(toastMsg);
+    }
+  } catch (err) {
+    console.error("Role switch failed:", err);
+  }
 }
 
 // --- NON-GST SAFE MODE DYNAMIC UI MANAGER ---
@@ -245,6 +332,35 @@ function initEventListeners() {
   // Partner Modal
   document.getElementById("partnerPortalBtn").addEventListener("click", openPartnerModal);
   document.getElementById("closePartnerModalBtn").addEventListener("click", closePartnerModal);
+
+  // Admin Modal
+  const adminPortalBtn = document.getElementById("adminPortalBtn");
+  if (adminPortalBtn) adminPortalBtn.addEventListener("click", openAdminModal);
+  const closeAdminModalBtn = document.getElementById("closeAdminModalBtn");
+  if (closeAdminModalBtn) closeAdminModalBtn.addEventListener("click", closeAdminModal);
+
+  // Role Switcher Dropdown Toggle
+  const roleDropdownBtn = document.getElementById("roleDropdownBtn");
+  const roleDropdownMenu = document.getElementById("roleDropdownMenu");
+  if (roleDropdownBtn && roleDropdownMenu) {
+    roleDropdownBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      roleDropdownMenu.classList.toggle("hidden");
+    });
+    document.addEventListener("click", (e) => {
+      if (!roleDropdownMenu.contains(e.target) && !roleDropdownBtn.contains(e.target)) {
+        roleDropdownMenu.classList.add("hidden");
+      }
+    });
+  }
+
+  // Role Persona Switch Handlers
+  const switchMerchantBtn = document.getElementById("switchRoleMerchant");
+  if (switchMerchantBtn) switchMerchantBtn.addEventListener("click", () => switchUserRole("MERCHANT"));
+  const switchPartnerBtn = document.getElementById("switchRolePartner");
+  if (switchPartnerBtn) switchPartnerBtn.addEventListener("click", () => switchUserRole("PARTNER"));
+  const switchAdminBtn = document.getElementById("switchRoleAdmin");
+  if (switchAdminBtn) switchAdminBtn.addEventListener("click", () => switchUserRole("ADMIN"));
 
   // Step Transitions
   document.getElementById("proceedKycBtn").addEventListener("click", () => {
@@ -1061,16 +1177,36 @@ async function handleNpsSubmit(rating) {
   }
 }
 
-// --- PARTNER PORTAL ---
+// --- PARTNER PORTAL (RBAC Guarded) ---
 async function openPartnerModal() {
   const modal = document.getElementById("partnerModal");
+  if (!modal) return;
   modal.classList.remove("hidden");
 
   try {
-    const res = await fetch("/api/partner/leads");
-    const leads = await res.json();
+    const res = await fetch("/api/partner/leads", {
+      headers: {
+        "Authorization": `Bearer ${STATE.auth.token}`,
+        "X-Session-Token": STATE.auth.token
+      }
+    });
 
     const tbody = document.getElementById("partnerLeadsTableBody");
+    if (!tbody) return;
+
+    if (res.status === 403) {
+      const err = await res.json();
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="p-6 text-center bg-red-50 text-red-700 font-bold">
+            ⛔ ${err.detail || 'Access Denied: Regular customer accounts cannot view unclosed leads. Switch to Partner or Admin role.'}
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    const leads = await res.json();
     tbody.innerHTML = leads.map(l => `
       <tr class="hover:bg-slate-50/80">
         <td class="p-2.5 font-mono font-bold">${l.lead_id}</td>
@@ -1095,5 +1231,64 @@ async function openPartnerModal() {
 }
 
 function closePartnerModal() {
-  document.getElementById("partnerModal").classList.add("hidden");
+  const modal = document.getElementById("partnerModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+// --- ADMIN OPERATIONS PORTAL (RBAC Guarded) ---
+async function openAdminModal() {
+  const modal = document.getElementById("adminModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+
+  try {
+    const res = await fetch("/api/admin/metrics", {
+      headers: {
+        "Authorization": `Bearer ${STATE.auth.token}`,
+        "X-Session-Token": STATE.auth.token
+      }
+    });
+
+    if (res.status === 403) {
+      alert("Access Denied: Enterprise Ops Admin credentials required.");
+      modal.classList.add("hidden");
+      return;
+    }
+
+    const data = await res.json();
+    const totalLeadsEl = document.getElementById("adminTotalLeads");
+    const convRateEl = document.getElementById("adminConvRate");
+    const ttaEl = document.getElementById("adminTta");
+    const cacEl = document.getElementById("adminCac");
+
+    if (totalLeadsEl) totalLeadsEl.innerText = data.funnel_metrics.total_inbound_leads.toLocaleString();
+    if (convRateEl) convRateEl.innerText = `${data.funnel_metrics.projected_digital_conversion_rate_percent}%`;
+    if (ttaEl) ttaEl.innerText = `${data.operational_efficiency.udyam_digital_tta_days} Days`;
+    if (cacEl) cacEl.innerText = `₹${data.operational_efficiency.udyam_digital_cac_inr.toLocaleString()}`;
+
+    const tbody = document.getElementById("adminEscalationTableBody");
+    if (tbody && data.manual_escalations_queue) {
+      tbody.innerHTML = data.manual_escalations_queue.map(e => `
+        <tr class="hover:bg-slate-50/80">
+          <td class="p-2.5 font-mono font-bold">${e.escalation_id}</td>
+          <td class="p-2.5 font-bold text-slate-900">${e.business_name}</td>
+          <td class="p-2.5 text-amber-800 font-medium">${e.issue}</td>
+          <td class="p-2.5 text-slate-600">${e.assigned_agent}</td>
+          <td class="p-2.5 font-mono font-semibold text-red-600">${e.sla_remaining_hours}h left</td>
+          <td class="p-2.5">
+            <button class="bg-purple-700 hover:bg-purple-800 text-white px-2.5 py-1 rounded text-[10px] font-bold" onclick="alert('Admin override verified for ${e.business_name}')">
+              Approve Override
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+  } catch (err) {
+    console.error("Admin metrics fetch error:", err);
+  }
+}
+
+function closeAdminModal() {
+  const modal = document.getElementById("adminModal");
+  if (modal) modal.classList.add("hidden");
 }
