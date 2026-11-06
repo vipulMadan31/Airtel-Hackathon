@@ -79,19 +79,34 @@ async def receive_meta_webhook(request: Request):
 
     return {"status": "success"}
 
-@router.post("/twilio")
+@router.api_route("/twilio", methods=["GET", "POST", "HEAD"])
 async def receive_twilio_webhook(request: Request):
     """
     Production Webhook for Twilio WhatsApp Sandbox / Twilio WhatsApp Numbers.
-    Accepts application/x-www-form-urlencoded from Twilio, executes discovery/advisor/KYC,
+    Accepts GET, POST, HEAD from Twilio, executes discovery/advisor/KYC,
     and returns a compliant TwiML XML response for direct zero-latency delivery.
     """
-    form = await request.form()
-    from_user = form.get("From", "")
-    phone = from_user.replace("whatsapp:", "").strip()
-    body_text = form.get("Body", "").strip()
-    num_media = int(form.get("NumMedia", 0) or 0)
-    media_url = form.get("MediaUrl0")
+    if request.method == "HEAD":
+        return Response(status_code=200)
+
+    if request.method == "GET":
+        body_text = request.query_params.get("Body", "").strip()
+        from_user = request.query_params.get("From", "")
+        phone = from_user.replace("whatsapp:", "").strip()
+        num_media = 0
+        media_url = None
+        if not body_text and not phone:
+            # Health check from Twilio
+            return Response(content="<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>", media_type="application/xml")
+    else:
+        form = await request.form()
+        from_user = form.get("From", "")
+        phone = from_user.replace("whatsapp:", "").strip()
+        body_text = form.get("Body", "").strip()
+        num_media = int(form.get("NumMedia", 0) or 0)
+        media_url = form.get("MediaUrl0")
+
+    print(f"🔥 [TWILIO WEBHOOK HIT] method={request.method} From={from_user} Body='{body_text}'")
 
     image_path = None
     if num_media > 0 and media_url:
