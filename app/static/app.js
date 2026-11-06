@@ -4,18 +4,14 @@ const STATE = {
   language: 'en',
   safeModeNonGst: false,
   profile: {
-    business_type: 'Micro Retail',
-    employee_count: 2,
+    business_type: null,
+    employee_count: null,
     num_sites: 1,
-    city: 'Indore',
-    city_tier: 2,
+    city: null,
+    city_tier: null,
     has_gstin: false
   },
-  selectedBundle: {
-    "P01": 1,
-    "P07": 2,
-    "P19": 1
-  },
+  selectedBundle: {},
   downsellStep: 1,
   activeQuote: null,
   activeOrder: null,
@@ -644,6 +640,28 @@ function renderKycDecision(data) {
 }
 
 // --- ADVISOR CHAT ---
+function showChatTyping() {
+  const container = document.getElementById("chatMessages");
+  const div = document.createElement("div");
+  div.id = "chatTypingIndicator";
+  div.className = "flex justify-start";
+  const isHi = STATE.language === 'hi';
+  div.innerHTML = `
+    <div class="chat-bubble-ai px-3.5 py-2 text-xs font-medium text-slate-500 italic flex items-center space-x-2 shadow-sm bg-slate-100 rounded-xl">
+      <span class="inline-block w-2 h-2 rounded-full bg-airtel-red animate-ping"></span>
+      <span>${isHi ? 'एयरटेल एआई उत्तर तैयार कर रहा है...' : 'Airtel AI is formulating recommendation...'}</span>
+    </div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function removeChatTyping() {
+  const el = document.getElementById("chatTypingIndicator");
+  if (el) el.remove();
+}
+
 async function handleChatSubmit() {
   const input = document.getElementById("chatInput");
   const message = input.value.trim();
@@ -651,6 +669,7 @@ async function handleChatSubmit() {
 
   addUserChatMessage(message);
   input.value = "";
+  const typingIndicator = showChatTyping();
 
   try {
     const res = await fetch("/api/advisor/chat", {
@@ -663,15 +682,22 @@ async function handleChatSubmit() {
       })
     });
     const data = await res.json();
+    removeChatTyping();
 
-    if (data.profile) STATE.profile = data.profile;
-    if (data.recommended_bundle) {
+    if (data.ai_engine) {
+      const badge = document.getElementById("t-rule-guarded");
+      if (badge) badge.innerText = data.ai_engine;
+    }
+
+    if (data.profile && data.intent === 'recommendation') STATE.profile = data.profile;
+    if (data.recommended_bundle && Object.keys(data.recommended_bundle).length > 0) {
       STATE.selectedBundle = data.recommended_bundle;
       recalculateQuote();
     }
 
     addAiChatMessage(data.message, data.explainability_tags);
   } catch (err) {
+    removeChatTyping();
     addAiChatMessage("Sorry, could not process request right now. Fallback to guided selection.");
   }
 }
@@ -680,7 +706,7 @@ function addUserChatMessage(text) {
   const container = document.getElementById("chatMessages");
   const div = document.createElement("div");
   div.className = "flex justify-end";
-  div.innerHTML = `<div class="chat-bubble-user px-3.5 py-2 text-xs font-medium max-w-[85%] shadow-sm">${text}</div>`;
+  div.innerHTML = `<div class="chat-bubble-user px-3.5 py-2 text-xs font-medium max-w-[85%] shadow-sm whitespace-pre-line">${text}</div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
@@ -703,7 +729,7 @@ function addAiChatMessage(text, tags = []) {
 
   div.innerHTML = `
     <div class="chat-bubble-ai px-3.5 py-2.5 text-xs font-medium max-w-[90%] shadow-sm">
-      <p class="leading-relaxed">${text}</p>
+      <p class="leading-relaxed whitespace-pre-line">${text}</p>
       ${tagsHtml}
     </div>
   `;

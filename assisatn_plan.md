@@ -124,29 +124,58 @@ For a live prototype demo with zero billing risk:
 
 ---
 
-## 🛡️ 3. Accel Business Policy & Catalog Constraints
+## 🛡️ 3. Comprehensive Feasibility & Eligibility Framework
 
-The LLM is strictly bound by Accel Business catalog rules to prevent hallucination:
+Feasibility is **multi-dimensional** and must be evaluated *before* recommending any bundle or answering technical questions. The AI Advisor evaluates feasibility across 5 critical dimensions:
 
-| Policy Rule | Rule Code | Enforcement in Advisor |
-| :--- | :--- | :--- |
-| **Whitelisted SKUs Only** | `CAT-01` | LLM may only output product IDs from `P01` to `P25`. |
-| **Non-GST Safe Mode** | `CAT-02` | If `has_gstin == false`, plans **`P05`** (Static IP), **`P15`** (Corporate MPLS), and **`P21`** (Dedicated Cloud Connect) **must never be recommended**. |
-| **Connectivity Dependency** | `CAT-03` | Add-ons like `P19` (Cloud POS), `P20` (Endpoint Security), and `P23` (Cloud CCTV) require at least one base connectivity plan (`P01`–`P04` or `P07`–`P08`). |
-| **Minimum Employees** | `CAT-04` | `P15` (MPLS VPN) requires $\ge 10$ employees. |
-| **Down-Sell Hierarchy** | `DOWN-01` | When down-selling, remove optional add-ons (`P19`/`P20`/`P23`) before degrading connectivity bandwidth. |
+### A. The 5 Dimensions of Feasibility & Eligibility
+
+| Dimension | Rule & Constraint | Catalogue Truth (`product_catalogue.csv`) | AI Advisor Enforcement |
+| :--- | :--- | :--- | :--- |
+| **1. Statutory GSTIN Feasibility** | Regulated enterprise telecom & dedicated links require verified GSTIN | **Requires GSTIN (`requires_gstin = Y`)**: `P05` (ILL 20M), `P06` (ILL 100M), `P10` (SD-WAN), `P11` (Static IP), `P12` (SIP Trunk), `P15` (MPLS VPN), `P21` (Firewall) | If customer is **Non-GST**, strictly block these products. If requested, explain that Indian telecom regulations require an active GST registration for leased lines/static IPs, and recommend **Biz Fibre (`P01`/`P02`)** instead. |
+| **2. Geographic City Tier Feasibility** | High-density optical infrastructure limits gigabit fibre & leased lines to certain tiers | **Tier-1 ONLY (`available_city_tiers = 1`)**: `P03` (Biz Fibre 1G).<br>**Tier 1 & 2 (`1;2`)**: `P01` (100M), `P02` (300M), `P04` (AirFiber 100M), `P05`/`P06` (ILL).<br>**Tier-3 / Rural**: Max speed is 100 Mbps (`P01`) or wireless 5G FWA (`P04`). | If a customer in a Tier-2 (Indore, Jaipur, Ludhiana) or Tier-3 city asks for **1 Gbps (`P03`)**, explain that 1 Gbps is currently metro-exclusive (Tier-1) and recommend the maximum feasible speed: **300 Mbps (`P02`)** or **100 Mbps (`P01`)**. |
+| **3. Organizational Scale & Headcount** | Dedicated links & MPLS require minimum workforce scale | **`P05` (ILL 20M)**: Min $\ge 10$ employees.<br>**`P06` (ILL 100M)**: Min $\ge 25$ employees.<br>**`P15` (MPLS VPN)**: Min $\ge 10$ employees. | If a 3-person team asks for a Leased Line or MPLS, explain that dedicated 1:1 leased lines are built for large corporate infrastructure with $\ge 10$ staff, and recommend **Biz Fibre 300 (`P02`) with 4G Failover (`P09`)** as a faster, cost-effective fit. |
+| **4. Topology & Multi-Site Feasibility** | Multi-branch routing products require multiple physical sites | **`P10` (Managed SD-WAN)**: Min $\ge 3$ branches/sites. | If a single-location retail shop asks for SD-WAN, explain that SD-WAN is designed to connect multiple distributed branches, and recommend **Secure Wi-Fi (`P22`)** for single-site security. |
+| **5. Speed Floor & Catalogue Boundaries** | Broadband floor is strictly 100 Mbps; no sub-100 Mbps fibre exists | **Catalogue Floor**: `P01` (100 Mbps @ ₹999/mo).<br>**Sub-₹999 alternatives**: `P04` (5G AirFiber @ ₹899/mo) or `P07` (SIM @ ₹299/mo).<br>**Non-existent SKUs**: 50 Mbps, 30 Mbps, 20 Mbps fibre do **NOT** exist. | If customer asks for **50 Mbps or cheaper broadband**, NEVER hallucinate or agree that 50 Mbps exists! Explain that Airtel Business fibre starts at 100 Mbps to guarantee uninterrupted UPI & billing, and suggest the ₹799/₹899 wireless AirFiber option if price is the primary concern. |
 
 ---
 
-## 📋 4. Structured JSON Output Schema
+## 💡 4. The Informational `inquiry` Intent (Zero Cart Pollution)
+
+### The Problem
+Previously, when a user asked a feasibility or technical question (e.g. *"Is there a 50 mbps option also?"* or *"Can I get 1 Gbps in Jaipur?"* or *"Can I get a leased line without GST?"*), the system assumed it was a new bundle purchase and tried to re-bundle, spitting out generic greetings and resetting the quote.
+
+### The Solution: `intent: "inquiry"`
+When the user asks an informational, technical, or feasibility question:
+1. **Explain Clearly**: Answer the feasibility constraints honestly and politely in English or Hindi.
+2. **Leave Cart Untouched**: Return `recommended_bundle: None` (or keep current bundle).
+3. **Preserve User Profile**: Do not overwrite the user's business type or employee count.
+
+#### Example Feasibility Inquiries:
+- **Query**: *"Is there a 50 mbps option also?"*
+  - **Intent**: `"inquiry"`
+  - **Cart**: Untouched (`None`)
+  - **AI Response**: *"Airtel Business fibre starts at 100 Mbps (Biz Fibre 100 @ ₹999/mo) as our enterprise standard to guarantee lag-free UPI payments and billing. We do not offer a 50 Mbps fibre tier. If you need a more economical option, our 5G AirFiber Wireless plan is available at ₹899/mo."*
+- **Query**: *"Can we get 1 Gbps for our office in Indore?"*
+  - **Intent**: `"inquiry"`
+  - **Cart**: Untouched (`None`)
+  - **AI Response**: *"In Indore (Tier-2 city), our optical fibre network currently supports speeds up to 300 Mbps (Biz Fibre 300 @ ₹1,499/mo). Our 1 Gbps ultra-high-speed plan is currently available in Tier-1 metropolitan cities. Would you like to proceed with the 300 Mbps plan?"*
+- **Query**: *"We don't have GST, can we still take a Leased Line?"*
+  - **Intent**: `"inquiry"`
+  - **Cart**: Untouched (`None`)
+  - **AI Response**: *"Under Indian telecom regulations, dedicated Internet Leased Lines (1:1 contention) require active GST registration. However, you can easily get our high-speed Biz Fibre broadband (100 Mbps or 300 Mbps) with PAN and address proof without requiring a GSTIN."*
+
+---
+
+## 📋 5. Structured JSON Output Schema
 
 To integrate cleanly with the existing FastAPI backend, the LLM must respond exclusively in structured JSON:
 
 ```json
 {
-  "intent": "clarification | recommendation | downsell_request",
+  "intent": "clarification | recommendation | downsell_request | inquiry",
   "language_detected": "en | hi",
-  "message": "Conversational reply in the user's language asking clarifying questions or presenting the bundle.",
+  "message": "Conversational reply in the user's language answering feasibility questions, asking clarifying questions, or presenting the bundle.",
   "profile": {
     "business_type": "Clinic / Healthcare | Micro Retail | Professional Office | Restaurant",
     "employee_count": 5,
@@ -177,20 +206,25 @@ To integrate cleanly with the existing FastAPI backend, the LLM must respond exc
 
 ---
 
-## 🔒 5. Two-Tier Guardrail Pipeline (Zero Hallucination)
+## 🔒 6. Multi-Tier Feasibility Guardrail Pipeline (Zero Hallucination)
 
 ```
 [User Message] 
        │
        ▼
-[Gemini LLM Inference] ──> Returns raw JSON bundle
+[Gemini LLM Inference] ──> Returns raw JSON bundle or Inquiry Answer
        │
        ▼
-[CatalogEngine Validation]
-  ├── 1. Check Product ID Existence (P01-P25 whitelist)
-  ├── 2. Check GST Eligibility (Drop P05/P15/P21 if has_gstin == false)
-  ├── 3. Check Dependencies (Ensure base internet exists for SaaS add-ons)
-  └── 4. Reconcile with Authoritative Pricing Engine (18% GST + Waiver)
+[CatalogEngine Authoritative Validation]
+  ├── 1. Intent Check: If "inquiry" or "clarification", bypass bundle mutation (Cart Untouched)
+  ├── 2. Whitelist Check (P01-P25 catalogue boundary)
+  ├── 3. Full 5-Dimensional Feasibility (evaluate_product_eligibility):
+  │     ├── City Tier: Block P03 (1G) in Tier-2/3
+  │     ├── GSTIN Prerequisite: Block P05, P06, P10, P11, P12, P15, P21 if non-GST
+  │     ├── Min Employees: Block P05/P15 if < 10 staff; P06 if < 25 staff
+  │     └── Min Sites: Block P10 if < 3 branches
+  ├── 4. Dependency Check (Ensure base internet exists for SaaS add-ons)
+  └── 5. Reconcile with Authoritative Pricing Engine (18% GST + ₹2,500 Setup Waiver)
        │
        ▼
 [Live UI Update] ──> Auto-updates Cart, Totals, and Chat Bubble
@@ -201,7 +235,7 @@ If the API key is absent, rate-limited, or throws an exception, the system **aut
 
 ---
 
-## 🚀 6. Implementation Roadmap
+## 🚀 7. Implementation Roadmap
 
 ### Phase 1: Environment & Dependency Setup
 * Add `google-genai` to `requirements.txt`.
@@ -209,19 +243,23 @@ If the API key is absent, rate-limited, or throws an exception, the system **aut
 
 ### Phase 2: Prompt Engineering & Intent Routing
 * Construct the system instruction prompt in [`adapter.py`](file:///c:/Users/HP/Desktop/Airtel/app/modules/advisor/adapter.py).
-* Implement the **Progressive Clarification** pattern for vague inputs (`"I need wifi"`).
+* Implement **Progressive Clarification** pattern for vague inputs (`"I need wifi"`).
+* Implement **Informational Feasibility Inquiries** (`intent: "inquiry"`) for speed & capability questions without cart pollution.
 * Define the structured Pydantic schema for Gemini JSON output mode.
 
 ### Phase 3: Post-Generation Deterministic Guardrail
+* Wire `catalog_engine.evaluate_product_eligibility()` into the advisor adapter.
 * Pass LLM recommendations through `catalog_engine.validate_bundle_dependencies()`.
-* Strip any illegal add-ons or non-GST violations automatically before returning to the frontend.
+* Automatically strip or downgrade any illegal add-ons, tier mismatches, or non-GST violations before returning to the frontend.
 
 ### Phase 4: Verification & Automated Testing
-* Test 4 core scenarios:
-  1. **Vague query**: *"I need wifi"* $\rightarrow$ AI asks for business type and staff count.
-  2. **Detailed query**: *"CA office with 8 staff in Jaipur"* $\rightarrow$ AI suggests `P02` (Biz Fibre 300) + `P16` (Email) + `P20` (Security).
-  3. **Hindi query**: *"किराना दुकान के लिए नेट चाहिए"* $\rightarrow$ AI replies in Hindi with soundbox/QR tags.
-  4. **Down-sell query**: *"Yeh thoda mehenga hai"* $\rightarrow$ AI strips add-ons and applies floor discount.
+* Test 6 core conversation scenarios:
+  1. **Vague query**: *"I need wifi"* $\rightarrow$ AI asks for business type and staff count (Cart untouched).
+  2. **Technical Feasibility Query**: *"Is there a 50 mbps option also?"* $\rightarrow$ AI explains 100 Mbps floor, mentions 5G AirFiber, leaves cart untouched.
+  3. **Tier Feasibility Query**: *"Can we get 1 Gbps for our office in Indore?"* $\rightarrow$ AI explains 1 Gbps is Tier-1 only, suggests 300 Mbps floor.
+  4. **GST Feasibility Query**: *"Can I get a Leased Line without GST?"* $\rightarrow$ AI explains statutory requirement, offers Biz Fibre broadband.
+  5. **Detailed Recommendation**: *"CA office with 8 staff in Jaipur"* $\rightarrow$ AI suggests `P02` (Biz Fibre 300) + `P16` (Email) + `P20` (Security).
+  6. **Down-sell Query**: *"Yeh thoda mehenga hai"* $\rightarrow$ AI strips add-ons and applies floor discount.
 
 ---
 
@@ -239,3 +277,4 @@ If the API key is absent, rate-limited, or throws an exception, the system **aut
      ```powershell
      $env:GEMINI_API_KEY="AIzaSyYourGeneratedFreeKeyHere..."
      ```
+

@@ -16,7 +16,21 @@ DB_PATH = BASE_DIR / "udyam_orders.db"
 CASE_REFERENCE_DATE = "2026-07-15"
 MAX_ADDRESS_PROOF_AGE_DAYS = 90
 
-# Optional LLM Key - can be passed via environment or .env
+# Load .env if present
+ENV_PATH = BASE_DIR / ".env"
+if ENV_PATH.exists():
+    try:
+        with open(ENV_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    os.environ.setdefault(k.strip(), v.strip().strip("'\""))
+    except Exception:
+        pass
+
+# LLM Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
 
