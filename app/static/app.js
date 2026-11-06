@@ -73,6 +73,8 @@ function applyLanguage(lang) {
   setText("t-quote-badge", dict.quote_badge);
   setText("t-quote-heading", dict.quote_heading);
   setText("t-browse-all", dict.browse_all);
+  setText("t-pincode-label", dict.pincode_label);
+  setText("t-check-btn", dict.check_btn);
   setText("t-monthly-subtotal", dict.monthly_subtotal);
   setText("t-gst-label", dict.gst_label);
   setText("t-setup-fee-label", dict.setup_fee_label);
@@ -261,6 +263,151 @@ function initEventListeners() {
 
   // Reschedule
   document.getElementById("rescheduleBtn").addEventListener("click", handleReschedule);
+
+  // Pincode Feasibility Check
+  const checkPinBtn = document.getElementById("checkPincodeBtn");
+  if (checkPinBtn) checkPinBtn.addEventListener("click", handlePincodeCheck);
+  const pinInput = document.getElementById("pincodeInput");
+  if (pinInput) {
+    pinInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") handlePincodeCheck();
+    });
+  }
+
+  // Voice Recognition (Web Speech API)
+  initVoiceRecognition();
+}
+
+// --- WEB SPEECH API (BILINGUAL VOICE TYPING) ---
+let recognitionInstance = null;
+let isVoiceRecording = false;
+
+function initVoiceRecognition() {
+  const micBtn = document.getElementById("micBtn");
+  if (!micBtn) return;
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    micBtn.addEventListener("click", () => {
+      alert(STATE.language === 'hi' 
+        ? "वॉयस इनपुट के लिए Google Chrome या Microsoft Edge का उपयोग करें।" 
+        : "Speech Recognition is supported in Google Chrome & Microsoft Edge. Please type your requirements.");
+    });
+    return;
+  }
+
+  try {
+    recognitionInstance = new SpeechRecognition();
+    recognitionInstance.continuous = false;
+    recognitionInstance.interimResults = false;
+
+    recognitionInstance.onstart = () => {
+      isVoiceRecording = true;
+      micBtn.className = "p-2 rounded-xl bg-red-600 text-white border border-red-700 animate-pulse transition flex items-center justify-center shrink-0 shadow-md";
+      const chatIn = document.getElementById("chatInput");
+      if (chatIn) chatIn.placeholder = STATE.language === 'hi' ? "सुन रहे हैं... बोलिए..." : "Listening... Speak now...";
+    };
+
+    recognitionInstance.onresult = (event) => {
+      if (event.results && event.results.length > 0) {
+        const transcript = event.results[0][0].transcript;
+        const chatIn = document.getElementById("chatInput");
+        if (chatIn) {
+          chatIn.value = transcript;
+          handleChatSubmit();
+        }
+      }
+    };
+
+    recognitionInstance.onerror = (event) => {
+      console.warn("Speech recognition error:", event.error);
+      stopVoiceRecording();
+    };
+
+    recognitionInstance.onend = () => {
+      stopVoiceRecording();
+    };
+
+    micBtn.addEventListener("click", () => {
+      if (isVoiceRecording) {
+        recognitionInstance.stop();
+        stopVoiceRecording();
+      } else {
+        recognitionInstance.lang = STATE.language === 'hi' ? 'hi-IN' : 'en-IN';
+        try {
+          recognitionInstance.start();
+        } catch (err) {
+          console.warn("Recognition start failed:", err);
+        }
+      }
+    });
+  } catch (e) {
+    console.warn("Web Speech API initialization:", e);
+  }
+}
+
+function stopVoiceRecording() {
+  isVoiceRecording = false;
+  const micBtn = document.getElementById("micBtn");
+  if (micBtn) {
+    micBtn.className = "p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition flex items-center justify-center shrink-0";
+  }
+  const dict = LOCALES[STATE.language] || LOCALES.en;
+  const chatIn = document.getElementById("chatInput");
+  if (chatIn) chatIn.placeholder = dict.chat_placeholder;
+}
+
+// --- PINCODE & AIRFIBER FEASIBILITY CHECKER ---
+async function handlePincodeCheck() {
+  const pinInput = document.getElementById("pincodeInput");
+  const pincode = pinInput ? pinInput.value.trim() : "452001";
+  const badge = document.getElementById("pincodeFeasibilityBadge");
+  const isHi = STATE.language === 'hi';
+
+  if (!pincode || pincode.length < 6) {
+    alert(isHi ? "कृपया वैध 6-अंकीय पिनकोड दर्ज करें।" : "Please enter a valid 6-digit postal pincode.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/catalog/feasibility", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pincode: pincode })
+    });
+    const data = await res.json();
+
+    if (data.is_fibre_feasible) {
+      if (badge) {
+        badge.className = "flex items-center space-x-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg text-[11px]";
+        badge.innerHTML = `<span>✔ ${isHi ? 'ऑप्टिकल फाइबर उपलब्ध (FTTH)' : 'Fibre Feasible (FTTH)'}</span>`;
+      }
+    } else {
+      // Wireline fiber blocked -> Intelligently switch to P04 (5G AirFiber)
+      if (badge) {
+        badge.className = "flex items-center space-x-1 font-bold text-amber-800 bg-amber-50 border border-amber-300 px-2 py-1 rounded-lg text-[11px] animate-pulse";
+        badge.innerHTML = `<span>⚡ ${isHi ? '5G एयरफाइबर लागू (48h सेटअप)' : '5G AirFiber Switched (48h Setup)'}</span>`;
+      }
+
+      // Automatically swap wireline base plan for P04 (Biz 5G AirFiber 100)
+      if (STATE.selectedBundle["P01"]) delete STATE.selectedBundle["P01"];
+      if (STATE.selectedBundle["P02"]) delete STATE.selectedBundle["P02"];
+      if (STATE.selectedBundle["P03"]) delete STATE.selectedBundle["P03"];
+      STATE.selectedBundle["P04"] = 1;
+
+      recalculateQuote();
+
+      // Conversational prompt explaining the operational switch
+      addAiChatMessage(
+        isHi
+          ? `पिनकोड ${pincode} पर वायरलाइन केबल बिछाना अभी ब्लॉक है। हमने आपके बंडल को तुरंत <strong>एयरटेल बिज़ 5G एयरफाइबर 100 (P04)</strong> (₹899/माह) में बदल दिया है — बिना किसी तार के 48 घंटे में एक्टिवेशन!`
+          : `Optical wireline digging is pending at pincode ${pincode}. We seamlessly updated your bundle to <strong>Airtel Biz 5G AirFiber 100 (P04)</strong> at ₹899/mo with zero-wire installation in <48 hours!`
+      );
+    }
+  } catch (err) {
+    console.error("Feasibility check error:", err);
+  }
 }
 
 // --- REAL FILE UPLOAD HANDLER ---

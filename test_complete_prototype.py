@@ -31,6 +31,13 @@ def test_prototype():
     assert len(buckets["bucket_c_locked_plans"]) > 0, "Bucket C should have locked plans for Non-GST"
     print(f"✔ [2/8] 3-Bucket Catalog Engine: OK ({len(buckets['bucket_a_base_plans'])} Base, {len(buckets['bucket_b_modular_addons'])} Add-ons, {len(buckets['bucket_c_locked_plans'])} Locked)")
 
+    # 2b. Upfront Pincode & AirFiber Feasibility Gate
+    feas_res = requests.post(f"{BASE_URL}/api/catalog/feasibility", json={"pincode": "452010"}).json()
+    assert feas_res["is_fibre_feasible"] is False
+    assert feas_res["airfiber_feasible"] is True
+    assert feas_res["recommended_base_id"] == "P04"
+    print(f"✔ [2b/8] AirFiber Feasibility Gate: OK (Pincode 452010 auto-switched to {feas_res['recommended_product_name']})")
+
     # 3. Transparent Pricing & Down-sell Reconciler
     quote_res = requests.post(f"{BASE_URL}/api/pricing/quote", json={
         "quantities": {"P01": 1, "P07": 2, "P19": 1},

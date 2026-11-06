@@ -57,6 +57,10 @@ class BucketRequest(BaseModel):
     has_gstin: bool = True
     current_base_id: Optional[str] = "P01"
 
+class FeasibilityRequest(BaseModel):
+    pincode: str
+    city: Optional[str] = None
+
 class QuoteRequest(BaseModel):
     quantities: Dict[str, int]
     apply_digital_discount: bool = True
@@ -119,6 +123,10 @@ def get_catalog_buckets(req: BucketRequest):
     return catalog_engine.get_three_buckets(
         req.city_tier, req.employee_count, req.num_sites, req.has_gstin, req.current_base_id
     )
+
+@app.post("/api/catalog/feasibility")
+def check_pincode_feasibility(req: FeasibilityRequest):
+    return catalog_engine.check_network_feasibility(req.pincode, req.city)
 
 # 3. Pricing & Down-sell
 @app.post("/api/pricing/quote")

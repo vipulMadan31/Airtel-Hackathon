@@ -72,6 +72,15 @@ async def test():
             assert subtotal_before != subtotal_after
             print("   ✔ Downsell button click: SUCCESS")
 
+            # Test 3b: Pincode AirFiber Feasibility Check Click
+            print("\n3b. Testing Pincode Feasibility & AirFiber Switch Click...")
+            await run_eval("document.getElementById('pincodeInput').value = '452010'; document.getElementById('checkPincodeBtn').click();")
+            await asyncio.sleep(1.0)
+            badge_text = await run_eval("return document.getElementById('pincodeFeasibilityBadge').innerText;")
+            print(f"   -> Feasibility Badge: {badge_text}")
+            assert "AirFiber" in badge_text or "एयरफाइबर" in badge_text
+            print("   ✔ AirFiber feasibility auto-switch click: SUCCESS")
+
             # Test 4: Proceed to Smart KYC Screen Transition
             print("\n4. Testing Proceed to Smart KYC Click...")
             await run_eval("document.getElementById('proceedKycBtn').click();")

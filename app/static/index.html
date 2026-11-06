@@ -89,6 +89,11 @@
 
       <!-- Chat Input -->
       <div class="p-3 bg-white border-t border-slate-200 flex items-center space-x-2">
+        <button id="micBtn" type="button" title="Speak in Hindi or English (Voice Typing)" class="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition flex items-center justify-center shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-airtel-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 02-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
+        </button>
         <input type="text" id="chatInput" placeholder="Describe your business or needs..." class="flex-1 text-sm border border-slate-300 rounded-xl px-3.5 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
         <button id="sendBtn" class="bg-airtel-red hover:bg-airtel-dark text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition">
           <span id="t-send-btn">Send</span>
@@ -110,6 +115,20 @@
             <span id="t-browse-all">Browse All 25 Plans</span>
             <span>&rarr;</span>
           </button>
+        </div>
+
+        <!-- UPFRONT PINCODE & AIRFIBER FEASIBILITY CHECKER -->
+        <div class="mt-3 p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-slate-700" id="t-pincode-label">Installation Pincode:</span>
+            <input type="text" id="pincodeInput" value="452001" maxlength="6" class="w-20 px-2 py-1 border border-slate-300 rounded font-mono font-bold text-slate-900 bg-white text-center focus:outline-none focus:border-airtel-red">
+            <button id="checkPincodeBtn" type="button" class="bg-slate-800 hover:bg-black text-white px-2.5 py-1 rounded font-bold transition">
+              <span id="t-check-btn">Check</span>
+            </button>
+          </div>
+          <div id="pincodeFeasibilityBadge" class="flex items-center space-x-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg text-[11px]">
+            <span>✔ Fibre Feasible (FTTH)</span>
+          </div>
         </div>
 
         <!-- Selected Products List -->
