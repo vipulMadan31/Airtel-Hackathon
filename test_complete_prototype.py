@@ -126,7 +126,25 @@ def test_prototype():
     }).json()
     assert v11["status"] == "REJECTED", f"K11 should be REJECTED, got {v11}"
     assert any("Expired" in r for r in v11["reasons"])
-    print("✔ [7/8] Smart KYC Rule Verification: OK (K12: VERIFIED, K04: BLUR TRIGGER, K01: CANCELLED GST, K11: EXPIRED BILL)")
+
+    # Non-GST Safe Mode: K03 (Ganesh Woodcraft - Udyam Pass)
+    v03_nongst = requests.post(f"{BASE_URL}/api/kyc/verify-extracted", json={
+        "applicant_code": "K03",
+        "udyam_number": "UDYAM-MH-00-9516696",
+        "entity_name": "Ganesh Woodcraft",
+        "bill_date": "2026-05-30",
+        "blur_variance": 500.0,
+        "is_non_gst_mode": True
+    }).json()
+    assert v03_nongst["status"] == "VERIFIED", f"K03 Non-GST should be VERIFIED, got {v03_nongst}"
+    assert v03_nongst["is_non_gst_mode"] is True
+
+    # Standalone Mock Registry APIs
+    gst_lookup = requests.post(f"{BASE_URL}/api/verify/gstin", json={"gstin": "37NBLXS1145E1ZU"}).json()
+    assert gst_lookup["is_active"] is True
+    udyam_lookup = requests.post(f"{BASE_URL}/api/verify/udyam", json={"udyam_number": "UDYAM-AP-00-5186772"}).json()
+    assert udyam_lookup["enterprise_name"] == "Star Electronics"
+    print("✔ [7/8] Smart KYC Rule Verification: OK (K12: VERIFIED, K03: NON-GST UDYAM PASS, K04: BLUR TRIGGER, K01: CANCELLED GST, K11: EXPIRED BILL)")
 
     # 7. Order Lifecycle, Slot Rescheduling & NPS Rating Handover
     ord_res = requests.post(f"{BASE_URL}/api/orders/create", json={
