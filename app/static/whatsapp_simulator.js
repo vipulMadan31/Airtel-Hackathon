@@ -33,30 +33,45 @@ function initWaEventListeners() {
   });
 
   // 1-Click Valid Specimen (K12)
-  document.getElementById("uploadValidSpecimenBtn").addEventListener("click", () => {
-    uploadSpecimenFile("/specimen/K12_gst_certificate.png", "K12_gst_certificate.png");
-  });
+  const validBtn = document.getElementById("uploadValidSpecimenBtn");
+  if (validBtn) {
+    validBtn.addEventListener("click", () => {
+      uploadSpecimenFile("/specimen/K12_gst_certificate.png", "K12_gst_certificate.png");
+    });
+  }
 
   // 1-Click Blurry Specimen (K04)
-  document.getElementById("uploadBlurrySpecimenBtn").addEventListener("click", () => {
-    uploadSpecimenFile("/specimen/K04_address_proof.png", "K04_address_proof.png");
-  });
+  const blurryBtn = document.getElementById("uploadBlurrySpecimenBtn");
+  if (blurryBtn) {
+    blurryBtn.addEventListener("click", () => {
+      uploadSpecimenFile("/specimen/K04_address_proof.png", "K04_address_proof.png");
+    });
+  }
 
   // Real File Uploads
-  document.getElementById("waDocFileInput").addEventListener("change", handleWaFileUpload);
-  document.getElementById("waCameraInput").addEventListener("change", handleWaFileUpload);
+  const docInput = document.getElementById("waDocFileInput");
+  if (docInput) docInput.addEventListener("change", handleWaFileUpload);
+  
+  const camInput = document.getElementById("waCameraInput");
+  if (camInput) camInput.addEventListener("change", handleWaFileUpload);
 
   // Language Toggle
-  document.getElementById("langToggleBtn").addEventListener("click", () => {
-    WA_LANG = WA_LANG === 'en' ? 'hi' : 'en';
-    document.getElementById("langToggleBtn").innerText = WA_LANG === 'hi' ? "Switch to English" : "Switch to हिंदी";
-    sendToWhatsApp(WA_LANG === 'hi' ? "हिंदी" : "english");
-  });
+  const langBtn = document.getElementById("langToggleBtn");
+  if (langBtn) {
+    langBtn.addEventListener("click", () => {
+      WA_LANG = WA_LANG === 'en' ? 'hi' : 'en';
+      langBtn.innerText = WA_LANG === 'hi' ? "EN" : "हिंदी";
+      sendToWhatsApp(WA_LANG === 'hi' ? "हिंदी" : "english");
+    });
+  }
 
   // Reset Session
-  document.getElementById("resetWaBtn").addEventListener("click", () => {
-    sendToWhatsApp("reset");
-  });
+  const resetBtn = document.getElementById("resetWaBtn");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      sendToWhatsApp("reset");
+    });
+  }
 
   // Scenario 7: Web Smart KYC Handoff
   const handoffBtn = document.getElementById("webKycHandoffBtn");
@@ -274,6 +289,11 @@ function formatWaMarkdown(text) {
     .replace(/_(.*?)_/g, "<em>$1</em>")
     .replace(/~(.*?)~/g, "<del>$1</del>")
     .replace(/`([^`]+)`/g, "<code class='bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-[11px] font-mono'>$1</code>");
+
+  // Convert explicit URLs (http://, https://, or /?token=...) into clean clickable links
+  html = html.replace(/(https?:\/\/[^\s<]+|\/\?token=[^\s<]+#kyc|\/[^\s<]*\?[^\s<]+#kyc)/g, (match) => {
+    return `<a href="${match}" target="_blank" class="inline-flex items-center space-x-1 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 font-bold px-2 py-0.5 rounded my-1 text-[11px] transition shadow-xs"><span>🔗 ${match}</span></a>`;
+  });
   return html;
 }
 
@@ -325,7 +345,14 @@ function appendBotBubble(text, buttons = []) {
   div.querySelectorAll(".wa-action-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const payload = btn.getAttribute("data-payload");
-      if (payload) sendToWhatsApp(payload);
+      if (payload) {
+        if (payload.startsWith("url:")) {
+          const targetUrl = payload.replace("url:", "");
+          window.location.href = targetUrl;
+          return;
+        }
+        sendToWhatsApp(payload);
+      }
     });
   });
 
@@ -405,7 +432,13 @@ function updateTrayButtons(buttons) {
     const btn = document.createElement("button");
     btn.className = "wa-chip bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-full text-[11px] font-semibold transition";
     btn.innerText = b.title;
-    btn.addEventListener("click", () => sendToWhatsApp(b.payload));
+    btn.addEventListener("click", () => {
+      if (b.payload && b.payload.startsWith("url:")) {
+        window.location.href = b.payload.replace("url:", "");
+        return;
+      }
+      sendToWhatsApp(b.payload);
+    });
     tray.appendChild(btn);
   });
 }

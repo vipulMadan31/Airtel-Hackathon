@@ -108,6 +108,33 @@ class WhatsAppHandler:
                 "buttons": [{"id": "btn_start", "title": "Start Discovery", "payload": "I need wifi"}]
             }
 
+        # 3b. Check Executive / Human Call Request
+        executive_keywords = [
+            "call an executive", "executive", "call me", "talk to executive",
+            "talk to human", "agent", "customer care", "representative",
+            "speak to someone", "human", "call lagao", "baat karao", "baat karni",
+            "callback", "contact me", "phone call", "call karo", "call back",
+            "बात कराओ", "कॉल करो", "एग्जीक्यूटिव", "कस्टमर केयर", "फोन करो", "एजेंट"
+        ]
+        if any(w in lower_text for w in executive_keywords):
+            is_hi = (language == "hi")
+            token = f"TK-{phone_number[-4:]}" if len(phone_number) >= 4 else "TK-3210"
+            web_url = f"/?token={token}#kyc"
+            exec_msg = (
+                "धन्यवाद! आपके समय के लिए धन्यवाद। हमारे एयरटेल बिजनेस के विशेषज्ञ एग्जीक्यूटिव जल्द ही इस नंबर पर आपसे संपर्क करेंगे। 🙏\n\n"
+                f"यदि आप इंतजार नहीं करना चाहते हैं, तो आप सीधे हमारे वेब पोर्टल पर 60 सेकंड में डिजिटल केवाईसी पूरा कर सकते हैं:\n{web_url}"
+                if is_hi else
+                "Thanks for your time! An Airtel Business executive will reach out to you shortly on this number to assist you further. 🙏\n\n"
+                f"If you would like to proceed immediately without waiting, you can complete your digital KYC on our website here:\n{web_url}"
+            )
+            return {
+                "messages": [exec_msg],
+                "buttons": [
+                    {"id": "btn_web_kyc", "title": "🌐 Complete KYC on Website" if not is_hi else "🌐 वेब पर KYC करें", "payload": f"url:{web_url}"},
+                    {"id": "btn_plans", "title": "📶 View Plans" if not is_hi else "📶 प्लान देखें", "payload": "I need wifi"}
+                ]
+            }
+
         # 4. Check Button Action: Proceed to KYC
         if lower_text in ["action:proceed_kyc", "proceed to kyc", "kyc karein", "⚡ proceed to kyc"]:
             session = self.session_mgr.update_session(phone_number, stage="KYC_UPLOAD")
@@ -208,10 +235,23 @@ class WhatsAppHandler:
             messages.append(quote_card)
 
             is_hi = (language == "hi")
+            token = f"TK-{phone_number[-4:]}" if len(phone_number) >= 4 else "TK-3210"
+            web_url = f"/?token={token}#kyc"
+
+            kyc_link_msg = (
+                f"🌐 *वेबसाइट पर तुरंत KYC पूरा करें:*\n{web_url}\n\n"
+                "_(आपका चुना हुआ प्लान और 18% GST कोटेशन लॉक है। 60 सेकंड में बिना किसी रुकावट के एक्टिवेशन के लिए ऊपर दिए गए लिंक पर क्लिक करें)_"
+                if is_hi else
+                f"🌐 *Complete KYC & Fast-Track Activation on Website:*\n{web_url}\n\n"
+                "_(Your selected bundle & 18% GST quote are locked in. Click the link above to complete instant 60-second paperless KYC on our web portal)_"
+            )
+            messages.append(kyc_link_msg)
+
             buttons = [
-                {"id": "btn_proceed", "title": "⚡ आगे बढ़ें (KYC)" if is_hi else "⚡ Proceed to KYC", "payload": "action:proceed_kyc"},
-                {"id": "btn_downsell", "title": "💸 सस्ता प्लान" if is_hi else "💸 Sasta Plan", "payload": "sasta plan dikhao"},
-                {"id": "btn_pdf", "title": "📄 कोटेशन शेयर करें" if is_hi else "📄 Share Quote PDF", "payload": "action:download_quote"}
+                {"id": "btn_web_kyc", "title": "🌐 Complete KYC on Web" if not is_hi else "🌐 वेबसाइट पर KYC करें", "payload": f"url:{web_url}"},
+                {"id": "btn_proceed", "title": "📸 Upload Photo in Chat" if not is_hi else "📸 चैट में फोटो अपलोड", "payload": "action:proceed_kyc"},
+                {"id": "btn_downsell", "title": "💸 Sasta Plan" if not is_hi else "💸 सस्ता प्लान", "payload": "sasta plan dikhao"},
+                {"id": "btn_call_exec", "title": "📞 Call Executive" if not is_hi else "📞 एग्जीक्यूटिव से बात", "payload": "call an executive"}
             ]
 
         return {"messages": messages, "buttons": buttons}

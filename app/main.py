@@ -1,7 +1,7 @@
 import os
 import shutil
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header, Query
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header, Query, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -512,6 +512,15 @@ def serve_whatsapp_simulator():
     if sim_path.exists():
         return FileResponse(sim_path)
     raise HTTPException(status_code=404, detail="Simulator UI not found")
+
+@app.api_route("/", methods=["POST", "HEAD"])
+async def root_webhook_fallback(request: Request):
+    """
+    Fallback handler if Twilio Sandbox is configured with root domain
+    (e.g. https://...trycloudflare.com instead of .../api/whatsapp/twilio).
+    """
+    from app.modules.whatsapp.router import receive_twilio_webhook
+    return await receive_twilio_webhook(request)
 
 # Static Mounts
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")

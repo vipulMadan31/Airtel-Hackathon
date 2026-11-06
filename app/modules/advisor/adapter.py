@@ -170,6 +170,28 @@ class AdvisorAdapter:
                 "explainability_tags": []
             }
 
+        # 1e. Executive / Human Call Request
+        exec_keywords = [
+            "call an executive", "executive", "call me", "talk to executive",
+            "talk to human", "agent", "customer care", "representative",
+            "speak to someone", "human", "call lagao", "baat karao", "baat karni",
+            "callback", "contact me", "phone call", "call karo", "call back",
+            "बात कराओ", "कॉल करो", "एग्जीक्यूटिव", "कस्टमर केयर", "फोन करो"
+        ]
+        if any(w in msg for w in exec_keywords):
+            resp_msg = (
+                "धन्यवाद! आपके समय के लिए धन्यवाद। हमारे एयरटेल बिजनेस के विशेषज्ञ एग्जीक्यूटिव जल्द ही इस नंबर पर आपसे संपर्क करेंगे। 🙏"
+                if is_hindi else
+                "Thanks for your time! An Airtel Business executive will reach out to you shortly on this number to assist you further. 🙏"
+            )
+            return {
+                "intent": "inquiry",
+                "message": resp_msg,
+                "profile": profile,
+                "recommended_bundle": None,
+                "explainability_tags": []
+            }
+
         # 2. Cost Objection / Downsell Intent
         downsell_keywords = ["sasta", "mehenga", "cheap", "expensive", "discount", "kam karo", "budget", "कम", "सस्ता", "महंगा", "छूट"]
         if any(w in msg for w in downsell_keywords):
@@ -414,6 +436,11 @@ C. DOWN-SELL (intent: "downsell_request"):
 D. RECOMMENDATION (intent: "recommendation"):
    - When the user provides their business type, city, and scale/team size (e.g., 'We are a CA accounting firm with 8 auditors in Jaipur', 'Dental clinic in Pune with 6 staff', 'Kirana store in Indore with 2 staff'), this is SUFFICIENT information!
    - Do NOT ask further questions. Set intent="recommendation" and generate the tailored bundle with explainability tags immediately!
+
+E. EXECUTIVE / CALL REQUESTS (intent: "inquiry"):
+   - If user asks to speak to an executive, agent, human, or request a call/callback:
+     Set intent="inquiry", recommended_bundle=null.
+     Reply politely: "Thanks for your time! An Airtel Business executive will reach out to you shortly on this number to assist you further. 🙏" (or in Hindi if chatting in Hindi).
 
 JSON FORMAT:
 Return ONLY a valid JSON object matching this schema:

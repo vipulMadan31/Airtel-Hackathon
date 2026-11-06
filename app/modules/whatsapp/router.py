@@ -80,6 +80,7 @@ async def receive_meta_webhook(request: Request):
     return {"status": "success"}
 
 @router.api_route("/twilio", methods=["GET", "POST", "HEAD"])
+@router.api_route("/twilio/", methods=["GET", "POST", "HEAD"])
 async def receive_twilio_webhook(request: Request):
     """
     Production Webhook for Twilio WhatsApp Sandbox / Twilio WhatsApp Numbers.

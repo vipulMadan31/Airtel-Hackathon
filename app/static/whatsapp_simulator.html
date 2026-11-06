@@ -9,300 +9,160 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { 
+      font-family: 'Plus Jakarta Sans', sans-serif; 
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+    }
     .wa-bg {
       background-color: #efeae2;
-      background-image: radial-gradient(#d4cdc5 1px, transparent 1px);
+      background-image: radial-gradient(#d4cdc5 1.2px, transparent 1.2px);
       background-size: 20px 20px;
     }
     .wa-bubble-user {
       background-color: #d9fdd3;
-      border-radius: 12px 0 12px 12px;
+      border-radius: 14px 0 14px 14px;
     }
     .wa-bubble-bot {
       background-color: #ffffff;
-      border-radius: 0 12px 12px 12px;
+      border-radius: 0 14px 14px 14px;
     }
-    /* Hide scrollbar for Chrome, Safari and Opera */
+    /* Hide scrollbars */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
+<body class="min-h-screen flex items-center justify-center p-2 sm:p-4 text-slate-100 select-none">
 
-  <!-- TOP HEADER -->
-  <header class="bg-slate-950 border-b border-slate-800 px-6 py-3.5 flex items-center justify-between">
-    <div class="flex items-center space-x-3">
-      <div class="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center font-black text-white text-lg tracking-wider shadow">A</div>
-      <div>
-        <h1 class="text-base font-extrabold tracking-tight text-white flex items-center space-x-2">
-          <span>Project Udyam Digital</span>
-          <span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full font-mono">WhatsApp Channel</span>
-        </h1>
-        <p class="text-xs text-slate-400">Zero-Friction Conversational Discovery & Straight-Through KYC over WhatsApp</p>
-      </div>
-    </div>
-    <div class="flex items-center space-x-3">
-      <button id="openQrModalBtn" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center space-x-1.5">
-        <span>📱 Scan QR for Real Phone</span>
-      </button>
-      <a href="/" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition font-medium flex items-center space-x-1.5">
-        <span>← Back to Web Portal</span>
-      </a>
-      <button id="langToggleBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded-lg border border-slate-700 transition">
-        Switch to हिंदी
-      </button>
-      <button id="resetWaBtn" class="text-xs bg-slate-800 hover:bg-red-900/60 text-slate-300 hover:text-red-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">
-        Reset Chat
-      </button>
-    </div>
-  </header>
-
-  <!-- MAIN WRAPPER: SIDEBAR + PHONE FRAME -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-    <!-- LEFT COLUMN: HACKATHON DEMO CONTROL PANEL (5 cols) -->
-    <div class="lg:col-span-5 flex flex-col space-y-4">
-      
-      <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-lg space-y-4">
-        <div class="flex items-center justify-between pb-3 border-b border-slate-700">
-          <div>
-            <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 block">Demonstration Deck</span>
-            <h2 class="text-base font-black text-white">1-Click WhatsApp Scenarios</h2>
-          </div>
-          <span class="text-[11px] bg-slate-700 px-2 py-1 rounded text-slate-300 font-mono">Simulated Meta API</span>
-        </div>
-
-        <p class="text-xs text-slate-300 leading-relaxed">
-          Test real-world MSME interactions directly inside the WhatsApp phone mockup. Every response is powered by the live Gemini AI advisor, 5D feasibility guardrails, and automated straight-through KYC.
-        </p>
-
-        <!-- Scenario Buttons -->
-        <div class="space-y-2 text-xs">
-          <button class="scenario-btn w-full text-left p-3 rounded-xl bg-slate-900/80 hover:bg-slate-700/80 border border-slate-700 hover:border-emerald-500 transition flex items-start space-x-3" data-text="I need wifi">
-            <span class="p-1.5 bg-amber-500/20 text-amber-400 rounded-lg shrink-0 font-bold">1</span>
-            <div>
-              <strong class="text-slate-100 block">Vague Query ("I need wifi")</strong>
-              <span class="text-slate-400 text-[11px]">Triggers Progressive Clarification. Asks for city, team size & add-ons. Leaves cart untouched.</span>
-            </div>
-          </button>
-
-          <button class="scenario-btn w-full text-left p-3 rounded-xl bg-slate-900/80 hover:bg-slate-700/80 border border-slate-700 hover:border-emerald-500 transition flex items-start space-x-3" data-text="Kirana store in Indore with 2 staff, UPI payments and billing">
-            <span class="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg shrink-0 font-bold">2</span>
-            <div>
-              <strong class="text-slate-100 block">Retail Shop Recommendation</strong>
-              <span class="text-slate-400 text-[11px]">Generates Biz Fibre 100 + Soundbox + POS with 18% GST itemized WhatsApp quote card.</span>
-            </div>
-          </button>
-
-          <button class="scenario-btn w-full text-left p-3 rounded-xl bg-slate-900/80 hover:bg-slate-700/80 border border-slate-700 hover:border-emerald-500 transition flex items-start space-x-3" data-text="is there a 50 mbps option also?">
-            <span class="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg shrink-0 font-bold">3</span>
-            <div>
-              <strong class="text-slate-100 block">Boundary Inquiry ("50 Mbps?")</strong>
-              <span class="text-slate-400 text-[11px]">Explains 100 Mbps floor and 5G AirFiber alternative without polluting shopping cart.</span>
-            </div>
-          </button>
-
-          <button class="scenario-btn w-full text-left p-3 rounded-xl bg-slate-900/80 hover:bg-slate-700/80 border border-slate-700 hover:border-emerald-500 transition flex items-start space-x-3" data-text="yeh bohot mehenga hai, koi sasta plan dikhao">
-            <span class="p-1.5 bg-purple-500/20 text-purple-400 rounded-lg shrink-0 font-bold">4</span>
-            <div>
-              <strong class="text-slate-100 block">Vernacular Down-sell (Hindi)</strong>
-              <span class="text-slate-400 text-[11px]">Strips non-essential SaaS add-ons and applies floor discount to minimum bill.</span>
-            </div>
-          </button>
-
-          <button id="uploadValidSpecimenBtn" class="w-full text-left p-3 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-600/40 hover:border-emerald-500 transition flex items-start space-x-3">
-            <span class="p-1.5 bg-emerald-500 text-slate-950 rounded-lg shrink-0 font-bold">5</span>
-            <div>
-              <strong class="text-emerald-300 block">📸 Snap & Send Valid GST (`K12`)</strong>
-              <span class="text-slate-300 text-[11px]">Simulates sending photo. OpenCV sharpness pass + active GST straight-through approval.</span>
-            </div>
-          </button>
-
-          <button id="uploadBlurrySpecimenBtn" class="w-full text-left p-3 rounded-xl bg-red-950/30 hover:bg-red-900/30 border border-red-700/40 hover:border-red-500 transition flex items-start space-x-3">
-            <span class="p-1.5 bg-red-500 text-white rounded-lg shrink-0 font-bold">6</span>
-            <div>
-              <strong class="text-red-300 block">📸 Snap Blurry Document Trap (`K04`)</strong>
-              <span class="text-slate-300 text-[11px]">Tests camera-shake trap (Laplacian variance &lt; 100) with instant retry prompt.</span>
-            </div>
-          </button>
-
-          <button id="webKycHandoffBtn" class="w-full text-left p-3 rounded-xl bg-blue-950/40 hover:bg-blue-900/40 border border-blue-600/40 hover:border-blue-500 transition flex items-start space-x-3">
-            <span class="p-1.5 bg-blue-500 text-white rounded-lg shrink-0 font-bold">7</span>
-            <div>
-              <strong class="text-blue-300 block">🌐 Web Smart KYC Handoff (Token Link)</strong>
-              <span class="text-slate-300 text-[11px]">Seamless handoff: generates pre-filled KYC token to meet DoT/TRAI high-res OCR requirements.</span>
-            </div>
-          </button>
-        </div>
-
-        <div class="p-3 bg-slate-900 rounded-xl border border-slate-700 text-[11px] text-slate-400 space-y-1">
-          <div class="flex items-center justify-between text-slate-300 font-bold">
-            <span>Meta Webhook Target:</span>
-            <span class="text-emerald-400 font-mono">POST /api/whatsapp/webhook</span>
-          </div>
-          <p>Full webhook compliance with verification handshake (<code>hub.challenge</code>) ready for live Meta numbers.</p>
-        </div>
-      </div>
-
+  <!-- PHONE CHASSIS (CENTERED CHAT WINDOW ONLY) -->
+  <div class="w-full max-w-[460px] h-[96vh] max-h-[860px] bg-slate-950 rounded-[44px] p-2.5 sm:p-3 shadow-2xl border-4 border-slate-700/80 relative flex flex-col">
+    
+    <!-- SPEAKER / CAMERA NOTCH -->
+    <div class="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-900 rounded-full z-20 flex items-center justify-center">
+      <div class="w-12 h-1 bg-slate-700 rounded-full"></div>
+      <div class="w-2 h-2 rounded-full bg-slate-800 ml-2"></div>
     </div>
 
-    <!-- RIGHT COLUMN: THE WHATSAPP PHONE MOCKUP (7 cols) -->
-    <div class="lg:col-span-7 flex justify-center">
-      
-      <!-- PHONE CHASSIS -->
-      <div class="w-full max-w-[420px] bg-slate-950 rounded-[44px] p-3 shadow-2xl border-4 border-slate-700 relative">
+    <!-- SCREEN CONTAINER -->
+    <div class="w-full h-full bg-slate-100 rounded-[34px] overflow-hidden flex flex-col relative text-slate-900 shadow-inner">
+
+      <!-- WHATSAPP TOP APP BAR -->
+      <div class="bg-[#075e54] text-white pt-7 pb-2.5 px-3 flex items-center justify-between shrink-0 shadow-md">
         
-        <!-- SPEAKER / CAMERA NOTCH -->
-        <div class="absolute top-5 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-900 rounded-full z-20 flex items-center justify-center">
-          <div class="w-12 h-1 bg-slate-700 rounded-full"></div>
-          <div class="w-2 h-2 rounded-full bg-slate-800 ml-2"></div>
+        <div class="flex items-center space-x-2">
+          <a href="/" title="Back to Web Portal" class="text-white hover:text-emerald-200 text-lg font-bold px-1 transition">
+            ←
+          </a>
+          
+          <div class="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center font-black text-white text-base shadow shrink-0">
+            A
+          </div>
+          
+          <div class="leading-tight">
+            <div class="flex items-center space-x-1">
+              <span class="font-bold text-sm text-white">Airtel Business</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-emerald-300 fill-emerald-300" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+            </div>
+            <span class="text-[11px] text-emerald-100/90 flex items-center space-x-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+              <span>online (verified bot)</span>
+            </span>
+          </div>
         </div>
 
-        <!-- SCREEN CONTAINER -->
-        <div class="w-full h-[640px] bg-slate-100 rounded-[36px] overflow-hidden flex flex-col relative text-slate-900 shadow-inner">
+        <!-- QUICK UTILITY ACTIONS -->
+        <div class="flex items-center space-x-1.5 text-xs">
+          <a href="/" title="Open Main Web Portal" class="bg-white/15 hover:bg-white/25 text-white font-medium px-2 py-1 rounded-lg transition text-[11px] flex items-center space-x-1">
+            <span>🌐</span>
+            <span class="hidden sm:inline">Portal</span>
+          </a>
+          <button id="langToggleBtn" title="Switch Language" class="bg-white/15 hover:bg-white/25 text-white font-bold px-2 py-1 rounded-lg transition text-[11px]">
+            हिंदी
+          </button>
+          <button id="resetWaBtn" title="Reset Chat Session" class="bg-white/15 hover:bg-red-500/80 text-white font-medium px-2 py-1 rounded-lg transition text-[11px] flex items-center space-x-1">
+            <span>🔄</span>
+            <span class="hidden sm:inline">Reset</span>
+          </button>
+        </div>
+      </div>
 
-          <!-- WHATSAPP HEADER -->
-          <div class="bg-[#075e54] text-white pt-8 pb-3 px-3.5 flex items-center justify-between shrink-0 shadow-md">
-            <div class="flex items-center space-x-2.5">
-              <span class="text-white text-lg cursor-pointer">←</span>
-              <div class="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center font-bold text-white text-sm shadow">
-                A
-              </div>
-              <div class="leading-tight">
-                <div class="flex items-center space-x-1">
-                  <span class="font-bold text-sm text-white">Airtel Business</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-emerald-300 fill-emerald-300" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                  </svg>
-                </div>
-                <span class="text-[11px] text-emerald-100/90 flex items-center space-x-1">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
-                  <span>online (verified bot)</span>
-                </span>
-              </div>
-            </div>
-            <div class="flex items-center space-x-3 text-white/90 text-sm">
-              <span class="cursor-pointer">📹</span>
-              <span class="cursor-pointer">📞</span>
-              <span class="cursor-pointer">⋮</span>
-            </div>
+      <!-- CHAT MESSAGES BODY -->
+      <div id="waChatBox" class="flex-1 p-3.5 overflow-y-auto wa-bg space-y-2.5 text-xs">
+        
+        <!-- Encryption Notice -->
+        <div class="flex justify-center">
+          <div class="bg-amber-100/95 text-amber-900 border border-amber-200 px-3 py-1 rounded-lg text-[10px] max-w-[90%] text-center shadow-xs">
+            🔒 Messages and calls are end-to-end encrypted. No one outside of this chat can read them.
           </div>
+        </div>
 
-          <!-- CHAT MESSAGES BODY -->
-          <div id="waChatBox" class="flex-1 p-3.5 overflow-y-auto wa-bg space-y-2.5 text-xs">
-            <!-- Encryption Pill -->
-            <div class="flex justify-center">
-              <div class="bg-amber-100/90 text-amber-900 border border-amber-200 px-3 py-1 rounded-lg text-[10px] max-w-[85%] text-center shadow-xs">
-                🔒 Messages with Airtel Business are end-to-end encrypted. Tap for info.
-              </div>
-            </div>
+        <!-- Date Marker -->
+        <div class="flex justify-center">
+          <span class="bg-white/90 text-slate-500 text-[10px] px-2.5 py-0.5 rounded-md shadow-xs uppercase font-bold tracking-wider">Today</span>
+        </div>
 
-            <!-- Date Pill -->
-            <div class="flex justify-center">
-              <span class="bg-white/80 text-slate-500 text-[10px] px-2.5 py-0.5 rounded-md shadow-xs uppercase font-bold tracking-wider">Today</span>
-            </div>
-
-            <!-- Initial Greeting -->
-            <div class="flex justify-start">
-              <div class="wa-bubble-bot p-2.5 text-xs text-slate-800 max-w-[85%] shadow-xs leading-relaxed whitespace-pre-line">
-                Namaste! Welcome to Airtel Business. 🙏
-                
-                Tell me about your business (shop, clinic, office) and I will craft the ideal digital bundle with zero paperwork.
-                <div class="text-[9px] text-slate-400 text-right mt-1 font-mono">10:00 AM</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- INTERACTIVE QUICK-REPLY BUTTONS TRAY -->
-          <div id="waActionTray" class="p-2 bg-white/90 border-t border-slate-200 flex flex-wrap gap-1.5 shrink-0">
-            <button class="wa-chip bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-full text-[11px] font-semibold transition" data-msg="I need wifi">
-              📶 I need wifi
-            </button>
-            <button class="wa-chip bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-full text-[11px] font-semibold transition" data-msg="Kirana store in Indore, 2 staff, UPI payments">
-              🛒 Kirana Store
-            </button>
-            <button class="wa-chip bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-full text-[11px] font-semibold transition" data-msg="sasta plan dikhao">
-              💸 Sasta Plan
-            </button>
-          </div>
-
-          <!-- INPUT FOOTER -->
-          <div class="bg-[#f0f2f5] p-2 flex items-center space-x-1.5 shrink-0 border-t border-slate-200">
-            <button id="waEmojiBtn" class="text-slate-500 hover:text-slate-700 p-1.5 text-base">😊</button>
+        <!-- Initial Welcome Greeting -->
+        <div class="flex justify-start">
+          <div class="wa-bubble-bot p-3 text-xs text-slate-800 max-w-[88%] shadow-xs leading-relaxed whitespace-pre-line border border-slate-100">
+            Namaste! Welcome to Airtel Business. 🙏
             
-            <!-- Camera / Attachment file picker -->
-            <label for="waDocFileInput" class="text-slate-500 hover:text-slate-700 p-1.5 text-base cursor-pointer" title="Attach Document / Photo">
-              📎
-            </label>
-            <input type="file" id="waDocFileInput" accept="image/*" class="hidden">
-
-            <label for="waCameraInput" class="text-slate-500 hover:text-slate-700 p-1.5 text-base cursor-pointer" title="Take Photo">
-              📷
-            </label>
-            <input type="file" id="waCameraInput" accept="image/*" capture="camera" class="hidden">
-
-            <input type="text" id="waInputText" placeholder="Type a message..." class="flex-1 bg-white rounded-full px-3.5 py-1.5 text-xs text-slate-800 focus:outline-none shadow-xs border border-slate-200">
-
-            <!-- VOICE NOTE / VOICE TYPING MIC BUTTON -->
-            <button id="waMicBtn" type="button" title="Speak in Hindi or English (Voice Note)" class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center shrink-0 shadow transition">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-              </svg>
-            </button>
-
-            <button id="waSendBtn" class="w-8 h-8 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white flex items-center justify-center shrink-0 shadow transition">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-              </svg>
-            </button>
+            Tell me about your business (shop, clinic, office, etc.) and I will craft the ideal digital bundle with zero paperwork.
+            <div class="text-[9px] text-slate-400 text-right mt-1 font-mono">10:00 AM</div>
           </div>
-
         </div>
+
       </div>
 
-    </div>
-
-  </main>
-
-  <!-- MODAL: SCAN QR CODE TO CHAT ON REAL PHONE -->
-  <div id="waQrModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-md w-full shadow-2xl relative text-center">
-      <button id="closeQrModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold">✕</button>
-      
-      <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-3 text-2xl">📱</div>
-      <h3 class="text-base font-bold text-white">Connect Real WhatsApp</h3>
-      <p class="text-xs text-slate-300 mt-1">Scan with your smartphone camera to chat live with Airtel Business on Meta WhatsApp Cloud API / Twilio Sandbox</p>
-      
-      <!-- QR CODE CONTAINER -->
-      <div class="bg-white p-3.5 rounded-2xl inline-block my-4 shadow-lg border border-slate-200">
-        <img id="waQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https%3A%2F%2Fwa.me%2F919876543210%3Ftext%3DHi%2520Airtel%2520Business%252C%2520I%2520need%2520broadband" alt="WhatsApp QR Code" class="w-44 h-44 mx-auto rounded-lg">
+      <!-- INTERACTIVE QUICK ACTIONS TRAY -->
+      <div id="waActionTray" class="p-2 bg-white/95 border-t border-slate-200 flex flex-wrap gap-1.5 shrink-0 shadow-xs">
+        <button class="wa-chip bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-full text-[11px] font-semibold transition" data-msg="I need wifi for my shop">
+          📶 Need Wi-Fi
+        </button>
+        <button class="wa-chip bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-full text-[11px] font-semibold transition" data-msg="Kirana store in Indore, 2 staff, UPI payments">
+          🛒 Retail Store
+        </button>
+        <button class="wa-chip bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-full text-[11px] font-semibold transition" data-msg="sasta plan dikhao">
+          💸 Sasta Plan
+        </button>
+        <button class="wa-chip bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-full text-[11px] font-semibold transition" data-msg="call an executive">
+          📞 Call Executive
+        </button>
       </div>
 
-      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-left text-xs space-y-2">
-        <div class="flex items-center justify-between text-slate-400 text-[11px]">
-          <span>Production Webhook URL:</span>
-          <button id="copyWebhookBtn" class="text-emerald-400 hover:text-emerald-300 font-bold transition">Copy URL</button>
-        </div>
-        <code id="webhookUrlCode" class="text-emerald-300 font-mono text-[11px] block break-all bg-slate-900 p-2 rounded border border-slate-800 select-all">
-          http://127.0.0.1:8000/api/whatsapp/webhook
-        </code>
-        <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
-          <span>Meta Verify Token:</span>
-          <span class="font-mono text-slate-200 font-bold">airtel_udyam_secure_token</span>
-        </div>
+      <!-- INPUT FOOTER -->
+      <div class="bg-[#f0f2f5] p-2 flex items-center space-x-1.5 shrink-0 border-t border-slate-200">
+        <button id="waEmojiBtn" class="text-slate-500 hover:text-slate-700 p-1.5 text-base">😊</button>
+        
+        <!-- Attachment file picker -->
+        <label for="waDocFileInput" class="text-slate-500 hover:text-slate-700 p-1.5 text-base cursor-pointer" title="Attach Document / Photo">
+          📎
+        </label>
+        <input type="file" id="waDocFileInput" accept="image/*" class="hidden">
+
+        <label for="waCameraInput" class="text-slate-500 hover:text-slate-700 p-1.5 text-base cursor-pointer" title="Take Photo">
+          📷
+        </label>
+        <input type="file" id="waCameraInput" accept="image/*" capture="camera" class="hidden">
+
+        <input type="text" id="waInputText" placeholder="Type a message or request..." class="flex-1 bg-white rounded-full px-3.5 py-1.5 text-xs text-slate-800 focus:outline-none shadow-xs border border-slate-200">
+
+        <!-- VOICE NOTE / MIC BUTTON -->
+        <button id="waMicBtn" type="button" title="Voice Typing (Speak in English or Hindi)" class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center shrink-0 shadow transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+          </svg>
+        </button>
+
+        <button id="waSendBtn" class="w-8 h-8 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white flex items-center justify-center shrink-0 shadow transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+        </button>
       </div>
 
-      <a href="https://wa.me/919876543210?text=Hi%20Airtel%20Business%2C%20I%20need%20broadband" target="_blank" class="mt-4 w-full block py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow">
-        Open in WhatsApp Web / App →
-      </a>
     </div>
   </div>
-
-  <!-- FOOTER -->
-  <footer class="bg-slate-950 border-t border-slate-800 py-2.5 px-6 text-center text-xs text-slate-500">
-    Project Udyam Digital &bull; WhatsApp Conversational Acquisition &bull; Airtel SYNC Hackathon 2026
-  </footer>
 
   <script src="/whatsapp_simulator.js"></script>
 </body>
