@@ -64,6 +64,9 @@ async def test():
 
             # Test 3: Downsell Button Click
             print("\n3. Testing Downsell Click...")
+            # Ensure bundle has items for downsell testing
+            await run_eval("if (Object.keys(window.STATE.selectedBundle).length === 0) { window.STATE.selectedBundle = {'P01': 1, 'P07': 2, 'P19': 1}; recalculateQuote(); }")
+            await asyncio.sleep(0.5)
             subtotal_before = await run_eval("return document.getElementById('monthlySubtotal').innerText;")
             await run_eval("document.getElementById('downsellBtn').click();")
             await asyncio.sleep(1.0)

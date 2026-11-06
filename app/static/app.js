@@ -69,6 +69,8 @@ function applyLanguage(lang) {
   setText("t-quote-badge", dict.quote_badge);
   setText("t-quote-heading", dict.quote_heading);
   setText("t-browse-all", dict.browse_all);
+  setText("t-pincode-label", dict.pincode_label);
+  setText("t-check-btn", dict.check_btn);
   setText("t-monthly-subtotal", dict.monthly_subtotal);
   setText("t-gst-label", dict.gst_label);
   setText("t-setup-fee-label", dict.setup_fee_label);
@@ -95,12 +97,16 @@ function applyLanguage(lang) {
   setText("t-or-choose-specimen", dict.or_choose_specimen);
   setText("t-review-heading", dict.review_heading);
   setText("t-field-gstin", dict.field_gstin);
+  setText("t-field-udyam", dict.field_udyam);
   setText("t-field-name", dict.field_name);
   setText("t-field-date", dict.field_date);
   setText("t-field-address", dict.field_address);
   setText("t-verify-rule-btn", dict.verify_rule_btn);
   setText("t-back-quote", dict.back_quote);
   setText("t-confirm-order-btn", dict.confirm_order_btn);
+
+  // Update dynamic safe mode labels
+  updateSafeModeUI();
 
   // Tracker Card
   setText("t-tracker-badge", dict.tracker_badge);
@@ -144,6 +150,39 @@ function setText(elementId, text) {
   if (el && text !== undefined) el.innerText = text;
 }
 
+// --- NON-GST SAFE MODE DYNAMIC UI MANAGER ---
+function updateSafeModeUI() {
+  const banner = document.getElementById("nonGstModeBanner");
+  const gstinBadge = document.getElementById("gstinReqBadge");
+  const udyamBadge = document.getElementById("udyamReqBadge");
+  const uploadGstLabel = document.getElementById("t-upload-gst-label");
+  const dict = LOCALES[STATE.language] || LOCALES.en;
+
+  if (STATE.safeModeNonGst) {
+    if (banner) banner.classList.remove("hidden");
+    if (gstinBadge) {
+      gstinBadge.innerText = STATE.language === 'hi' ? "वैकल्पिक" : "Optional";
+      gstinBadge.className = "text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded";
+    }
+    if (udyamBadge) {
+      udyamBadge.innerText = STATE.language === 'hi' ? "अनिवार्य" : "Mandatory";
+      udyamBadge.className = "text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded animate-pulse";
+    }
+    if (uploadGstLabel) uploadGstLabel.innerText = dict.upload_udyam_label || "1. Upload Udyam Certificate (PNG/JPG):";
+  } else {
+    if (banner) banner.classList.add("hidden");
+    if (gstinBadge) {
+      gstinBadge.innerText = STATE.language === 'hi' ? "अनिवार्य" : "Mandatory";
+      gstinBadge.className = "text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded";
+    }
+    if (udyamBadge) {
+      udyamBadge.innerText = "MSME";
+      udyamBadge.className = "text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded";
+    }
+    if (uploadGstLabel) uploadGstLabel.innerText = dict.upload_gst_label;
+  }
+}
+
 // --- EVENT LISTENERS ---
 function initEventListeners() {
   // Language Switcher
@@ -159,6 +198,7 @@ function initEventListeners() {
       if (STATE.selectedBundle["P05"]) delete STATE.selectedBundle["P05"];
       if (STATE.selectedBundle["P21"]) delete STATE.selectedBundle["P21"];
     }
+    updateSafeModeUI();
     recalculateQuote();
   });
 
@@ -237,6 +277,166 @@ function initEventListeners() {
 
   // Reschedule
   document.getElementById("rescheduleBtn").addEventListener("click", handleReschedule);
+
+  // Pincode Feasibility Check
+  const checkPinBtn = document.getElementById("checkPincodeBtn");
+  if (checkPinBtn) checkPinBtn.addEventListener("click", handlePincodeCheck);
+  const pinInput = document.getElementById("pincodeInput");
+  if (pinInput) {
+    pinInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") handlePincodeCheck();
+    });
+  }
+
+  // Voice Recognition (Web Speech API)
+  initVoiceRecognition();
+}
+
+// --- WEB SPEECH API (BILINGUAL VOICE TYPING) ---
+let recognitionInstance = null;
+let isVoiceRecording = false;
+
+function initVoiceRecognition() {
+  const micBtn = document.getElementById("micBtn");
+  if (!micBtn) return;
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    micBtn.addEventListener("click", () => {
+      alert(STATE.language === 'hi' 
+        ? "वॉयस इनपुट के लिए Google Chrome या Microsoft Edge का उपयोग करें।" 
+        : "Speech Recognition is supported in Google Chrome & Microsoft Edge. Please type your requirements.");
+    });
+    return;
+  }
+
+  try {
+    recognitionInstance = new SpeechRecognition();
+    recognitionInstance.continuous = false;
+    recognitionInstance.interimResults = false;
+
+    recognitionInstance.onstart = () => {
+      isVoiceRecording = true;
+      micBtn.className = "p-2 rounded-xl bg-red-600 text-white border border-red-700 animate-pulse transition flex items-center justify-center shrink-0 shadow-md";
+      const chatIn = document.getElementById("chatInput");
+      if (chatIn) chatIn.placeholder = STATE.language === 'hi' ? "सुन रहे हैं... बोलिए..." : "Listening... Speak now...";
+    };
+
+    recognitionInstance.onresult = (event) => {
+      if (event.results && event.results.length > 0) {
+        const transcript = event.results[0][0].transcript;
+        const chatIn = document.getElementById("chatInput");
+        if (chatIn) {
+          chatIn.value = transcript;
+          chatIn.style.height = "auto";
+          chatIn.style.height = Math.min(chatIn.scrollHeight, 120) + "px";
+          handleChatSubmit();
+        }
+      }
+    };
+
+    recognitionInstance.onerror = (event) => {
+      console.warn("Speech recognition error:", event.error);
+      stopVoiceRecording();
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        alert(STATE.language === 'hi' 
+          ? "माइक्रोफ़ोन की अनुमति ब्लॉक है। कृपया अपने ब्राउज़र के एड्रेस बार में लॉक/आइकन पर क्लिक करें और माइक्रोफ़ोन की अनुमति (Allow) दें।" 
+          : "Microphone permission is blocked. Please click the site permissions/lock icon next to the URL in your browser and set Microphone to 'Allow'.");
+      } else if (event.error === "audio-capture") {
+        alert(STATE.language === 'hi'
+          ? "कोई माइक्रोफ़ोन नहीं मिला। कृपया अपना माइक्रोफ़ोन कनेक्ट करें।"
+          : "No microphone detected. Please ensure a microphone is connected to your device.");
+      } else if (event.error === "network") {
+        alert(STATE.language === 'hi'
+          ? "वॉयस रिकॉग्निशन नेटवर्क त्रुटि। कृपया इंटरनेट कनेक्शन जांचें।"
+          : "Voice recognition network error. Please check your internet connection.");
+      }
+    };
+
+    recognitionInstance.onend = () => {
+      stopVoiceRecording();
+    };
+
+    micBtn.addEventListener("click", () => {
+      if (isVoiceRecording) {
+        recognitionInstance.stop();
+        stopVoiceRecording();
+      } else {
+        recognitionInstance.lang = STATE.language === 'hi' ? 'hi-IN' : 'en-IN';
+        try {
+          recognitionInstance.start();
+        } catch (err) {
+          console.warn("Recognition start failed:", err);
+        }
+      }
+    });
+  } catch (e) {
+    console.warn("Web Speech API initialization:", e);
+  }
+}
+
+function stopVoiceRecording() {
+  isVoiceRecording = false;
+  const micBtn = document.getElementById("micBtn");
+  if (micBtn) {
+    micBtn.className = "p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition flex items-center justify-center shrink-0";
+  }
+  const dict = LOCALES[STATE.language] || LOCALES.en;
+  const chatIn = document.getElementById("chatInput");
+  if (chatIn) chatIn.placeholder = dict.chat_placeholder;
+}
+
+// --- PINCODE & AIRFIBER FEASIBILITY CHECKER ---
+async function handlePincodeCheck() {
+  const pinInput = document.getElementById("pincodeInput");
+  const pincode = pinInput ? pinInput.value.trim() : "452001";
+  const badge = document.getElementById("pincodeFeasibilityBadge");
+  const isHi = STATE.language === 'hi';
+
+  if (!pincode || pincode.length < 6) {
+    alert(isHi ? "कृपया वैध 6-अंकीय पिनकोड दर्ज करें।" : "Please enter a valid 6-digit postal pincode.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/catalog/feasibility", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pincode: pincode })
+    });
+    const data = await res.json();
+
+    if (data.is_fibre_feasible) {
+      if (badge) {
+        badge.className = "flex items-center space-x-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg text-[11px]";
+        badge.innerHTML = `<span>✔ ${isHi ? 'ऑप्टिकल फाइबर उपलब्ध (FTTH)' : 'Fibre Feasible (FTTH)'}</span>`;
+      }
+    } else {
+      // Wireline fiber blocked -> Intelligently switch to P04 (5G AirFiber)
+      if (badge) {
+        badge.className = "flex items-center space-x-1 font-bold text-amber-800 bg-amber-50 border border-amber-300 px-2 py-1 rounded-lg text-[11px] animate-pulse";
+        badge.innerHTML = `<span>⚡ ${isHi ? '5G एयरफाइबर लागू (48h सेटअप)' : '5G AirFiber Switched (48h Setup)'}</span>`;
+      }
+
+      // Automatically swap wireline base plan for P04 (Biz 5G AirFiber 100)
+      if (STATE.selectedBundle["P01"]) delete STATE.selectedBundle["P01"];
+      if (STATE.selectedBundle["P02"]) delete STATE.selectedBundle["P02"];
+      if (STATE.selectedBundle["P03"]) delete STATE.selectedBundle["P03"];
+      STATE.selectedBundle["P04"] = 1;
+
+      recalculateQuote();
+
+      // Conversational prompt explaining the operational switch
+      addAiChatMessage(
+        isHi
+          ? `पिनकोड ${pincode} पर वायरलाइन केबल बिछाना अभी ब्लॉक है। हमने आपके बंडल को तुरंत <strong>एयरटेल बिज़ 5G एयरफाइबर 100 (P04)</strong> (₹899/माह) में बदल दिया है — बिना किसी तार के 48 घंटे में एक्टिवेशन!`
+          : `Optical wireline digging is pending at pincode ${pincode}. We seamlessly updated your bundle to <strong>Airtel Biz 5G AirFiber 100 (P04)</strong> at ₹899/mo with zero-wire installation in <48 hours!`
+      );
+    }
+  } catch (err) {
+    console.error("Feasibility check error:", err);
+  }
 }
 
 // --- REAL FILE UPLOAD HANDLER ---
@@ -264,12 +464,16 @@ async function handleFileUpload(e, docType) {
 // --- SPECIMEN SCAN HANDLER ---
 async function handleSpecimenScan(applicantCode) {
   showPreviewLoading();
+  let docType = "gst";
+  if (STATE.safeModeNonGst && (applicantCode === "K03" || applicantCode === "K12")) {
+    docType = "udyam";
+  }
 
   try {
     const res = await fetch("/api/kyc/specimen-scan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ applicant_code: applicantCode, doc_type: "gst" })
+      body: JSON.stringify({ applicant_code: applicantCode, doc_type: docType })
     });
     const data = await res.json();
     populateExtractedDocData(data, applicantCode);
@@ -311,37 +515,63 @@ function populateExtractedDocData(data, code = "CUSTOM") {
   // Populate Editable Review Fields
   const fields = data.extracted_fields || {};
   if (fields.gstin) document.getElementById("extractedGstinInput").value = fields.gstin;
+  if (fields.udyam_number && document.getElementById("extractedUdyamInput")) {
+    document.getElementById("extractedUdyamInput").value = fields.udyam_number;
+  }
   if (fields.entity_name) document.getElementById("extractedNameInput").value = fields.entity_name;
   if (fields.address) document.getElementById("extractedAddressInput").value = fields.address;
 
   if (data.document_type === "ADDRESS_PROOF" && fields.bill_date) {
     document.getElementById("extractedDateInput").value = fields.bill_date;
   } else if (!document.getElementById("extractedDateInput").value || document.getElementById("extractedDateInput").value < "2026-01-01") {
-    // For GST Certificate uploads, retain a valid recent address proof date within benchmark window
     document.getElementById("extractedDateInput").value = "2026-07-06";
   }
 
   // Auto-fill applicant defaults for known traps if missing
   const fName = data.file_name || "";
-  if (code === "K11" || fName.startsWith("K11")) {
-    document.getElementById("extractedGstinInput").value = "03KGZXT1320R1ZZ"; // Active GSTIN for Trinity Bake House
+  const udyamInput = document.getElementById("extractedUdyamInput");
+
+  if (code === "K03" || fName.startsWith("K03")) {
+    if (udyamInput) udyamInput.value = "UDYAM-MH-00-9516696";
+    document.getElementById("extractedNameInput").value = "Ganesh Woodcraft";
+    document.getElementById("extractedDateInput").value = "2026-05-30";
+    document.getElementById("extractedAddressInput").value = "Plot 42, MIDC Industrial Area, Pune, Maharashtra - 411018";
+    if (STATE.safeModeNonGst) {
+      document.getElementById("extractedGstinInput").value = "";
+    } else {
+      document.getElementById("extractedGstinInput").value = "27XUIXG0767D1ZP";
+    }
+  } else if (code === "K05" || fName.startsWith("K05")) {
+    document.getElementById("extractedGstinInput").value = "03PJNXS4821G1ZB";
+    if (udyamInput) udyamInput.value = ""; // Planted Trap: Missing Udyam certificate
+    document.getElementById("extractedNameInput").value = "Sneha Rao (Prop. Saffron Bakers)";
+    document.getElementById("extractedDateInput").value = "2026-06-20";
+    document.getElementById("extractedAddressInput").value = "Shop 12, Saffron Market, Ludhiana, Punjab - 141001";
+  } else if (code === "K11" || fName.startsWith("K11")) {
+    document.getElementById("extractedGstinInput").value = "03KGZXT1320R1ZZ";
+    if (udyamInput) udyamInput.value = "UDYAM-PB-00-9719478";
     document.getElementById("extractedNameInput").value = "Trinity Bake House Pvt Ltd";
-    document.getElementById("extractedDateInput").value = "2025-10-31"; // Expired bill (257 days old relative to 2026-07-15)
+    document.getElementById("extractedDateInput").value = "2025-10-31"; // Expired bill (>90d)
     document.getElementById("extractedAddressInput").value = "Shop/Unit 188, Industrial Area Phase 2, Ludhiana, Punjab - 541498";
   } else if (code === "K01" || fName.startsWith("K01")) {
     document.getElementById("extractedGstinInput").value = "37IHKXV5167L1ZS";
+    if (udyamInput) udyamInput.value = "";
     document.getElementById("extractedNameInput").value = "Vindhya Tours & Travels";
     document.getElementById("extractedDateInput").value = "2026-07-06";
   } else if (code === "K12" || fName.startsWith("K12")) {
     document.getElementById("extractedGstinInput").value = "37NBLXS1145E1ZU";
+    if (udyamInput) udyamInput.value = "UDYAM-AP-00-5186772";
     document.getElementById("extractedNameInput").value = "Star Electronics";
     document.getElementById("extractedDateInput").value = "2026-07-06";
+    document.getElementById("extractedAddressInput").value = "Shop/Unit 216, Nehru Nagar, Visakhapatnam, Andhra Pradesh - 762071";
   }
 }
 
 // --- VERIFY REVIEWED EXTRACTED DATA ---
 async function handleVerifyExtracted() {
   const gstin = document.getElementById("extractedGstinInput").value.trim();
+  const udyamInput = document.getElementById("extractedUdyamInput");
+  const udyam = udyamInput ? udyamInput.value.trim() : "";
   const name = document.getElementById("extractedNameInput").value.trim();
   const date = document.getElementById("extractedDateInput").value.trim();
   const blurVariance = STATE.lastExtractedDoc ? STATE.lastExtractedDoc.blur_variance : 1000.0;
@@ -359,9 +589,11 @@ async function handleVerifyExtracted() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         gstin: gstin,
+        udyam_number: udyam,
         entity_name: name,
         bill_date: date,
-        blur_variance: blurVariance
+        blur_variance: blurVariance,
+        is_non_gst_mode: STATE.safeModeNonGst
       })
     });
     const data = await res.json();
@@ -384,14 +616,35 @@ function renderKycDecision(data) {
 
   if (data.status === "VERIFIED") {
     resultBox.className = "rounded-xl p-3.5 text-xs space-y-1.5 bg-emerald-50 border border-emerald-300 text-emerald-900";
+    
+    const entityName = (data.registry_details && data.registry_details.legal_name) 
+      || (data.udyam_details && data.udyam_details.enterprise_name) 
+      || name;
+
+    let statutoryHtml = "";
+    if (data.is_non_gst_mode && data.udyam_details && data.udyam_details.udyam_number) {
+      statutoryHtml = `
+        <p><strong>${isHi ? 'उद्यम पंजीकरण संख्या:' : 'Udyam Registration No:'}</strong> <span class="font-mono font-bold">${data.udyam_details.udyam_number}</span> (${data.udyam_details.enterprise_type || 'Micro'} Enterprise, ${data.udyam_details.major_activity || 'Services'})</p>
+        <p class="text-emerald-800 font-bold">⚡ ${isHi ? 'गैर-जीएसटी सेफ मोड: सूक्ष्म उद्यम (MSME) डेटा सत्यापित' : 'Non-GST Safe Mode: Micro-Enterprise Verified via Udyam Portal'}</p>
+      `;
+    } else {
+      statutoryHtml = `
+        <p><strong>${isHi ? 'जीएसटी नंबर:' : 'GSTIN:'}</strong> <span class="font-mono font-bold">${data.verified_fields.gstin || ''}</span> (${data.registry_details.status || 'Active'})</p>
+        ${data.udyam_details && data.udyam_details.udyam_number ? `<p><strong>${isHi ? 'उद्यम पंजीकरण:' : 'Udyam:'}</strong> ${data.udyam_details.udyam_number}</p>` : ''}
+      `;
+    }
+
+    const regAddress = (data.registry_details && data.registry_details.principal_place_of_business)
+      || (data.udyam_details && data.udyam_details.city ? `${data.udyam_details.city}, ${data.udyam_details.state}` : (document.getElementById("extractedAddressInput").value.trim() || 'Verified'));
+
     resultBox.innerHTML = `
       <div class="flex items-center space-x-2">
         <span class="font-extrabold text-sm">${isHi ? '✔ केवाईसी सत्यापित (स्ट्रेट-थ्रू प्रोसेसिंग पास)' : '✔ KYC VERIFIED (Straight-Through Processing Approved)'}</span>
       </div>
-      <p><strong>${isHi ? 'कानूनी नाम:' : 'Legal Entity:'}</strong> ${data.registry_details.legal_name || name}</p>
-      <p><strong>${isHi ? 'पंजीकृत पता:' : 'Principal Address:'}</strong> ${data.registry_details.principal_place_of_business || 'Verified'}</p>
+      <p><strong>${isHi ? 'कानूनी नाम:' : 'Legal Entity:'}</strong> ${entityName}</p>
+      ${statutoryHtml}
+      <p><strong>${isHi ? 'पंजीकृत पता:' : 'Principal Address:'}</strong> ${regAddress}</p>
       <p><strong>${isHi ? 'वैधता जांच:' : 'Freshness Check:'}</strong> ${isHi ? `बिल की तिथि (${date}) 2026-07-15 से 90 दिनों के भीतर वैध है।` : `Bill date (${date}) is valid within 90 days of 2026-07-15.`}</p>
-      <p><strong>${isHi ? 'रजिस्ट्री स्थिति:' : 'Registry Status:'}</strong> ${isHi ? 'जीएसटी पोर्टल में एक्टिव और वैध।' : 'Active & Valid in GST Portal.'}</p>
     `;
     confirmBtn.disabled = false;
   } else if (data.status === "REJECTED") {
