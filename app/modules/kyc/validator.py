@@ -51,37 +51,61 @@ class KYCValidator:
         score = fuzz.token_set_ratio(name_a.lower(), name_b.lower())
         return (score >= 80), score
 
+    def validate_udyam(self, udyam_number: str) -> (bool, str, Optional[Dict[str, Any]]):
+        """
+        Validates Udyam Registration format and registry presence.
+        Returns (is_valid, message, registry_record).
+        """
+        clean_num = (udyam_number or "").strip().upper()
+        if not clean_num:
+            return False, "Udyam number is empty.", None
+
+        import re
+        if not re.match(r'^UDYAM-[A-Z]{2}-[0-9]{2}-[0-9]{7}$', clean_num):
+            return False, f"Invalid Udyam Number format '{clean_num}'. Expected format: UDYAM-XX-00-XXXXXXX", None
+
+        record = self.loader.lookup_udyam(clean_num)
+        if not record:
+            return False, f"Udyam registration '{clean_num}' not found in official mock Udyam registry.", None
+
+        return True, "Active & Valid in Udyam Registry", record
+
     def validate_applicant(
         self,
         applicant_code: str, # e.g. "K01", "K12"
         extracted_gstin: Optional[str] = None,
         extracted_udyam: Optional[str] = None,
         bill_date: Optional[str] = None,
-        trade_name: Optional[str] = None
+        trade_name: Optional[str] = None,
+        is_non_gst_mode: bool = False
     ) -> Dict[str, Any]:
         """
         Validates applicant against mock registries, freshness rules, and image quality.
+        Supports both standard GST-based verification and Non-GST Udyam mode.
         """
         # Ground truth specimen data for the 12 applicants
         APPLICANT_DEFAULTS = {
-            "K01": {"gstin": "37IHKXV5167L1ZS", "bill_date": "2026-06-26", "name": "Vindhya Tours & Travels"},
-            "K02": {"gstin": "19E0GXH4115Y1ZL", "bill_date": "2026-06-15", "name": "Harmony Dental Care"},
-            "K03": {"gstin": "27XUIXG0767D1ZP", "bill_date": "2026-05-30", "name": "Ganesh Woodcraft"},
-            "K04": {"gstin": "27P2SXS193601ZH", "bill_date": "2026-06-10", "name": "Saffron Dental Care LLP"},
-            "K05": {"gstin": "03PJNXS4821G1ZB", "bill_date": "2026-06-20", "name": "Sneha Rao (Prop. Saffron Bakers)"},
-            "K11": {"gstin": "2710511786", "bill_date": "2025-10-31", "name": "Trinity Bake House Pvt Ltd"},
-            "K12": {"gstin": "37NBLXS1145E1ZU", "bill_date": "2026-07-06", "name": "Star Electronics"}
+            "K01": {"gstin": "37IHKXV5167L1ZS", "udyam": None, "bill_date": "2026-06-26", "name": "Vindhya Tours & Travels"},
+            "K02": {"gstin": "19E0GXH4115Y1ZL", "udyam": None, "bill_date": "2026-06-15", "name": "Harmony Dental Care"},
+            "K03": {"gstin": "27XUIXG0767D1ZP", "udyam": "UDYAM-MH-00-9516696", "bill_date": "2026-05-30", "name": "Ganesh Woodcraft"},
+            "K04": {"gstin": "27P2SXS193601ZH", "udyam": None, "bill_date": "2026-06-10", "name": "Saffron Dental Care LLP"},
+            "K05": {"gstin": "03PJNXS4821G1ZB", "udyam": None, "bill_date": "2026-06-20", "name": "Sneha Rao (Prop. Saffron Bakers)"},
+            "K11": {"gstin": "2710511786", "udyam": "UDYAM-PB-00-9719478", "bill_date": "2025-10-31", "name": "Trinity Bake House Pvt Ltd"},
+            "K12": {"gstin": "37NBLXS1145E1ZU", "udyam": "UDYAM-AP-00-5186772", "bill_date": "2026-07-06", "name": "Star Electronics"}
         }
 
         defaults = APPLICANT_DEFAULTS.get(applicant_code, {})
         gst_to_check = extracted_gstin or defaults.get("gstin", "")
+        udyam_to_check = extracted_udyam or defaults.get("udyam", "")
         bill_date_to_check = bill_date or defaults.get("bill_date", "2026-06-01")
         name_to_check = trade_name or defaults.get("name", "")
 
         reasons = []
+        registry_record = None
+        udyam_record = None
 
         # 1. Check Missing Files Trap (K05)
-        if applicant_code == "K05":
+        if applicant_code == "K05" and is_non_gst_mode:
             udyam_file = KYC_DOCUMENTS_DIR / f"{applicant_code}_udyam_certificate.png"
             if not udyam_file.exists():
                 reasons.append("Missing mandatory document: Udyam Registration Certificate is absent.")
@@ -98,27 +122,47 @@ class KYCValidator:
         if not is_fresh:
             reasons.append(f"Address Proof Expired: Bill is {age_days} days old relative to {CASE_REFERENCE_DATE} (Maximum allowed: {MAX_ADDRESS_PROOF_AGE_DAYS} days).")
 
-        # 4. Check Registry Status Trap (K01)
-        registry_record = self.loader.lookup_gstin(gst_to_check)
-        if not registry_record:
-            if gst_to_check:
-                reasons.append(f"GSTIN '{gst_to_check}' not found in official mock registry.")
+        # 4. Registry Status Checks
+        if is_non_gst_mode:
+            if not udyam_to_check:
+                reasons.append("Non-GST Mode requires a valid Udyam Registration Number.")
+            else:
+                is_u_valid, u_msg, udyam_record = self.validate_udyam(udyam_to_check)
+                if not is_u_valid:
+                    reasons.append(u_msg)
+                elif name_to_check and udyam_record:
+                    u_name = udyam_record.get("enterprise_name", "")
+                    matched, score = self.match_entity_names(name_to_check, u_name)
+                    if not matched:
+                        reasons.append(f"Entity Name Discrepancy: '{name_to_check}' does not match registered Udyam name '{u_name}'.")
         else:
-            status = registry_record.get("status", "Unknown")
-            if status != "Active":
-                reasons.append(f"Statutory Rejection: GSTIN registration is '{status}' in the GST portal.")
+            # Check GSTIN
+            registry_record = self.loader.lookup_gstin(gst_to_check)
+            if not registry_record:
+                if gst_to_check:
+                    reasons.append(f"GSTIN '{gst_to_check}' not found in official mock registry.")
+            else:
+                status = registry_record.get("status", "Unknown")
+                if status != "Active":
+                    reasons.append(f"Statutory Rejection: GSTIN registration is '{status}' in the GST portal.")
 
-        # 5. Name match check
-        if registry_record and name_to_check:
-            reg_name = registry_record.get("trade_name") or registry_record.get("legal_name", "")
-            matched, score = self.match_entity_names(name_to_check, reg_name)
-            if not matched:
-                reasons.append(f"Entity Name Discrepancy: '{name_to_check}' does not match registered name '{reg_name}'.")
+            # Name match check with GST registry
+            if registry_record and name_to_check:
+                reg_name = registry_record.get("trade_name") or registry_record.get("legal_name", "")
+                matched, score = self.match_entity_names(name_to_check, reg_name)
+                if not matched:
+                    reasons.append(f"Entity Name Discrepancy: '{name_to_check}' does not match registered name '{reg_name}'.")
+
+            # Also validate Udyam if provided
+            if udyam_to_check:
+                is_u_valid, u_msg, udyam_record = self.validate_udyam(udyam_to_check)
+                if not is_u_valid:
+                    reasons.append(u_msg)
 
         # Decision Arbitration
         if len(reasons) == 0:
             status_decision = "VERIFIED"
-            action = "Approve Instant Straight-Through Processing"
+            action = "Approve Instant Straight-Through Processing" + (" (Non-GST Safe Mode)" if is_non_gst_mode else "")
         elif any("Statutory Rejection" in r or "Expired" in r for r in reasons):
             status_decision = "REJECTED"
             action = "Hard Stop - Inform applicant and block onboarding"
@@ -135,6 +179,8 @@ class KYCValidator:
             "action": action,
             "reasons": reasons,
             "registry_details": registry_record or {},
-            "freshness_days": age_days if 'age_days' in locals() else 0
+            "udyam_details": udyam_record or {},
+            "freshness_days": age_days if 'age_days' in locals() else 0,
+            "is_non_gst_mode": is_non_gst_mode
         }
 

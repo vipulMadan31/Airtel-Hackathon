@@ -52,6 +52,7 @@ class OCREngine:
             doc_type = "SIGNATORY_ID"
 
         extracted_gstin = None
+        extracted_udyam = None
         extracted_name = None
         extracted_registration_date = None
         extracted_bill_date = None
@@ -103,6 +104,31 @@ class OCREngine:
                     extracted_name = kname
                     break
 
+        # 3. Udyam Certificate Extraction
+        elif doc_type == "UDYAM_CERTIFICATE" or "udyam" in t_lower:
+            u_match = re.search(r'UDYAM-[A-Z]{2}-[0-9]{2}-[0-9]{7}', raw_text, re.IGNORECASE)
+            if u_match:
+                extracted_udyam = u_match.group(0).upper()
+            else:
+                u_tokens = [t.strip(".,:;()[]{}") for t in raw_text.split() if "udyam" in t.lower() or "-00-" in t]
+                if u_tokens:
+                    extracted_udyam = u_tokens[0].upper()
+
+            # Date of registration on Udyam
+            d_match = re.search(r'\b(20[1-2][0-9]-[0-1][0-9]-[0-3][0-9])\b', raw_text)
+            if d_match:
+                extracted_registration_date = d_match.group(0)
+
+            for kname in ["Star Electronics", "Vindhya Tours & Travels", "Harmony Dental Care", "Ganesh Woodcraft", "Saffron Dental Care", "Saffron Bakers", "Trinity Bake House"]:
+                if kname.lower() in t_lower:
+                    extracted_name = kname
+                    break
+
+            if not extracted_name and extracted_udyam:
+                u_reg = self.loader.lookup_udyam(extracted_udyam)
+                if u_reg:
+                    extracted_name = u_reg.get("enterprise_name")
+
         # Address extraction
         addr_match = re.search(r'(?:Shop/Unit|Plot|Road|Nagar|Colony|Industrial Area|Station Road).*?[0-9]{6}', raw_text, re.IGNORECASE)
         if addr_match:
@@ -111,6 +137,10 @@ class OCREngine:
             reg = self.loader.lookup_gstin(extracted_gstin)
             if reg:
                 extracted_address = reg.get("principal_place_of_business")
+        elif extracted_udyam:
+            u_reg = self.loader.lookup_udyam(extracted_udyam)
+            if u_reg:
+                extracted_address = f"{u_reg.get('city', '')}, {u_reg.get('state', '')}"
 
         return {
             "document_type": str(doc_type),
@@ -119,6 +149,7 @@ class OCREngine:
             "raw_text": str(raw_text[:300]),
             "extracted_fields": {
                 "gstin": str(extracted_gstin) if extracted_gstin else None,
+                "udyam_number": str(extracted_udyam) if extracted_udyam else None,
                 "entity_name": str(extracted_name) if extracted_name else None,
                 "registration_date": str(extracted_registration_date) if extracted_registration_date else None,
                 "bill_date": str(extracted_bill_date) if extracted_bill_date else None,

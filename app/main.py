@@ -68,14 +68,22 @@ class DownsellRequest(BaseModel):
 
 class SpecimenScanRequest(BaseModel):
     applicant_code: str
-    doc_type: str = "gst"  # "gst" or "address"
+    doc_type: str = "gst"  # "gst", "address", or "udyam"
 
 class VerifyExtractedRequest(BaseModel):
     gstin: Optional[str] = None
+    udyam_number: Optional[str] = None
     entity_name: Optional[str] = None
     bill_date: Optional[str] = None
     blur_variance: Optional[float] = 1000.0
     applicant_code: Optional[str] = "CUSTOM"
+    is_non_gst_mode: Optional[bool] = False
+
+class GstinLookupRequest(BaseModel):
+    gstin: str
+
+class UdyamLookupRequest(BaseModel):
+    udyam_number: str
 
 class CreateOrderRequest(BaseModel):
     business_name: str
@@ -142,8 +150,18 @@ async def upload_kyc_document(file: UploadFile = File(...)):
 async def scan_specimen_document(req: SpecimenScanRequest):
     """
     Runs real OCR and blur detection on the official hackathon specimen images.
+    Supports GST Certificate, Address Proof, and Udyam Certificate.
     """
-    filename = f"{req.applicant_code}_{'gst_certificate' if req.doc_type == 'gst' else 'address_proof'}.png"
+    if req.doc_type == "gst":
+        suffix = "gst_certificate.png"
+    elif req.doc_type == "address":
+        suffix = "address_proof.png"
+    elif req.doc_type == "udyam":
+        suffix = "udyam_certificate.png"
+    else:
+        suffix = "signatory_id.png"
+
+    filename = f"{req.applicant_code}_{suffix}"
     file_path = KYC_DOCUMENTS_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"Specimen file {filename} not found")
@@ -153,49 +171,118 @@ async def scan_specimen_document(req: SpecimenScanRequest):
     ocr_result["image_url"] = f"/specimen/{filename}"
     return ocr_result
 
+@app.post("/api/verify/gstin")
+def verify_gstin_lookup(req: GstinLookupRequest):
+    """
+    Mock GSTIN Lookup API querying official mock_gstin_registry.csv.
+    """
+    gstin_val = req.gstin.strip().upper()
+    record = loader.lookup_gstin(gstin_val)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"GSTIN '{gstin_val}' not found in official mock registry.")
+    return {
+        "found": True,
+        "gstin": gstin_val,
+        "legal_name": record.get("legal_name"),
+        "trade_name": record.get("trade_name"),
+        "status": record.get("status"),
+        "is_active": record.get("status") == "Active",
+        "principal_place_of_business": record.get("principal_place_of_business"),
+        "registration_date": record.get("registration_date")
+    }
+
+@app.post("/api/verify/udyam")
+def verify_udyam_lookup(req: UdyamLookupRequest):
+    """
+    Mock Udyam Lookup API querying official mock_udyam_registry.csv.
+    """
+    udyam_val = req.udyam_number.strip().upper()
+    is_valid, msg, record = kyc_validator.validate_udyam(udyam_val)
+    if not is_valid:
+        raise HTTPException(status_code=404, detail=msg)
+    return {
+        "found": True,
+        "udyam_number": udyam_val,
+        "enterprise_name": record.get("enterprise_name"),
+        "enterprise_type": record.get("enterprise_type"),
+        "major_activity": record.get("major_activity"),
+        "nic_description": record.get("nic_description"),
+        "city": record.get("city"),
+        "state": record.get("state"),
+        "date_of_registration": record.get("date_of_registration"),
+        "is_active": True
+    }
+
 @app.post("/api/kyc/verify-extracted")
 def verify_extracted_data(req: VerifyExtractedRequest):
     """
-    Validates reviewed extracted fields against mock registries, 90-day date rule, and blur threshold.
+    Validates reviewed extracted fields against mock registries (GSTIN & Udyam),
+    90-day date rule, and blur threshold.
     """
     reasons = []
+    registry_rec = None
+    udyam_rec = None
 
     # 1. Blur Check
     if req.blur_variance is not None and req.blur_variance < 100.0:
         reasons.append(f"Image Quality Failure: Document is blurry/unreadable (sharpness variance: {req.blur_variance:.2f}). Please re-upload a clear photo.")
 
-    # 2. Registry Status Check
-    gstin_val = (req.gstin or "").strip().upper()
-    registry_rec = loader.lookup_gstin(gstin_val)
-    if not registry_rec:
-        if gstin_val:
-            reasons.append(f"GSTIN '{gstin_val}' not found in official mock registry.")
+    # 2. Registry Status Check: Non-GST Mode vs Standard GST Mode
+    if req.is_non_gst_mode:
+        udyam_val = (req.udyam_number or "").strip().upper()
+        if not udyam_val:
+            reasons.append("Non-GST Mode requires a valid Udyam Registration Number.")
+        else:
+            is_u_valid, u_msg, udyam_rec = kyc_validator.validate_udyam(udyam_val)
+            if not is_u_valid:
+                reasons.append(u_msg)
     else:
-        status = registry_rec.get("status", "Unknown")
-        if status != "Active":
-            reasons.append(f"Statutory Rejection: GSTIN registration is '{status}' in the GST portal.")
+        gstin_val = (req.gstin or "").strip().upper()
+        if not gstin_val and not req.udyam_number:
+            reasons.append("Active GSTIN is required for standard enterprise verification.")
+        elif gstin_val:
+            registry_rec = loader.lookup_gstin(gstin_val)
+            if not registry_rec:
+                reasons.append(f"GSTIN '{gstin_val}' not found in official mock registry.")
+            else:
+                status = registry_rec.get("status", "Unknown")
+                if status != "Active":
+                    reasons.append(f"Statutory Rejection: GSTIN registration is '{status}' in the GST portal.")
+
+        # Check Udyam if optionally provided
+        if req.udyam_number:
+            is_u_valid, u_msg, udyam_rec = kyc_validator.validate_udyam(req.udyam_number)
+            if not is_u_valid:
+                reasons.append(u_msg)
 
     # 3. 90-Day Freshness Check (Only applies to Address Proof / Electricity Bill)
     if req.bill_date:
-        # Check if the date submitted is actually the GST Certificate's historical registration date
         is_gst_reg_date = bool(registry_rec and req.bill_date == registry_rec.get("registration_date"))
+        is_udyam_reg_date = bool(udyam_rec and req.bill_date == udyam_rec.get("date_of_registration"))
 
-        if not is_gst_reg_date:
+        if not is_gst_reg_date and not is_udyam_reg_date:
             is_fresh, diff_days = kyc_validator.validate_document_freshness(req.bill_date)
             if not is_fresh:
                 reasons.append(f"Address Proof Expired: Bill is {diff_days} days old relative to 2026-07-15 (Allowed: <= 90 days).")
 
-    # 4. Name Match
-    if registry_rec and req.entity_name:
-        reg_name = registry_rec.get("trade_name") or registry_rec.get("legal_name", "")
-        matched, score = kyc_validator.match_entity_names(req.entity_name, reg_name)
-        if not matched and score < 70:
-            reasons.append(f"Entity Name Discrepancy: '{req.entity_name}' does not match registered name '{reg_name}'.")
+    # 4. Name Match Check
+    check_name = req.entity_name
+    if check_name:
+        if registry_rec:
+            reg_name = registry_rec.get("trade_name") or registry_rec.get("legal_name", "")
+            matched, score = kyc_validator.match_entity_names(check_name, reg_name)
+            if not matched and score < 70:
+                reasons.append(f"Entity Name Discrepancy: '{check_name}' does not match registered GST name '{reg_name}'.")
+        elif udyam_rec:
+            u_name = udyam_rec.get("enterprise_name", "")
+            matched, score = kyc_validator.match_entity_names(check_name, u_name)
+            if not matched and score < 70:
+                reasons.append(f"Entity Name Discrepancy: '{check_name}' does not match registered Udyam name '{u_name}'.")
 
     # Decision Logic
     if len(reasons) == 0:
         status_decision = "VERIFIED"
-        action = "Approve Instant Straight-Through Processing"
+        action = "Approve Instant Straight-Through Processing" + (" (Non-GST Safe Mode)" if req.is_non_gst_mode else "")
     elif any("Statutory Rejection" in r or "Expired" in r for r in reasons):
         status_decision = "REJECTED"
         action = "Hard Stop - Inform applicant and block onboarding"
@@ -211,8 +298,11 @@ def verify_extracted_data(req: VerifyExtractedRequest):
         "action": action,
         "reasons": reasons,
         "registry_details": registry_rec or {},
+        "udyam_details": udyam_rec or {},
+        "is_non_gst_mode": bool(req.is_non_gst_mode),
         "verified_fields": {
-            "gstin": gstin_val,
+            "gstin": req.gstin.strip().upper() if req.gstin else None,
+            "udyam_number": req.udyam_number.strip().upper() if req.udyam_number else None,
             "entity_name": req.entity_name,
             "bill_date": req.bill_date
         }
