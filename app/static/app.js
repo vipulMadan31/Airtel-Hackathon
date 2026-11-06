@@ -3,6 +3,21 @@
 const STATE = {
   language: 'en',
   safeModeNonGst: false,
+  auth: {
+    role: 'MERCHANT',
+    token: 'tok_merchant_demo',
+    user: {
+      user_id: 'USR-CUST-1001',
+      name: 'Rajesh Gupta (Rajesh Kirana)',
+      role: 'MERCHANT'
+    }
+  },
+  payment: {
+    selectedMethod: 'UPI_PHONEPE',
+    mandateOptIn: true,
+    activeIntent: null,
+    receipt: null
+  },
   profile: {
     business_type: null,
     employee_count: null,
@@ -167,6 +182,26 @@ function applyLanguage(lang) {
   setText("t-partner-desc", dict.partner_desc);
   setText("t-partner-copy", dict.partner_copy);
   setText("t-partner-table-title", dict.partner_table_title);
+  setText("t-admin-btn", dict.admin_btn);
+  setText("t-admin-title", dict.admin_title);
+  setText("t-admin-sub", dict.admin_sub);
+
+  // Payment Modal & Receipt i18n
+  setText("t-pay-modal-title", dict.pay_modal_title);
+  setText("t-pay-modal-sub", dict.pay_modal_sub);
+  setText("t-pay-summary-heading", dict.pay_summary_heading);
+  setText("t-pay-refundable-badge", dict.pay_refundable_badge);
+  setText("t-pay-inclusive-gst", dict.pay_inclusive_gst);
+  setText("t-pay-select-app", dict.pay_select_app);
+  setText("t-pay-mandate-title", dict.pay_mandate_title);
+  setText("t-pay-mandate-desc", dict.pay_mandate_desc);
+  setText("t-pay-simulate-btn", dict.pay_simulate_btn);
+  setText("t-pay-receipt-btn", dict.pay_receipt_btn);
+  setText("t-receipt-title", dict.receipt_title);
+  setText("t-receipt-sub", dict.receipt_sub);
+  setText("t-receipt-close", dict.receipt_close);
+
+  updateRoleSwitcherUI();
 
   // Update initial welcome message if no user conversation started yet
   const chatMessages = document.getElementById("chatMessages");
@@ -193,6 +228,80 @@ function applyLanguage(lang) {
 function setText(elementId, text) {
   const el = document.getElementById(elementId);
   if (el && text !== undefined) el.innerText = text;
+}
+
+// --- ENTERPRISE RBAC & ROLE SWITCHER ---
+function updateRoleSwitcherUI() {
+  const dict = LOCALES[STATE.language] || LOCALES.en;
+  const roleBadgeIcon = document.getElementById("roleBadgeIcon");
+  const roleBadgeLabel = document.getElementById("roleBadgeLabel");
+  const partnerBtn = document.getElementById("partnerPortalBtn");
+  const adminBtn = document.getElementById("adminPortalBtn");
+
+  if (!roleBadgeIcon || !roleBadgeLabel) return;
+
+  if (STATE.auth.role === 'MERCHANT') {
+    roleBadgeIcon.innerText = "🛒";
+    roleBadgeLabel.innerText = dict.role_merchant_label || "Customer Mode";
+    if (partnerBtn) {
+      partnerBtn.classList.add("hidden");
+      partnerBtn.classList.remove("flex");
+    }
+    if (adminBtn) {
+      adminBtn.classList.add("hidden");
+      adminBtn.classList.remove("flex");
+    }
+  } else if (STATE.auth.role === 'PARTNER') {
+    roleBadgeIcon.innerText = "🤝";
+    roleBadgeLabel.innerText = dict.role_partner_label || "Mitra Partner";
+    if (partnerBtn) {
+      partnerBtn.classList.remove("hidden");
+      partnerBtn.classList.add("flex");
+    }
+    if (adminBtn) {
+      adminBtn.classList.add("hidden");
+      adminBtn.classList.remove("flex");
+    }
+  } else if (STATE.auth.role === 'ADMIN') {
+    roleBadgeIcon.innerText = "🛡️";
+    roleBadgeLabel.innerText = dict.role_admin_label || "Ops Admin";
+    if (partnerBtn) {
+      partnerBtn.classList.remove("hidden");
+      partnerBtn.classList.add("flex");
+    }
+    if (adminBtn) {
+      adminBtn.classList.remove("hidden");
+      adminBtn.classList.add("flex");
+    }
+  }
+}
+
+async function switchUserRole(roleName) {
+  const dropdown = document.getElementById("roleDropdownMenu");
+  if (dropdown) dropdown.classList.add("hidden");
+
+  try {
+    const res = await fetch("/api/auth/switch-role", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: roleName })
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      STATE.auth.role = data.user.role;
+      STATE.auth.token = data.token;
+      STATE.auth.user = data.user;
+      updateRoleSwitcherUI();
+
+      const isHi = STATE.language === 'hi';
+      const toastMsg = isHi
+        ? `सफलतापूर्वक प्रोफ़ाइल स्विच की गई: ${data.user.name} (${data.user.role})`
+        : `Switched profile to: ${data.user.name} (${data.user.role})`;
+      console.log(toastMsg);
+    }
+  } catch (err) {
+    console.error("Role switch failed:", err);
+  }
 }
 
 // --- NON-GST SAFE MODE DYNAMIC UI MANAGER ---
@@ -291,6 +400,35 @@ function initEventListeners() {
   document.getElementById("partnerPortalBtn").addEventListener("click", openPartnerModal);
   document.getElementById("closePartnerModalBtn").addEventListener("click", closePartnerModal);
 
+  // Admin Modal
+  const adminPortalBtn = document.getElementById("adminPortalBtn");
+  if (adminPortalBtn) adminPortalBtn.addEventListener("click", openAdminModal);
+  const closeAdminModalBtn = document.getElementById("closeAdminModalBtn");
+  if (closeAdminModalBtn) closeAdminModalBtn.addEventListener("click", closeAdminModal);
+
+  // Role Switcher Dropdown Toggle
+  const roleDropdownBtn = document.getElementById("roleDropdownBtn");
+  const roleDropdownMenu = document.getElementById("roleDropdownMenu");
+  if (roleDropdownBtn && roleDropdownMenu) {
+    roleDropdownBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      roleDropdownMenu.classList.toggle("hidden");
+    });
+    document.addEventListener("click", (e) => {
+      if (!roleDropdownMenu.contains(e.target) && !roleDropdownBtn.contains(e.target)) {
+        roleDropdownMenu.classList.add("hidden");
+      }
+    });
+  }
+
+  // Role Persona Switch Handlers
+  const switchMerchantBtn = document.getElementById("switchRoleMerchant");
+  if (switchMerchantBtn) switchMerchantBtn.addEventListener("click", () => switchUserRole("MERCHANT"));
+  const switchPartnerBtn = document.getElementById("switchRolePartner");
+  if (switchPartnerBtn) switchPartnerBtn.addEventListener("click", () => switchUserRole("PARTNER"));
+  const switchAdminBtn = document.getElementById("switchRoleAdmin");
+  if (switchAdminBtn) switchAdminBtn.addEventListener("click", () => switchUserRole("ADMIN"));
+
   // Step Transitions
   document.getElementById("proceedKycBtn").addEventListener("click", () => {
     document.getElementById("quoteCard").classList.add("hidden");
@@ -332,6 +470,41 @@ function initEventListeners() {
       if (e.key === "Enter") handlePincodeCheck();
     });
   }
+
+  // Payment Modal Triggers
+  const openPayQuoteBtn = document.getElementById("openPaymentModalFromQuoteBtn");
+  if (openPayQuoteBtn) openPayQuoteBtn.addEventListener("click", () => openPaymentModal());
+  const closePayModalBtn = document.getElementById("closePaymentModalBtn");
+  if (closePayModalBtn) closePayModalBtn.addEventListener("click", closePaymentModal);
+  const execPayBtn = document.getElementById("executePaymentBtn");
+  if (execPayBtn) execPayBtn.addEventListener("click", handlePaymentExecute);
+
+  // UPI App Selection
+  document.querySelectorAll(".pay-app-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".pay-app-btn").forEach(b => {
+        b.className = "pay-app-btn p-2 rounded-lg border border-slate-200 hover:bg-slate-50 flex items-center space-x-2 text-left transition";
+      });
+      btn.className = "pay-app-btn p-2 rounded-lg border border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500 flex items-center space-x-2 text-left transition";
+      STATE.payment.selectedMethod = btn.getAttribute("data-method");
+    });
+  });
+
+  // Mandate Checkbox
+  const mandateCb = document.getElementById("mandateConsentCheckbox");
+  if (mandateCb) {
+    mandateCb.addEventListener("change", (e) => {
+      STATE.payment.mandateOptIn = e.target.checked;
+    });
+  }
+
+  // Receipt Modal
+  const viewReceiptBtn = document.getElementById("viewReceiptBtn");
+  if (viewReceiptBtn) viewReceiptBtn.addEventListener("click", () => openReceiptModal());
+  const closeReceiptModalBtn = document.getElementById("closeReceiptModalBtn");
+  if (closeReceiptModalBtn) closeReceiptModalBtn.addEventListener("click", closeReceiptModal);
+  const closeReceiptBtn = document.getElementById("closeReceiptBtn");
+  if (closeReceiptBtn) closeReceiptBtn.addEventListener("click", closeReceiptModal);
 
   // Voice Recognition (Web Speech API)
   initVoiceRecognition();
@@ -1013,6 +1186,13 @@ async function handleConfirmOrder() {
     document.getElementById("trackerCard").classList.remove("hidden");
 
     renderTracker(order);
+
+    // If order has unconfirmed token deposit, open payment modal to secure the booking
+    if (!order.token_paid) {
+      setTimeout(() => {
+        openPaymentModal(order.order_id);
+      }, 400);
+    }
   } catch (err) {
     alert("Order creation failed.");
     confirmBtn.disabled = false;
@@ -1025,12 +1205,16 @@ function renderTracker(order) {
 
   const dict = LOCALES[STATE.language] || LOCALES.en;
   const timeline = document.getElementById("timelineList");
+
+  const isTokenPaid = !!(order.token_paid || (order.receipt && order.receipt.payment_status === "SUCCESS"));
+  const txnText = order.payment_txn_id || (order.receipt ? order.receipt.txn_id : "TXN-UPI-AUTO");
+
   timeline.innerHTML = `
     <div class="flex items-center space-x-3 text-xs">
       <span class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold">✔</span>
       <div>
         <strong class="text-slate-900 block">${dict.step1_title}</strong>
-        <span class="text-slate-500">${dict.step1_sub}</span>
+        <span class="text-slate-500">${isTokenPaid ? `<span class="text-emerald-700 font-bold">Ref: ${txnText} &bull; ${dict.step1_sub}</span>` : dict.step1_sub}</span>
       </div>
     </div>
     <div class="flex items-center space-x-3 text-xs">
@@ -1055,6 +1239,134 @@ function renderTracker(order) {
       </div>
     </div>
   `;
+}
+
+// --- SIMULATED PAYMENT GATEWAY & UPI AUTOPAY ---
+async function openPaymentModal(orderId = null) {
+  const modal = document.getElementById("paymentModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+
+  const effectiveOrderId = orderId || (STATE.activeOrder ? STATE.activeOrder.order_id : "PENDING_QUOTE");
+  const businessName = document.getElementById("extractedNameInput")?.value || "Airtel MSME Customer";
+
+  try {
+    const res = await fetch("/api/payment/create-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        order_id: effectiveOrderId,
+        amount_inr: 499.0,
+        business_name: businessName,
+        phone: "+91 98765 12345"
+      })
+    });
+    const intent = await res.json();
+    STATE.payment.activeIntent = intent;
+
+    const amtEl = document.getElementById("payModalAmount");
+    if (amtEl) amtEl.innerText = `₹${intent.amount_inr.toFixed(2)}`;
+
+    const dateEl = document.getElementById("payScheduledDate");
+    if (dateEl && STATE.activeOrder) {
+      dateEl.innerText = `${STATE.activeOrder.scheduled_install_date} (Guaranteed Slot)`;
+    }
+  } catch (err) {
+    console.error("Payment intent error:", err);
+  }
+}
+
+function closePaymentModal() {
+  const modal = document.getElementById("paymentModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function handlePaymentExecute() {
+  const execBtn = document.getElementById("executePaymentBtn");
+  if (execBtn) {
+    execBtn.disabled = true;
+    execBtn.innerText = STATE.language === 'hi' ? "भुगतान सत्यापित हो रहा है..." : "Processing UPI PIN...";
+  }
+
+  const orderId = STATE.activeOrder ? STATE.activeOrder.order_id : "UDYAM-PREPAID";
+  const txnId = STATE.payment.activeIntent ? STATE.payment.activeIntent.txn_id : `TXN-UPI-${Date.now()}`;
+
+  try {
+    const res = await fetch("/api/payment/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        order_id: orderId,
+        txn_id: txnId,
+        payment_method: STATE.payment.selectedMethod || "UPI_PHONEPE",
+        mandate_active: STATE.payment.mandateOptIn,
+        amount_inr: 499.0
+      })
+    });
+
+    const receipt = await res.json();
+    STATE.payment.receipt = receipt;
+
+    if (STATE.activeOrder) {
+      STATE.activeOrder.token_paid = true;
+      STATE.activeOrder.payment_txn_id = receipt.txn_id;
+      STATE.activeOrder.receipt = receipt;
+      renderTracker(STATE.activeOrder);
+    }
+
+    closePaymentModal();
+
+    // Show instant receipt modal
+    openReceiptModal(receipt);
+
+    if (execBtn) {
+      execBtn.disabled = false;
+      const dict = LOCALES[STATE.language] || LOCALES.en;
+      execBtn.innerText = dict.pay_simulate_btn;
+    }
+  } catch (err) {
+    console.error("Payment confirmation failed:", err);
+    if (execBtn) execBtn.disabled = false;
+    alert("Payment confirmation failed.");
+  }
+}
+
+function openReceiptModal(customReceipt = null) {
+  const modal = document.getElementById("receiptModal");
+  if (!modal) return;
+
+  const r = customReceipt || STATE.payment.receipt || (STATE.activeOrder ? STATE.activeOrder.receipt : null);
+  if (!r) {
+    alert("No receipt found for this order yet.");
+    return;
+  }
+
+  const numEl = document.getElementById("rcptNum");
+  const ordEl = document.getElementById("rcptOrderId");
+  const txnEl = document.getElementById("rcptTxnId");
+  const dateEl = document.getElementById("rcptDate");
+  const modeEl = document.getElementById("rcptMode");
+  const baseEl = document.getElementById("rcptBase");
+  const cgstEl = document.getElementById("rcptCgst");
+  const sgstEl = document.getElementById("rcptSgst");
+  const totalEl = document.getElementById("rcptTotal");
+
+  if (numEl) numEl.innerText = r.receipt_number;
+  if (ordEl) ordEl.innerText = r.order_id || (STATE.activeOrder ? STATE.activeOrder.order_id : "N/A");
+  if (txnEl) txnEl.innerText = r.txn_id;
+  if (dateEl) dateEl.innerText = (r.timestamp || "").split("T")[0] || "2026-11-07";
+  if (modeEl) modeEl.innerText = `${r.payment_method} (${r.mandate_status === 'ACTIVE' ? 'AutoPay Enabled' : 'Single Token'})`;
+  if (baseEl) baseEl.innerText = `₹${r.base_amount_inr ? r.base_amount_inr.toFixed(2) : '422.88'}`;
+  if (cgstEl) cgstEl.innerText = `₹${r.gst_18_inr ? (r.gst_18_inr / 2).toFixed(2) : '38.06'}`;
+  if (sgstEl) sgstEl.innerText = `₹${r.gst_18_inr ? (r.gst_18_inr / 2).toFixed(2) : '38.06'}`;
+  if (totalEl) totalEl.innerText = `₹${r.amount_paid_inr ? r.amount_paid_inr.toFixed(2) : '499.00'}`;
+
+  modal.classList.remove("hidden");
+}
+
+function closeReceiptModal() {
+  const modal = document.getElementById("receiptModal");
+  if (modal) modal.classList.add("hidden");
 }
 
 // Reschedule
@@ -1106,16 +1418,36 @@ async function handleNpsSubmit(rating) {
   }
 }
 
-// --- PARTNER PORTAL ---
+// --- PARTNER PORTAL (RBAC Guarded) ---
 async function openPartnerModal() {
   const modal = document.getElementById("partnerModal");
+  if (!modal) return;
   modal.classList.remove("hidden");
 
   try {
-    const res = await fetch("/api/partner/leads");
-    const leads = await res.json();
+    const res = await fetch("/api/partner/leads", {
+      headers: {
+        "Authorization": `Bearer ${STATE.auth.token}`,
+        "X-Session-Token": STATE.auth.token
+      }
+    });
 
     const tbody = document.getElementById("partnerLeadsTableBody");
+    if (!tbody) return;
+
+    if (res.status === 403) {
+      const err = await res.json();
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="p-6 text-center bg-red-50 text-red-700 font-bold">
+            ⛔ ${err.detail || 'Access Denied: Regular customer accounts cannot view unclosed leads. Switch to Partner or Admin role.'}
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    const leads = await res.json();
     tbody.innerHTML = leads.map(l => `
       <tr class="hover:bg-slate-50/80">
         <td class="p-2.5 font-mono font-bold">${l.lead_id}</td>
@@ -1140,5 +1472,64 @@ async function openPartnerModal() {
 }
 
 function closePartnerModal() {
-  document.getElementById("partnerModal").classList.add("hidden");
+  const modal = document.getElementById("partnerModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+// --- ADMIN OPERATIONS PORTAL (RBAC Guarded) ---
+async function openAdminModal() {
+  const modal = document.getElementById("adminModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+
+  try {
+    const res = await fetch("/api/admin/metrics", {
+      headers: {
+        "Authorization": `Bearer ${STATE.auth.token}`,
+        "X-Session-Token": STATE.auth.token
+      }
+    });
+
+    if (res.status === 403) {
+      alert("Access Denied: Enterprise Ops Admin credentials required.");
+      modal.classList.add("hidden");
+      return;
+    }
+
+    const data = await res.json();
+    const totalLeadsEl = document.getElementById("adminTotalLeads");
+    const convRateEl = document.getElementById("adminConvRate");
+    const ttaEl = document.getElementById("adminTta");
+    const cacEl = document.getElementById("adminCac");
+
+    if (totalLeadsEl) totalLeadsEl.innerText = data.funnel_metrics.total_inbound_leads.toLocaleString();
+    if (convRateEl) convRateEl.innerText = `${data.funnel_metrics.projected_digital_conversion_rate_percent}%`;
+    if (ttaEl) ttaEl.innerText = `${data.operational_efficiency.udyam_digital_tta_days} Days`;
+    if (cacEl) cacEl.innerText = `₹${data.operational_efficiency.udyam_digital_cac_inr.toLocaleString()}`;
+
+    const tbody = document.getElementById("adminEscalationTableBody");
+    if (tbody && data.manual_escalations_queue) {
+      tbody.innerHTML = data.manual_escalations_queue.map(e => `
+        <tr class="hover:bg-slate-50/80">
+          <td class="p-2.5 font-mono font-bold">${e.escalation_id}</td>
+          <td class="p-2.5 font-bold text-slate-900">${e.business_name}</td>
+          <td class="p-2.5 text-amber-800 font-medium">${e.issue}</td>
+          <td class="p-2.5 text-slate-600">${e.assigned_agent}</td>
+          <td class="p-2.5 font-mono font-semibold text-red-600">${e.sla_remaining_hours}h left</td>
+          <td class="p-2.5">
+            <button class="bg-purple-700 hover:bg-purple-800 text-white px-2.5 py-1 rounded text-[10px] font-bold" onclick="alert('Admin override verified for ${e.business_name}')">
+              Approve Override
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+  } catch (err) {
+    console.error("Admin metrics fetch error:", err);
+  }
+}
+
+function closeAdminModal() {
+  const modal = document.getElementById("adminModal");
+  if (modal) modal.classList.add("hidden");
 }

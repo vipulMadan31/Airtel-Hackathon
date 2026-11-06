@@ -38,8 +38,8 @@
         </div>
       </div>
 
-      <!-- Controls: Safe Mode, Language, Partner -->
-      <div class="flex items-center space-x-2 sm:space-x-4">
+      <!-- Controls: Safe Mode, Language, WhatsApp, Role-specific Buttons, Role Switcher -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
         <!-- Non-GST Safe Mode Toggle -->
         <label class="flex items-center space-x-2 text-xs font-semibold cursor-pointer bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-full border border-slate-200 transition">
           <input type="checkbox" id="safeModeToggle" class="rounded text-airtel-red focus:ring-0">
@@ -53,14 +53,58 @@
         </div>
 
         <!-- WhatsApp Bot Link -->
-        <a href="/whatsapp-simulator" target="_blank" class="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-3 py-1.5 rounded-lg transition flex items-center space-x-1.5 shadow-xs">
-          <span>📱 WhatsApp Channel</span>
+        <a href="/whatsapp-simulator" target="_blank" class="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1.5 rounded-lg transition flex items-center space-x-1 shadow-xs">
+          <span>📱 WhatsApp</span>
         </a>
 
-        <!-- Partner Portal Link -->
-        <button id="partnerPortalBtn" class="text-xs font-bold text-slate-600 hover:text-airtel-red border border-slate-300 px-3 py-1.5 rounded-lg transition">
+        <!-- Role-specific Partner Portal Link (Visible only to Partner & Admin) -->
+        <button id="partnerPortalBtn" class="hidden text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2.5 py-1.5 rounded-lg transition items-center space-x-1">
+          <span>🤝</span>
           <span id="t-partner-btn">Partner Portal</span>
         </button>
+
+        <!-- Role-specific Admin Console Link (Visible only to Admin) -->
+        <button id="adminPortalBtn" class="hidden text-xs font-bold text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-300 px-2.5 py-1.5 rounded-lg transition items-center space-x-1">
+          <span>🛡️</span>
+          <span id="t-admin-btn">Ops Console</span>
+        </button>
+
+        <!-- Role Switcher Dropdown (Enterprise RBAC) -->
+        <div class="relative inline-block text-left" id="roleSwitcherWrapper">
+          <button id="roleDropdownBtn" type="button" class="flex items-center space-x-1.5 text-xs font-bold bg-slate-900 text-white hover:bg-black px-3 py-1.5 rounded-full shadow-sm transition">
+            <span id="roleBadgeIcon">🛒</span>
+            <span id="roleBadgeLabel">Customer Mode</span>
+            <svg class="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          <div id="roleDropdownMenu" class="hidden absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-white ring-1 ring-black/5 divide-y divide-slate-100 z-50 overflow-hidden">
+            <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Switch Persona / View
+            </div>
+            <div class="p-1 space-y-0.5">
+              <button id="switchRoleMerchant" type="button" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-slate-100 flex items-center space-x-2.5 transition">
+                <span class="text-base">🛒</span>
+                <div>
+                  <div class="font-extrabold text-slate-900">Customer Mode</div>
+                  <div class="text-[10px] text-slate-500">Rajesh Kirana (Self-Serve MSME)</div>
+                </div>
+              </button>
+              <button id="switchRolePartner" type="button" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-amber-50 flex items-center space-x-2.5 transition">
+                <span class="text-base">🤝</span>
+                <div>
+                  <div class="font-extrabold text-amber-950">Airtel Mitra Partner</div>
+                  <div class="text-[10px] text-amber-700">Vikram Telecom (PTR-IND-882)</div>
+                </div>
+              </button>
+              <button id="switchRoleAdmin" type="button" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-purple-50 flex items-center space-x-2.5 transition">
+                <span class="text-base">🛡️</span>
+                <div>
+                  <div class="font-extrabold text-purple-950">Airtel Ops Admin</div>
+                  <div class="text-[10px] text-purple-700">National Funnel Telemetry & Review</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -170,7 +214,7 @@
             <span class="font-bold text-emerald-900 block" id="t-token-title">Zero Risk Booking: Pay Only ₹499 Refundable Token Today</span>
             <p class="text-emerald-700" id="t-token-sub">Balance auto-debited via UPI AutoPay only after your line is physically activated.</p>
           </div>
-          <span class="text-emerald-800 font-bold bg-white px-2.5 py-1 rounded-lg border border-emerald-300" id="t-token-btn">₹499 Now</span>
+          <button id="openPaymentModalFromQuoteBtn" type="button" class="text-emerald-800 hover:text-white hover:bg-emerald-600 font-bold bg-white px-2.5 py-1 rounded-lg border border-emerald-300 transition cursor-pointer shadow-xs" id="t-token-btn">₹499 Now</button>
         </div>
 
         <!-- Actions -->
@@ -364,6 +408,15 @@
             <span id="t-nps-thanks">Thank you! NPS Rating recorded.</span>
           </p>
         </div>
+
+        <!-- Action to view Tax Invoice & Token Receipt -->
+        <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+          <span class="text-slate-500 font-medium">Priority Deposit: ₹499 Paid (Adjustable on Bill 1)</span>
+          <button id="viewReceiptBtn" type="button" class="text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-3 py-1.5 rounded-lg transition flex items-center space-x-1.5 shadow-xs">
+            <span>📄</span>
+            <span id="t-pay-receipt-btn">View Official Tax Receipt</span>
+          </button>
+        </div>
       </div>
 
     </section>
@@ -452,6 +505,253 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN OPERATIONS CENTER MODAL (RBAC Guarded) -->
+  <div id="adminModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-950 text-white">
+        <div class="flex items-center space-x-2.5">
+          <span class="p-1.5 bg-purple-600 rounded-lg text-sm">🛡️</span>
+          <div>
+            <span class="text-[11px] font-bold text-purple-400 uppercase tracking-wider" id="t-admin-sub">National MSME Funnel Telemetry & Escalation Review</span>
+            <h3 class="text-base font-extrabold" id="t-admin-title">Airtel Enterprise Operations Center</h3>
+          </div>
+        </div>
+        <button id="closeAdminModalBtn" class="text-slate-400 hover:text-white font-black text-xl">&times;</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-6 flex-1 text-xs">
+        <!-- KPI Telemetry Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="p-3 bg-purple-50 border border-purple-200 rounded-xl">
+            <span class="text-purple-700 block font-semibold text-[11px]">Total Inbound Leads</span>
+            <span class="text-xl font-black text-purple-950" id="adminTotalLeads">5,000</span>
+            <span class="text-[10px] text-purple-600 block mt-0.5">Top 50 Metros & Tier 2</span>
+          </div>
+          <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+            <span class="text-emerald-700 block font-semibold text-[11px]">Digital Conversion Rate</span>
+            <span class="text-xl font-black text-emerald-950" id="adminConvRate">24.8%</span>
+            <span class="text-[10px] text-emerald-600 block mt-0.5">vs 7.36% Legacy Baseline</span>
+          </div>
+          <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+            <span class="text-blue-700 block font-semibold text-[11px]">Avg Time to Activation</span>
+            <span class="text-xl font-black text-blue-950" id="adminTta">1.8 Days</span>
+            <span class="text-[10px] text-blue-600 block mt-0.5">vs 17.6d Legacy Funnel</span>
+          </div>
+          <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <span class="text-amber-700 block font-semibold text-[11px]">Blended CAC</span>
+            <span class="text-xl font-black text-amber-950" id="adminCac">₹3,450</span>
+            <span class="text-[10px] text-amber-600 block mt-0.5">77% Reduction (₹15k Base)</span>
+          </div>
+        </div>
+
+        <!-- MSME Segment Composition (Appendix A2) -->
+        <div>
+          <h4 class="font-extrabold text-slate-900 text-sm mb-2">MSME Market Composition & Propensity (Appendix A2)</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+            <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-bold text-slate-900">Micro Retail</span>
+                <span class="font-extrabold text-blue-600 text-xs">55%</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Kirana, apparel, food. Avg: ₹1,850/mo. Zero-wire 5G AirFiber target.</p>
+            </div>
+            <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-bold text-slate-900">Professional</span>
+                <span class="font-extrabold text-emerald-600 text-xs">25%</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Clinics, CAs, legal. Avg: ₹4,800/mo. High Static IP & Cloud retention.</p>
+            </div>
+            <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-bold text-slate-900">Multi-Site</span>
+                <span class="font-extrabold text-amber-600 text-xs">15%</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Retail chains, warehousing. Avg: ₹14,200/mo. Lowest churn (&lt;3% SD-WAN).</p>
+            </div>
+            <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-bold text-slate-900">Manufacturers</span>
+                <span class="font-extrabold text-purple-600 text-xs">5%</span>
+              </div>
+              <p class="text-[11px] text-slate-500">Fabrication, auto parts. Avg: ₹28,500/mo. Dedicated ILL & IoT priority.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Manual KYC & Trap Escalation Queue -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-extrabold text-slate-900 text-sm">Automated Trap Escalation & Exception Queue</h4>
+            <span class="text-[10px] bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded-full">2 Exceptions Active</span>
+          </div>
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                <tr>
+                  <th class="p-2.5">Escalation ID</th>
+                  <th class="p-2.5">Business Name</th>
+                  <th class="p-2.5">Statutory Trap / Issue</th>
+                  <th class="p-2.5">Assigned Agent</th>
+                  <th class="p-2.5">SLA</th>
+                  <th class="p-2.5">Admin Action</th>
+                </tr>
+              </thead>
+              <tbody id="adminEscalationTableBody" class="divide-y divide-slate-100">
+                <!-- Injected by JS from /api/admin/metrics -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAYMENT GATEWAY & UPI AUTOPAY MODAL -->
+  <div id="paymentModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col">
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-emerald-600 text-white">
+        <div class="flex items-center space-x-2">
+          <span class="p-1 bg-white/20 rounded-lg text-lg">💳</span>
+          <div>
+            <h3 class="text-sm font-extrabold" id="t-pay-modal-title">Priority Slot Booking & ₹499 Refundable Token</h3>
+            <p class="text-[10px] text-emerald-100" id="t-pay-modal-sub">100% credited against your Month 1 invoice upon line activation</p>
+          </div>
+        </div>
+        <button id="closePaymentModalBtn" class="text-white/80 hover:text-white font-black text-xl">&times;</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 space-y-4 text-xs">
+        <!-- Order Summary Card -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+          <div class="flex justify-between items-center text-slate-600">
+            <span id="t-pay-summary-heading">Priority Installation Token:</span>
+            <span class="font-extrabold text-slate-900 text-sm" id="payModalAmount">₹499.00</span>
+          </div>
+          <div class="flex justify-between items-center text-[11px] text-slate-500">
+            <span id="t-pay-inclusive-gst">Inclusive of 18% GST (Base ₹422.88 + ₹76.12 GST)</span>
+            <span class="text-emerald-700 font-bold bg-emerald-100 px-1.5 py-0.5 rounded text-[10px]" id="t-pay-refundable-badge">100% Refundable</span>
+          </div>
+          <div class="pt-1.5 border-t border-slate-200 text-[11px] text-slate-700 flex justify-between">
+            <span>Scheduled Technician Slot:</span>
+            <span class="font-bold text-slate-900" id="payScheduledDate">48 Hours (Guaranteed)</span>
+          </div>
+        </div>
+
+        <!-- Simulated UPI QR Section -->
+        <div class="p-3 border border-emerald-200 bg-emerald-50/50 rounded-xl flex items-center space-x-3.5">
+          <div class="w-20 h-20 bg-white border border-slate-300 rounded-lg p-1.5 flex flex-col items-center justify-center shrink-0 shadow-xs">
+            <!-- Simulated QR pattern SVG -->
+            <svg class="w-16 h-16 text-slate-800" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2 2h8v8H2V2zm2 2v4h4V4H4zm10-2h8v8h-8V2zm2 2v4h4V4h-4zM2 14h8v8H2v-8zm2 2v4h4v-4H4zm14-2h4v2h-4v-2zm-4 0h2v4h-2v-4zm2 4h4v4h-4v-4zm2-2h2v2h-2v-2zm-6 2h2v2h-2v-2zm0-4h2v2h-2v-2zm4 4v2h-2v-2h2z"/>
+            </svg>
+          </div>
+          <div class="space-y-1">
+            <span class="font-bold text-slate-900 block" id="t-pay-select-app">Select UPI Payment App or Scan QR:</span>
+            <div class="font-mono text-[11px] text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 inline-block">
+              accelbusiness.pay@airtel
+            </div>
+            <p class="text-[10px] text-slate-500">Scan using BHIM, PhonePe, GPay, Paytm, or banking apps</p>
+          </div>
+        </div>
+
+        <!-- App Quick Triggers -->
+        <div class="grid grid-cols-2 gap-2" id="upiAppsContainer">
+          <button type="button" class="pay-app-btn p-2 rounded-lg border border-purple-300 bg-purple-50 flex items-center space-x-2 text-left transition" data-method="UPI_PHONEPE">
+            <span class="text-base">🟣</span>
+            <div>
+              <div class="font-bold text-slate-900">PhonePe</div>
+              <div class="text-[10px] text-slate-500">Instant UPI PIN</div>
+            </div>
+          </button>
+          <button type="button" class="pay-app-btn p-2 rounded-lg border border-slate-200 hover:border-blue-500 hover:bg-blue-50 flex items-center space-x-2 text-left transition" data-method="UPI_GPAY">
+            <span class="text-base">🔵</span>
+            <div>
+              <div class="font-bold text-slate-900">Google Pay</div>
+              <div class="text-[10px] text-slate-500">UPI FastPay</div>
+            </div>
+          </button>
+          <button type="button" class="pay-app-btn p-2 rounded-lg border border-slate-200 hover:border-sky-500 hover:bg-sky-50 flex items-center space-x-2 text-left transition" data-method="UPI_PAYTM">
+            <span class="text-base">🔷</span>
+            <div>
+              <div class="font-bold text-slate-900">Paytm</div>
+              <div class="text-[10px] text-slate-500">Wallet / UPI</div>
+            </div>
+          </button>
+          <button type="button" class="pay-app-btn p-2 rounded-lg border border-slate-200 hover:border-red-500 hover:bg-red-50 flex items-center space-x-2 text-left transition" data-method="AIRTEL_PAYMENTS_BANK">
+            <span class="text-base">🔴</span>
+            <div>
+              <div class="font-bold text-slate-900">Airtel Payments</div>
+              <div class="text-[10px] text-slate-500">Direct Savings A/C</div>
+            </div>
+          </button>
+        </div>
+
+        <!-- AutoPay Mandate Consent -->
+        <label class="flex items-start space-x-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
+          <input type="checkbox" id="mandateConsentCheckbox" checked class="mt-0.5 rounded text-emerald-600 focus:ring-0">
+          <div>
+            <span class="font-bold text-slate-900 block" id="t-pay-mandate-title">Recurring UPI AutoPay e-Mandate</span>
+            <p class="text-[10px] text-slate-500" id="t-pay-mandate-desc">Enable automatic zero-touch monthly bill deduction after physical line activation.</p>
+          </div>
+        </label>
+
+        <!-- Simulation CTA Button -->
+        <button id="executePaymentBtn" type="button" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-extrabold text-sm shadow-md transition flex items-center justify-center space-x-2">
+          <span id="t-pay-simulate-btn">⚡ Simulate Instant UPI PIN Approval</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAX RECEIPT MODAL -->
+  <div id="receiptModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white">
+        <div class="flex items-center space-x-2">
+          <span class="text-base">📄</span>
+          <div>
+            <h3 class="text-sm font-extrabold" id="t-receipt-title">Airtel Business — Token Payment Receipt</h3>
+            <span class="text-[10px] text-slate-400" id="t-receipt-sub">Official Advance Booking Tax Invoice & SAC 998411 Record</span>
+          </div>
+        </div>
+        <button id="closeReceiptModalBtn" class="text-slate-400 hover:text-white font-black text-xl">&times;</button>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs font-mono">
+        <div class="border-b border-dashed border-slate-200 pb-3 space-y-1">
+          <div class="flex justify-between"><span class="text-slate-500">Receipt No:</span><span class="font-bold text-slate-900" id="rcptNum">RCT-XXXX</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Order ID:</span><span class="font-bold text-slate-900" id="rcptOrderId">UDYAM-XXXX</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Transaction Ref:</span><span class="font-bold text-slate-900" id="rcptTxnId">TXN-UPI-XXXX</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Date & Time:</span><span class="font-bold text-slate-900" id="rcptDate">2026-11-07</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Payment Mode:</span><span class="font-bold text-emerald-700" id="rcptMode">UPI_PHONEPE</span></div>
+        </div>
+
+        <div class="space-y-1.5 border-b border-dashed border-slate-200 pb-3">
+          <div class="flex justify-between"><span class="text-slate-600">Base Token (SAC 998411):</span><span class="font-bold text-slate-900" id="rcptBase">₹422.88</span></div>
+          <div class="flex justify-between"><span class="text-slate-600">CGST (9%):</span><span class="font-bold text-slate-900" id="rcptCgst">₹38.06</span></div>
+          <div class="flex justify-between"><span class="text-slate-600">SGST (9%):</span><span class="font-bold text-slate-900" id="rcptSgst">₹38.06</span></div>
+          <div class="flex justify-between pt-1 border-t border-slate-200 text-sm font-sans font-black text-emerald-700">
+            <span>Total Paid (Adjustable Token):</span>
+            <span id="rcptTotal">₹499.00</span>
+          </div>
+        </div>
+
+        <div class="p-2.5 bg-emerald-50 text-emerald-900 rounded-lg text-[11px] font-sans">
+          <strong>✔ 100% Bill Adjustment Guarantee:</strong> This ₹499 deposit will be automatically deducted from your first monthly recurring Airtel Business broadband invoice.
+        </div>
+
+        <div class="pt-2 flex justify-end">
+          <button id="closeReceiptBtn" type="button" class="bg-slate-900 hover:bg-black text-white px-4 py-2 rounded-xl text-xs font-bold font-sans">
+            <span id="t-receipt-close">Close Receipt</span>
+          </button>
         </div>
       </div>
     </div>
