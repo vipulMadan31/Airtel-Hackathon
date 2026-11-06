@@ -182,27 +182,35 @@ def test_prototype():
 
     # 8b. Enterprise RBAC & Role-Based Profile Separation
     print("\n[Step 8b] Testing Multi-profile RBAC & Access Control...")
-    # Unauthenticated / Customer request to partner leads -> MUST FAIL with 403
+    # 1. Unauthenticated / Customer request to partner leads -> MUST FAIL with 403
     unauth_partner = requests.get(f"{BASE_URL}/api/partner/leads")
     assert unauth_partner.status_code == 403, f"Expected 403 for unauthenticated partner leads, got {unauth_partner.status_code}"
     assert "Access denied" in unauth_partner.json()["detail"]
 
-    # Partner Token request -> MUST SUCCEED with 200
+    # 2. Customer token request to admin metrics -> MUST FAIL with 403
+    cust_admin = requests.get(f"{BASE_URL}/api/admin/metrics", headers={"Authorization": "Bearer tok_merchant_demo"})
+    assert cust_admin.status_code == 403, f"Expected 403 for customer admin access, got {cust_admin.status_code}"
+
+    # 3. Partner Token request to partner leads -> MUST SUCCEED with 200
     auth_partner = requests.get(f"{BASE_URL}/api/partner/leads", headers={"Authorization": "Bearer tok_partner_demo"})
     assert auth_partner.status_code == 200, f"Expected 200 for partner auth, got {auth_partner.status_code}"
     leads = auth_partner.json()
     assert len(leads) > 0, "Partner should see stalled leads"
 
-    # Role Switch API -> Switch to Admin
+    # 4. Partner Token request to admin metrics -> MUST FAIL with 403
+    partner_admin = requests.get(f"{BASE_URL}/api/admin/metrics", headers={"Authorization": "Bearer tok_partner_demo"})
+    assert partner_admin.status_code == 403, f"Expected 403 for partner accessing admin metrics, got {partner_admin.status_code}"
+
+    # 5. Role Switch API -> Switch to Admin
     switch_res = requests.post(f"{BASE_URL}/api/auth/switch-role", json={"role": "ADMIN"}).json()
     assert switch_res["status"] == "success"
     assert switch_res["token"] == "tok_admin_demo"
 
-    # Admin Metrics -> MUST SUCCEED with 200 for Admin
+    # 6. Admin Metrics -> MUST SUCCEED with 200 for Admin
     admin_metrics = requests.get(f"{BASE_URL}/api/admin/metrics", headers={"Authorization": "Bearer tok_admin_demo"}).json()
     assert admin_metrics["funnel_metrics"]["total_inbound_leads"] == 5000
     assert admin_metrics["operational_efficiency"]["legacy_cac_inr"] == 15000
-    print("✔ [8b/8] Enterprise RBAC & Multi-profile Security: OK (Customer: 403 BLOCKED, Partner: 200 PASS, Admin: 200 PASS)")
+    print("✔ [8b/8] Enterprise RBAC & Multi-profile Security: OK (Customer: 403 BLOCKED, Partner: 200 PASS / 403 Admin-BLOCKED, Admin: 200 PASS)")
 
     # 8c. Simulated ₹499 UPI Payment Gateway & Mandate Verification
     print("\n[Step 8c] Testing Simulated ₹499 UPI Payment Gateway & Mandate...")
@@ -216,6 +224,7 @@ def test_prototype():
     assert intent_res["amount_inr"] == 499.0
     assert intent_res["base_amount_inr"] == 422.88
     assert intent_res["gst_18_inr"] == 76.12
+    assert intent_res["sac_code"] == "998411"
     assert "upi://" in intent_res["upi_intent_url"]
     assert len(intent_res["supported_apps"]) == 4
 
@@ -230,12 +239,20 @@ def test_prototype():
     assert confirm_res["payment_status"] == "SUCCESS"
     assert confirm_res["receipt_number"].startswith("RCT-")
     assert confirm_res["mandate_status"] == "ACTIVE"
+    assert confirm_res["sac_code"] == "998411"
 
-    # Fetch Order Receipt
+    # Fetch Order Receipt & Verify SAC 998411 Tax Breakdown
     rcpt_res = requests.get(f"{BASE_URL}/api/payment/receipt/{order_id}").json()
     assert rcpt_res["receipt_number"] == confirm_res["receipt_number"]
     assert rcpt_res["sac_code"] == "998411"
-    print(f"✔ [8c/8] ₹499 UPI Payment & Mandate: OK (Receipt: {confirm_res['receipt_number']}, Mandate: ACTIVE, SAC: 998411)")
+    assert rcpt_res["base_amount_inr"] == 422.88
+    assert rcpt_res["gst_18_inr"] == 76.12
+
+    # Verify Order Machine Database Persistence of Token & Mandate
+    persisted_order = requests.get(f"{BASE_URL}/api/orders/{order_id}").json()
+    assert persisted_order["token_paid"] == 1
+    assert persisted_order["token_amount_inr"] == 499.0
+    print(f"✔ [8c/8] ₹499 UPI Payment & Mandate: OK (Receipt: {confirm_res['receipt_number']}, Mandate: ACTIVE, SAC: 998411, DB Verified)")
 
     # 8d. Channel Partner QR Attribution, Assisted Selling & Stalled Lead Recovery Bounties
     print("\n[Step 8d] Testing Partner Attribution, Commissions Telemetry & ₹1k Lead Bounties...")
@@ -252,6 +269,11 @@ def test_prototype():
     cust_comm = requests.get(f"{BASE_URL}/api/partner/commissions", headers={"Authorization": "Bearer tok_merchant_demo"})
     assert cust_comm.status_code == 403
 
+    # Partner Referral URL Generator
+    ref_link_res = requests.get(f"{BASE_URL}/api/partner/referral", headers={"Authorization": "Bearer tok_partner_demo"}).json()
+    assert ref_link_res["partner_id"] == "PTR-IND-882"
+    assert "ref=PTR-IND-882" in ref_link_res["referral_url"]
+
     # Partner Stalled Lead Claim -> ₹1,000 spot bounty
     claim_res = requests.post(
         f"{BASE_URL}/api/partner/leads/L00003/claim",
@@ -264,6 +286,17 @@ def test_prototype():
     assert claim_json["bounty_inr"] == 1000.0
     assert claim_json["partner_id"] == "PTR-IND-882"
 
+    # Self-serve Order Creation without partner attribution
+    self_order = requests.post(f"{BASE_URL}/api/orders/create", json={
+        "business_name": "Direct Self Serve Merchant",
+        "contact_phone": "+91 91234 56789",
+        "bundle_data": qdata,
+        "kyc_status": "VERIFIED",
+        "language": "en"
+    }).json()
+    assert self_order["partner_attribution_id"] is None
+    assert self_order["is_assisted"] is False
+
     # Partner Assisted Order Creation with Attribution Tag
     partner_order = requests.post(f"{BASE_URL}/api/orders/create", json={
         "business_name": "Kalyan Textiles",
@@ -275,7 +308,7 @@ def test_prototype():
     }).json()
     assert partner_order["partner_attribution_id"] == "PTR-IND-882"
     assert partner_order["is_assisted"] is True
-    print(f"✔ [8d/8] Partner Attribution & Recovery Bounty: OK (Claimed: SMB-0021, Bounty: ₹1,000, Attributed Order: {partner_order['order_id']})")
+    print(f"✔ [8d/8] Partner Attribution & Recovery Bounty: OK (Claimed: L00003, Bounty: ₹1,000, Attributed Order: {partner_order['order_id']})")
 
     print("\n" + "=" * 60)
     print("ALL PROJECT UDYAM DIGITAL SUITES PASSED FLAWLESSLY (100% GREEN)")

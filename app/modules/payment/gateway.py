@@ -39,6 +39,7 @@ class PaymentGateway:
             "amount_inr": amount_inr,
             "base_amount_inr": base_amt,
             "gst_18_inr": gst_18,
+            "sac_code": "998411",
             "currency": "INR",
             "upi_vpa": upi_vpa,
             "upi_intent_url": upi_intent,

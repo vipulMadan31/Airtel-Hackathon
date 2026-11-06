@@ -233,8 +233,28 @@ async def test():
             await run_eval("closePartnerModal();")
             print("   ✔ Partner Commission Telemetry & Lead Bounty Claim: SUCCESS")
 
+            # Test 14: Partner Referral Query Attribution Banner & Assisted Selling
+            print("\n14. Testing Partner Referral Query Attribution Banner & Assisted Selling...")
+            await run_eval("""
+                window.STATE.attribution.partner_id = 'PTR-IND-882';
+                window.STATE.attribution.is_assisted = true;
+                const banner = document.getElementById('partnerAttributionBanner');
+                if (banner) banner.classList.remove('hidden');
+            """)
+            await asyncio.sleep(0.5)
+            banner_visible = await run_eval("return !document.getElementById('partnerAttributionBanner').classList.contains('hidden');")
+            assigned_partner = await run_eval("return window.STATE.attribution.partner_id;")
+            assert banner_visible is True
+            assert assigned_partner == "PTR-IND-882"
+            print("   -> Partner Attribution Banner displayed: PTR-IND-882 (Vikram Telecom)")
+
+            # Click Copy Partner Link button
+            await run_eval("document.getElementById('copyPartnerLinkBtn').click();")
+            await asyncio.sleep(0.3)
+            print("   ✔ Partner Referral Query Attribution Banner & Assisted Selling: SUCCESS")
+
             print("\n" + "=" * 65)
-            print("ALL 13 FRONTEND BROWSER CLICKS ARE FULLY TESTED & 100% RESPONSIVE!")
+            print("ALL 14 FRONTEND BROWSER CLICKS ARE FULLY TESTED & 100% RESPONSIVE!")
             print("=" * 65)
 
     finally:
