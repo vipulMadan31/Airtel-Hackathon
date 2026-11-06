@@ -30,7 +30,52 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   recalculateQuote();
   initNpsButtons();
+  checkKycTokenHandoff();
 });
+
+// --- WHATSAPP TO WEB KYC HANDOFF ---
+async function checkKycTokenHandoff() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get("token") || (window.location.hash.startsWith("#token=") ? window.location.hash.replace("#token=", "") : (window.location.hash === "#kyc" ? "TK-3210" : null));
+  if (!token) return;
+
+  try {
+    const res = await fetch(`/api/whatsapp/token/${token}`);
+    const data = await res.json();
+    if (data.bundle && Object.keys(data.bundle).length > 0) {
+      STATE.selectedBundle = data.bundle;
+      if (data.profile) STATE.profile = data.profile;
+      recalculateQuote();
+    }
+  } catch (e) {
+    console.warn("Token fetch failed:", e);
+  }
+
+  // Auto transition from Quote Card to KYC Card
+  const quoteCard = document.getElementById("quoteCard");
+  const kycCard = document.getElementById("kycCard");
+  if (quoteCard) quoteCard.classList.add("hidden");
+  if (kycCard) {
+    kycCard.classList.remove("hidden");
+    const existingBanner = document.getElementById("waHandoffBanner");
+    if (!existingBanner) {
+      const banner = document.createElement("div");
+      banner.id = "waHandoffBanner";
+      banner.className = "mb-4 p-3.5 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs text-emerald-950 flex items-center justify-between shadow-xs";
+      banner.innerHTML = `
+        <div class="flex items-center space-x-2.5">
+          <span class="text-xl">📱</span>
+          <div>
+            <strong class="font-extrabold text-emerald-900 block">WhatsApp Channel Handoff Active (Token: ${token})</strong>
+            <p class="text-[11px] text-emerald-700">Pre-locked quotation loaded from chat. Telecom regulations (DoT/TRAI) mandate high-res camera capture for instant activation.</p>
+          </div>
+        </div>
+        <span class="text-[10px] bg-emerald-200 text-emerald-900 font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider">Pre-Filled</span>
+      `;
+      kycCard.insertBefore(banner, kycCard.firstChild);
+    }
+  }
+}
 
 // --- I18N LANGUAGE SWITCHER ---
 function applyLanguage(lang) {

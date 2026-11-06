@@ -136,3 +136,37 @@ def get_session_info(phone: str):
     Retrieves the current state of a WhatsApp conversation session.
     """
     return whatsapp_handler.session_mgr.get_session(phone)
+
+@router.get("/token/{token}")
+def get_token_session(token: str):
+    """
+    Returns the pre-filled bundle, quote, and customer profile associated with a WhatsApp lead token.
+    Enables zero-friction handoff to the web portal for DoT-compliant Smart KYC.
+    """
+    import json
+    suffix = token.replace("TK-", "").replace("token_", "")
+    with whatsapp_handler.session_mgr._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM whatsapp_sessions WHERE phone_number LIKE ?", (f"%{suffix}",))
+        row = cur.fetchone()
+        if row:
+            bundle_data = json.loads(row["active_bundle"] or "{}")
+            if not bundle_data:
+                bundle_data = {"P01": 1}
+            return {
+                "status": "success",
+                "token": token,
+                "phone_number": row["phone_number"],
+                "stage": row["current_stage"],
+                "profile": json.loads(row["current_profile"] or "{}"),
+                "bundle": bundle_data,
+                "quote": json.loads(row["active_quote"] or "{}")
+            }
+
+    # Fallback to standard starter bundle
+    return {
+        "status": "fallback",
+        "token": token,
+        "bundle": {"P01": 1, "P07": 2, "P19": 1},
+        "profile": {"business_type": "Retail", "city": "Indore", "employee_count": 3}
+    }

@@ -43,10 +43,13 @@
       </div>
     </div>
     <div class="flex items-center space-x-3">
+      <button id="openQrModalBtn" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg transition shadow flex items-center space-x-1.5">
+        <span>📱 Scan QR for Real Phone</span>
+      </button>
       <a href="/" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition font-medium flex items-center space-x-1.5">
         <span>← Back to Web Portal</span>
       </a>
-      <button id="langToggleBtn" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg transition shadow">
+      <button id="langToggleBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3 py-1.5 rounded-lg border border-slate-700 transition">
         Switch to हिंदी
       </button>
       <button id="resetWaBtn" class="text-xs bg-slate-800 hover:bg-red-900/60 text-slate-300 hover:text-red-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">
@@ -120,7 +123,15 @@
             <span class="p-1.5 bg-red-500 text-white rounded-lg shrink-0 font-bold">6</span>
             <div>
               <strong class="text-red-300 block">📸 Snap Blurry Document Trap (`K04`)</strong>
-              <span class="text-slate-300 text-[11px]">Tests camera-shake trap (Laplacian variance < 100) with instant retry prompt.</span>
+              <span class="text-slate-300 text-[11px]">Tests camera-shake trap (Laplacian variance &lt; 100) with instant retry prompt.</span>
+            </div>
+          </button>
+
+          <button id="webKycHandoffBtn" class="w-full text-left p-3 rounded-xl bg-blue-950/40 hover:bg-blue-900/40 border border-blue-600/40 hover:border-blue-500 transition flex items-start space-x-3">
+            <span class="p-1.5 bg-blue-500 text-white rounded-lg shrink-0 font-bold">7</span>
+            <div>
+              <strong class="text-blue-300 block">🌐 Web Smart KYC Handoff (Token Link)</strong>
+              <span class="text-slate-300 text-[11px]">Seamless handoff: generates pre-filled KYC token to meet DoT/TRAI high-res OCR requirements.</span>
             </div>
           </button>
         </div>
@@ -233,6 +244,13 @@
 
             <input type="text" id="waInputText" placeholder="Type a message..." class="flex-1 bg-white rounded-full px-3.5 py-1.5 text-xs text-slate-800 focus:outline-none shadow-xs border border-slate-200">
 
+            <!-- VOICE NOTE / VOICE TYPING MIC BUTTON -->
+            <button id="waMicBtn" type="button" title="Speak in Hindi or English (Voice Note)" class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center shrink-0 shadow transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+              </svg>
+            </button>
+
             <button id="waSendBtn" class="w-8 h-8 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white flex items-center justify-center shrink-0 shadow transition">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
@@ -246,6 +264,40 @@
     </div>
 
   </main>
+
+  <!-- MODAL: SCAN QR CODE TO CHAT ON REAL PHONE -->
+  <div id="waQrModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-md w-full shadow-2xl relative text-center">
+      <button id="closeQrModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold">✕</button>
+      
+      <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-3 text-2xl">📱</div>
+      <h3 class="text-base font-bold text-white">Connect Real WhatsApp</h3>
+      <p class="text-xs text-slate-300 mt-1">Scan with your smartphone camera to chat live with Airtel Business on Meta WhatsApp Cloud API / Twilio Sandbox</p>
+      
+      <!-- QR CODE CONTAINER -->
+      <div class="bg-white p-3.5 rounded-2xl inline-block my-4 shadow-lg border border-slate-200">
+        <img id="waQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https%3A%2F%2Fwa.me%2F919876543210%3Ftext%3DHi%2520Airtel%2520Business%252C%2520I%2520need%2520broadband" alt="WhatsApp QR Code" class="w-44 h-44 mx-auto rounded-lg">
+      </div>
+
+      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-left text-xs space-y-2">
+        <div class="flex items-center justify-between text-slate-400 text-[11px]">
+          <span>Production Webhook URL:</span>
+          <button id="copyWebhookBtn" class="text-emerald-400 hover:text-emerald-300 font-bold transition">Copy URL</button>
+        </div>
+        <code id="webhookUrlCode" class="text-emerald-300 font-mono text-[11px] block break-all bg-slate-900 p-2 rounded border border-slate-800 select-all">
+          http://127.0.0.1:8000/api/whatsapp/webhook
+        </code>
+        <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
+          <span>Meta Verify Token:</span>
+          <span class="font-mono text-slate-200 font-bold">airtel_udyam_secure_token</span>
+        </div>
+      </div>
+
+      <a href="https://wa.me/919876543210?text=Hi%20Airtel%20Business%2C%20I%20need%20broadband" target="_blank" class="mt-4 w-full block py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow">
+        Open in WhatsApp Web / App →
+      </a>
+    </div>
+  </div>
 
   <!-- FOOTER -->
   <footer class="bg-slate-950 border-t border-slate-800 py-2.5 px-6 text-center text-xs text-slate-500">
