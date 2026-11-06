@@ -203,10 +203,28 @@ function initEventListeners() {
   });
 
   // Chat Send
+  const chatInputEl = document.getElementById("chatInput");
   document.getElementById("sendBtn").addEventListener("click", handleChatSubmit);
-  document.getElementById("chatInput").addEventListener("keypress", (e) => {
-    if (e.key === "Enter") handleChatSubmit();
-  });
+  
+  if (chatInputEl) {
+    chatInputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        if (e.shiftKey) {
+          // Shift+Enter allows newline naturally
+          return;
+        }
+        // Enter without Shift submits message
+        e.preventDefault();
+        handleChatSubmit();
+      }
+    });
+
+    // Auto-grow textarea smoothly as user types multiline
+    chatInputEl.addEventListener("input", () => {
+      chatInputEl.style.height = "auto";
+      chatInputEl.style.height = Math.min(chatInputEl.scrollHeight, 120) + "px";
+    });
+  }
 
   // Quick Reply Chips
   document.querySelectorAll(".chip-btn").forEach(btn => {
@@ -669,6 +687,7 @@ async function handleChatSubmit() {
 
   addUserChatMessage(message);
   input.value = "";
+  input.style.height = "auto";
   const typingIndicator = showChatTyping();
 
   try {
