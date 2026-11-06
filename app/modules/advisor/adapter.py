@@ -195,7 +195,7 @@ class AdvisorAdapter:
             }
 
         # 3. Check for Business Type
-        has_business_type = any(
+        has_business_type = bool(profile.get("business_type")) or any(
             w in msg for w in [
                 "clinic", "doctor", "hospital", "dental", "pharma", "क्लिनिक", "डॉक्टर", "दवा",
                 "ca", "accountant", "office", "law", "firm", "consulting", "वकील", "दफ्तर",
@@ -206,7 +206,7 @@ class AdvisorAdapter:
         )
 
         # 4. MANDATORY CLARIFICATION CHECK:
-        # If city is missing OR employee count is missing OR query is vague:
+        # If city is missing OR employee count is missing OR business type is missing:
         is_profile_incomplete = (
             profile.get("city") is None or
             profile.get("employee_count") is None or
@@ -385,18 +385,23 @@ CATALOGUE RULES & 5-DIMENSIONAL FEASIBILITY MATRIX:
 
 CRITICAL INSTRUCTIONS FOR INTENT ROUTING:
 
-A. PROGRESSIVE CLARIFICATION (MANDATORY WHEN DETAILS ARE MISSING):
-   - When a user states their business (e.g. "I own a small shop and need wifi for it", "I have a clinic", "need internet for my office", "I need wifi"):
-     IF they have NOT provided BOTH:
-       1) Their City / Location, AND
-       2) Their Team size / Number of devices
-     YOU MUST SET intent="clarification", recommended_bundle=null, and politely ask the clarifying questions:
-       - Which city or town is their business located in?
-       - Approximately how many staff members or devices (phones, billing computers, card machines) will connect?
-       - Do they need digital payments (UPI QR soundbox for voice alerts), CCTV cameras, or cloud billing POS?
-   - NEVER assume the user lives in Indore or any city!
-   - NEVER say "As an Airtel Business partner in Indore" if the user has not explicitly stated they are in Indore!
-   - DO NOT generate a bundle until City and Scale are known!
+A. PROGRESSIVE CLARIFICATION (ONLY WHEN ESSENTIAL DETAILS ARE MISSING):
+   - Check the CURRENT CUSTOMER PROFILE CONTEXT above!
+   - Essential facts needed to recommend a plan:
+     1) City / Location (to determine city tier & speed feasibility)
+     2) Business Type (retail shop, clinic, office, etc.)
+     3) Scale / Headcount (how many staff or devices)
+   - NEVER ask for information that is ALREADY KNOWN in the CURRENT CUSTOMER PROFILE CONTEXT!
+   - If City is already known (e.g. 'Pune'), NEVER ask "which city are you in?".
+   - If Business Type is already known (e.g. 'shop'), NEVER ask what their business is.
+   - If Employee Count is already known (e.g. 3), NEVER ask how many staff they have.
+   - ONLY ask for the specific items that are STILL UNKNOWN!
+   - In your returned "profile" JSON, you MUST retain all previously known fields from CURRENT CUSTOMER PROFILE CONTEXT. Do NOT reset them to null!
+
+B. AUTOMATIC CONVERGENCE TO RECOMMENDATION:
+   - Once City, Business Type, and Scale/Headcount are ALL KNOWN (either previously in context or answered in this message):
+   - YOU HAVE COMPLETE INFORMATION! DO NOT ASK ANY MORE QUESTIONS!
+   - Immediately set intent="recommendation", select the tailored bundle (e.g., P01 Biz Fibre 100 + P19 Soundbox for shops; P02 Biz Fibre 300 for clinics), and provide the formal recommendation!
 
 B. INFORMATIONAL / FEASIBILITY INQUIRIES (intent: "inquiry"):
    - If the user asks a question (e.g. "is there a 50 mbps option also?", "do you have a faster wifi option?", "can I get leased line without GST?"):
@@ -452,7 +457,23 @@ Return ONLY a valid JSON object matching this schema:
                     # Extract and validate intent
                     intent = data.get("intent", "recommendation")
                     resp_message = data.get("message", "")
-                    llm_profile = data.get("profile") or profile
+                    # Merge with existing profile so previously known facts are NEVER erased
+                    llm_profile_raw = data.get("profile") or {}
+                    merged_profile = dict(profile)
+                    for pk, pv in llm_profile_raw.items():
+                        if pv is not None and pv != "":
+                            merged_profile[pk] = pv
+                    if merged_profile.get("city") and not merged_profile.get("city_tier"):
+                        city_tier_map = {
+                            "delhi": 1, "mumbai": 1, "bangalore": 1, "bengaluru": 1, "chennai": 1,
+                            "hyderabad": 1, "pune": 1, "kolkata": 1, "indore": 2, "jaipur": 2,
+                            "ludhiana": 2, "kochi": 2, "nagpur": 2, "bhopal": 2, "vizag": 2,
+                            "patna": 2, "surat": 2, "lucknow": 2, "chandigarh": 2
+                        }
+                        c_lower = str(merged_profile["city"]).lower().strip()
+                        merged_profile["city_tier"] = city_tier_map.get(c_lower, 2)
+                    llm_profile = merged_profile
+
                     raw_bundle = data.get("recommended_bundle") or {}
                     raw_tags = data.get("explainability_tags", [])
 
