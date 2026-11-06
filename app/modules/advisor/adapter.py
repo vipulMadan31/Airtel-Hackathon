@@ -78,8 +78,8 @@ class AdvisorAdapter:
                 profile["city_tier"] = ctier
                 break
 
-        # Extract Employee / device count if mentioned
-        emp_match = re.search(r'(\d+)\s*(people|staff|employees|workers|log|devices|pc|systems|कर्मचारी|लोग)', msg)
+        # Extract Employee / device / scale count if mentioned
+        emp_match = re.search(r'(\d+)\s*(people|staff|employees|workers|log|devices|pc|systems|chairs|beds|doctors|seats|users|counters|कर्मचारी|लोग)', msg)
         if emp_match:
             profile["employee_count"] = int(emp_match.group(1))
 
