@@ -27,26 +27,28 @@ class AdvisorAdapter:
         self,
         user_message: str,
         current_profile: Optional[Dict[str, Any]] = None,
-        language: str = "en"
+        language: str = "en",
+        history: Optional[List[Dict[str, str]]] = None
     ) -> Dict[str, Any]:
         """
         Extracts structured profile, intent, and outputs recommended bundle with explainability tags.
         """
         if self.has_llm_key:
             try:
-                result = self._call_external_llm(user_message, current_profile, language)
+                result = self._call_external_llm(user_message, current_profile, language, history=history)
                 if result:
                     return result
             except Exception:
                 pass
 
-        return self._process_deterministic(user_message, current_profile, language)
+        return self._process_deterministic(user_message, current_profile, language, history=history)
 
     def _process_deterministic(
         self,
         message: str,
         current_profile: Optional[Dict[str, Any]],
-        language: str
+        language: str,
+        history: Optional[List[Dict[str, str]]] = None
     ) -> Dict[str, Any]:
         msg = message.lower().strip()
         profile = dict(current_profile or {})
@@ -201,6 +203,51 @@ class AdvisorAdapter:
                 "explainability_tags": []
             }
 
+        # 1f. General Plan Inquiry / Catalogue Overview
+        plan_inquiry_keywords = [
+            "other plans", "other plan", "different plans", "different plan", "all plans",
+            "what plans", "types of plan", "plan options", "available plans", "list plans",
+            "plans list", "plans available", "show plans", "plans kya hai", "konsa plan",
+            "aur plan", "dusre plan", "tell me about plans", "what are your plans", "show me different plans"
+        ]
+        if any(w in msg for w in plan_inquiry_keywords):
+            inquiry_msg = (
+                "📶 *एयरटेल बिज़नेस एंटरप्राइज प्लान्स व स्पीड्स:*\n\n"
+                "1️⃣ *Biz 5G AirFiber 100:* ₹899/माह (100 Mbps वायरलेस 5G FWA, प्लग-एंड-प्ले, बिना तार)\n"
+                "2️⃣ *Biz Fibre 100:* ₹999/माह (100 Mbps ऑप्टिकल फाइबर ब्रॉडबैंड, दुकानों, बिलिंग व यूपीआई के लिए)\n"
+                "3️⃣ *Biz Fibre 300:* ₹1,499/माह (300 Mbps हाई-स्पीड फाइबर, क्लिनिक, ऑफिस व 5-20 कर्मचारियों के लिए)\n"
+                "4️⃣ *Biz Fibre 1G:* ₹3,999/माह (1 Gbps अल्ट्रा-फास्ट गीगाबिट फाइबर, टियर-1 महानगरों व भारी डेटा उपयोग के लिए)\n"
+                "5️⃣ *इंटरनेट लीज्ड लाइन (ILL 20M):* ₹8,000/माह (डेडिकेटेड 1:1 सिमेट्रिक बैंडविड्थ, 99.9% SLA)\n\n"
+                "💼 *डिजिटल प्रोडक्टिविटी एड-ऑन्स:*\n"
+                "• क्लाउड ईमेल (Google Workspace / M365): ₹125/यूज़र/माह\n"
+                "• क्लाउड बैकअप 1 TB (टैली बैकअप): ₹499/माह\n"
+                "• यूपीआई साउंडबॉक्स व बिलिंग पीओएस: ₹599/माह\n"
+                "• क्लाउड सीसीटीवी AI कैमरा: ₹199/कैमरा/माह\n"
+                "• स्टेटिक पब्लिक आईपी: ₹200/माह\n\n"
+                "आपके व्यवसाय के लिए सबसे सटीक प्लान चुनने के लिए, कृपया अपना शहर, व्यवसाय का प्रकार व कर्मचारियों की संख्या बताएं!"
+                if is_hindi else
+                "📶 *Airtel Business Enterprise Plans & Speeds:*\n\n"
+                "1️⃣ *Biz 5G AirFiber 100:* ₹899/mo (100 Mbps wireless plug-and-play FWA, zero wiring, instant setup)\n"
+                "2️⃣ *Biz Fibre 100:* ₹999/mo (100 Mbps optical fibre broadband, ideal for retail shops, billing & UPI)\n"
+                "3️⃣ *Biz Fibre 300:* ₹1,499/mo (300 Mbps high-speed fibre, ideal for clinics, offices, 5-20 staff)\n"
+                "4️⃣ *Biz Fibre 1G:* ₹3,999/mo (1 Gbps gigabit fibre, Tier-1 metros for tech startups & heavy usage)\n"
+                "5️⃣ *Internet Leased Line (ILL 20M):* ₹8,000/mo (Dedicated 1:1 symmetric CIR bandwidth with 99.9% uptime SLA)\n\n"
+                "💼 *Digital Productivity & Security Add-ons:*\n"
+                "• Cloud Email & Office Suite (Google Workspace / M365): ₹125/user/mo\n"
+                "• Cloud Backup 1 TB (Encrypted Tally & DB backup): ₹499/mo\n"
+                "• Cloud POS & UPI Soundbox: ₹599/mo\n"
+                "• Smart AI Cloud CCTV: ₹199/camera/mo\n"
+                "• Static Commercial IP: ₹200/mo\n\n"
+                "To recommend the ideal plan for your needs, could you please tell me which city your business is in, what type of business you run, and how many employees or devices will connect?"
+            )
+            return {
+                "intent": "inquiry",
+                "message": inquiry_msg,
+                "profile": profile,
+                "recommended_bundle": None,
+                "explainability_tags": []
+            }
+
         # 2. Cost Objection / Downsell Intent
         downsell_keywords = ["sasta", "mehenga", "cheap", "expensive", "discount", "kam karo", "budget", "कम", "सस्ता", "महंगा", "छूट"]
         if any(w in msg for w in downsell_keywords):
@@ -232,7 +279,8 @@ class AdvisorAdapter:
                 "ca", "accountant", "office", "law", "firm", "consulting", "वकील", "दफ्तर",
                 "restaurant", "cafe", "hotel", "branch", "chain", "होटल", "खाना",
                 "factory", "manufacturing", "textile", "parts", "workshop", "कारखाना",
-                "kirana", "shop", "bakery", "store", "salon", "retail", "दुकान", "किराना"
+                "kirana", "shop", "bakery", "store", "salon", "retail", "दुकान", "किराना",
+                "startup", "tech", "software", "agency", "it", "स्टार्टअप"
             ]
         )
 
@@ -258,6 +306,9 @@ class AdvisorAdapter:
             elif any(w in msg for w in ["restaurant", "cafe", "hotel", "होटल"]):
                 detected_b = "restaurant"
                 profile["business_type"] = "Restaurant / Multi-site"
+            elif any(w in msg for w in ["startup", "tech", "software", "agency", "it", "स्टार्टअप"]):
+                detected_b = "startup"
+                profile["business_type"] = "Tech Startup"
 
             if is_hindi:
                 clarify_msg = (
@@ -295,6 +346,9 @@ class AdvisorAdapter:
         elif any(w in msg for w in ["factory", "manufacturing", "textile", "parts", "workshop", "कारखाना"]):
             profile["business_type"] = "Small Manufacturer"
             profile["has_gstin"] = True
+        elif any(w in msg for w in ["startup", "tech", "software", "agency", "it", "स्टार्टअप"]):
+            profile["business_type"] = "Tech Startup"
+            profile["num_sites"] = 1
         elif any(w in msg for w in ["kirana", "shop", "bakery", "store", "salon", "retail", "दुकान", "किराना"]):
             profile["business_type"] = "Micro Retail"
             profile["num_sites"] = 1
@@ -305,7 +359,42 @@ class AdvisorAdapter:
 
         b_type = profile["business_type"]
         emp_cnt = profile.get("employee_count") or 3
-        if "Clinic" in b_type or "Professional" in b_type:
+        if "Tech Startup" in b_type:
+            tier = profile.get("city_tier") or 1
+            if emp_cnt >= 20 and tier == 1:
+                bundle = {"P02": 1, "P11": 1, "P16": min(emp_cnt, 25), "P20": 5}
+                speed_name = "Biz Fibre 300 (300 Mbps)"
+            else:
+                bundle = {"P02": 1, "P16": min(emp_cnt, 10), "P20": 2}
+                speed_name = "Biz Fibre 300 (300 Mbps)"
+            if is_hindi:
+                tags = [
+                    {"product_id": "P02", "name": "बिज़ फाइबर 300", "tag": f"{emp_cnt} कर्मचारियों के स्टार्टअप के लिए हाई-स्पीड 300 Mbps इंटरनेट"},
+                    {"product_id": "P16", "name": "क्लाउड ईमेल सुइट", "tag": "टीम के लिए Google Workspace / Microsoft 365 प्रोफेशनल ईमेल"},
+                    {"product_id": "P20", "name": "एंडपॉइंट सिक्योरिटी", "tag": "वर्कस्टेशन व लैपटॉप के लिए क्लाउड एंटीवायरस व सुरक्षा"},
+                    {"product_id": "P11", "name": "स्टैटिक आईपी", "tag": "डेवलपमेंट सर्वर और रिमोट एक्सेस के लिए फिक्स्ड आईपी"}
+                ]
+            else:
+                tags = [
+                    {"product_id": "P02", "name": "Biz Fibre 300", "tag": f"300 Mbps high-speed symmetric connectivity for {emp_cnt}-member startup team workloads"},
+                    {"product_id": "P16", "name": "Cloud Email Suite", "tag": f"Professional business email (Google Workspace/M365) for your team"},
+                    {"product_id": "P20", "name": "Endpoint Security", "tag": "Antivirus & ransomware defense for business workstations"},
+                    {"product_id": "P11", "name": "Static IP", "tag": "Fixed commercial IP for remote dev access, servers & VPN"}
+                ]
+            rec_msg = (
+                f"आपके {profile.get('city', '')} स्थित {emp_cnt} कर्मचारियों के स्टार्टअप के लिए, मैंने *{speed_name}* के साथ प्रोफेशनल क्लाउड ईमेल और सुरक्षा सुइट का बंडल तैयार किया है। यह तेज़ गति और विश्वसनीय इंटरनेट प्रदान करता है ताकि आपकी पूरी टीम बिना किसी रुकावट के काम कर सके।\n\n"
+                f"मासिक किराया: ₹1,499/माह (+ 18% GST = ₹1,768.82/माह कुल), स्थापना शुल्क (~₹2,500) 100% माफ है!"
+                if is_hindi else
+                f"For your {emp_cnt}-member startup in {profile.get('city', '')}, I recommend our *{speed_name}* plan bundled with Professional Cloud Email and Endpoint Security. It provides high-speed, low-latency connectivity to keep development, video calls, and cloud workflows running smoothly at ₹1,499/month (+ 18% GST = ₹1,768.82/month total with zero setup fee!)."
+            )
+            return {
+                "intent": "recommendation",
+                "message": rec_msg,
+                "profile": profile,
+                "recommended_bundle": bundle,
+                "explainability_tags": tags
+            }
+        elif "Clinic" in b_type or "Professional" in b_type:
             bundle = {"P02": 1, "P09": 1, "P16": min(emp_cnt, 10), "P20": 2}
             if is_hindi:
                 tags = [
@@ -367,15 +456,22 @@ class AdvisorAdapter:
             "explainability_tags": tags
         }
 
-    def _call_external_llm(self, user_message: str, current_profile: Any, language: str) -> Dict[str, Any]:
+    def _call_external_llm(
+        self,
+        user_message: str,
+        current_profile: Any,
+        language: str,
+        history: Optional[List[Dict[str, str]]] = None
+    ) -> Dict[str, Any]:
         """
-        Invokes Gemini 3.5 Flash with strict structured JSON output and full 5-dimensional rule guardrails.
+        Invokes Gemini with multi-turn conversation awareness, structured JSON output,
+        full 25-item Airtel Business product catalog, and 5-dimensional feasibility rules.
         """
         import requests
         from app.config import GEMINI_API_KEY, GEMINI_MODEL
 
         if not GEMINI_API_KEY:
-            return self._process_deterministic(user_message, current_profile, language)
+            return self._process_deterministic(user_message, current_profile, language, history=history)
 
         profile = dict(current_profile or {})
         city = profile.get("city")
@@ -388,74 +484,93 @@ class AdvisorAdapter:
 
         system_instruction = f"""
 You are the AI Business Advisor for Project Udyam Digital (Airtel Business Enterprise self-serve portal).
-Your job is to consult Indian MSMEs (Kirana, Clinic, Restaurant, Office, etc.) and recommend compliant telecom & digital SaaS bundles.
+Your job is to consult Indian MSMEs and businesses (Kirana, Clinic, Restaurant, Office, Tech Startup, etc.) and recommend compliant telecom & digital SaaS bundles.
 
 CURRENT CUSTOMER PROFILE CONTEXT:
-- City: {city if city else 'UNKNOWN (Do NOT assume or mention any city unless the user explicitly tells you!)'}
+- City: {city if city else 'UNKNOWN (Do NOT assume or mention any city unless the user explicitly told you in this conversation!)'}
 - City Tier: {f"Tier {city_tier}" if city_tier else 'UNKNOWN'}
 - Has Active GSTIN: {has_gstin if has_gstin is not None else 'UNKNOWN'}
 - Current Business Type: {business_type if business_type else 'UNKNOWN'}
 - Employee Count: {employee_count if employee_count else 'UNKNOWN'}
 - Language Requested: {'Hindi' if is_hindi else 'English'}
 
-CATALOGUE RULES & 5-DIMENSIONAL FEASIBILITY MATRIX:
-1. SPEED BOUNDARIES & CATALOGUE FLOOR:
-   - Broadband fibre starts at 100 Mbps (P01 Biz Fibre 100 @ ₹999/mo).
-   - SUB-100 MBPS FIBRE (e.g., 50 Mbps, 30 Mbps, 20 Mbps) DOES NOT EXIST in Airtel Business!
-   - The only sub-₹999 option is Biz 5G AirFiber Wireless (P04 @ ₹899/mo) or Postpaid SIM (P07 @ ₹299/mo).
-   - NEVER invent or agree that 50 Mbps fibre exists!
-2. CITY TIER FEASIBILITY:
-   - P03 (Biz Fibre 1G, 1000 Mbps) is TIER-1 ONLY (Metros like Mumbai, Delhi, Bengaluru, Chennai, Pune).
-   - In Tier-2 (Indore, Jaipur, Ludhiana, Kochi, etc.) and Tier-3 (Rohtak, etc.), maximum broadband speed is 300 Mbps (P02 @ ₹1,499) or 100 Mbps (P01 @ ₹999). 1 Gbps is NOT available.
-   - If the user's city is UNKNOWN and they ask for faster options, explain that fibre speeds range from 100M to 300M (up to 1G in Tier-1 metros), and ask which city they are in!
-3. STATUTORY GSTIN PREREQUISITES & ZERO ASSUMPTION:
-   - Broadband Fibre (Biz Fibre 100 / 300) is accessible to ALL Indian businesses with or without GSTIN.
-   - Products requiring verified GSTIN: P05 (ILL 20M), P06 (ILL 100M), P10 (SD-WAN), P11 (Static IP), P12 (SIP Trunk), P15 (MPLS VPN), P21 (Managed Firewall).
-   - STRICT GUARDRAIL: NEVER tell the customer "Since you do not have a GSTIN" or "As you don't have GSTIN" or assume their GST status!
-   - NEVER mention GSTIN unprompted unless the user explicitly asks about GST registration or Leased Lines!
-4. SCALE & HEADCOUNT PREREQUISITES:
-   - P05 (ILL 20M) requires >= 10 employees; P06 (ILL 100M) requires >= 25 employees; P15 (MPLS VPN) requires >= 10 employees; P10 (SD-WAN) requires >= 3 sites.
+AIRTEL BUSINESS COMPLETE 25-PRODUCT PORTFOLIO & FEASIBILITY RULES:
+
+1. BROADBAND FIBRE & WIRELESS CONNECTIVITY:
+   - P01: Biz Fibre 100 (₹999/mo, Tier 1 & 2) — 100 Mbps symmetric optical fibre broadband. Unlimited data, 99.9% uptime. Best for retail shops, UPI QR soundbox, basic billing.
+   - P02: Biz Fibre 300 (₹1,499/mo, Tier 1 & 2) — 300 Mbps high-speed optical fibre. Ideal for clinics, professional offices (CA, Legal), and growing startups (5-20+ staff) running cloud tools and video calls.
+   - P03: Biz Fibre 1G (₹3,999/mo, TIER-1 METROS ONLY: Delhi NCR, Mumbai, Bengaluru, Chennai, Pune, Hyderabad, Kolkata) — 1 Gbps (1,000 Mbps) gigabit fibre. Ideal for tech startups, software teams, media studios with 20-50+ heavy users.
+   - P04: Biz 5G AirFiber 100 (₹899/mo, Tier 1 & 2) — 100 Mbps plug-and-play wireless 5G fixed wireless access (FWA). Zero civil drilling or optical wire pulling needed. Ideal for quick setup, kiosks, budget options.
+   - P05: Internet Leased Line 20 Mbps (₹8,000/mo, requires GSTIN, >=10 staff) — Dedicated 1:1 symmetric uncompressed leased line with 99.9% uptime SLA.
+   - P06: Internet Leased Line 100 Mbps (₹25,000/mo, requires GSTIN, >=25 staff) — High-throughput 1:1 enterprise leased line.
+
+2. CORPORATE MOBILE & FAILOVER:
+   - P07: Business Postpaid 299 (₹299/SIM/mo) — Corporate CUG postpaid SIM with unlimited calls and 30GB data.
+   - P08: Business Postpaid 599 (₹599/SIM/mo) — Corporate postpaid SIM with unlimited calls and 100GB rollover data.
+   - P09: Backup 4G/5G Failover (₹499/mo) — Automatic wireless router backup keeping POS and billing online during fibre cuts.
+
+3. NETWORK SECURITY & MANAGED INFRASTRUCTURE:
+   - P10: Managed SD-WAN (₹2,500/mo, requires GSTIN, >=3 sites) — Multi-branch network optimization.
+   - P11: Static IP (₹200/mo) — Fixed commercial IPv4 address for CCTV remote streaming, tally/ERP servers, VPN.
+   - P20: Endpoint Security (₹99/device/mo) — Cloud antivirus and anti-ransomware protection for business PCs.
+   - P21: Managed Firewall (₹1,999/mo, requires GSTIN) — Unified Threat Management (UTM) firewall.
+   - P22: Secure Wi-Fi with Guest Network (₹399/mo) — Dual SSID router with captive portal separating private billing from customer Wi-Fi.
+
+4. CLOUD, SAAS & DIGITAL PRODUCTIVITY:
+   - P16: Cloud Email & Office Suite (₹125/user/mo) — Professional Google Workspace / Microsoft 365 @yourbusiness.com email.
+   - P17: Cloud Backup 1 TB (₹499/mo) — Encrypted automated offsite cloud backup for Tally and databases.
+   - P18: Website + Domain Starter (₹299/mo) — Domain name (.in/.com), hosting, and SSL certificate.
+   - P19: Cloud POS & Billing (₹599/mo) — Cloud billing software and Airtel UPI Soundbox for instant audio alerts.
+
+5. BUSINESS COMMUNICATIONS & OMNICHANNEL:
+   - P12: Cloud Telephony / SIP Trunk (₹1,000/mo, requires GSTIN) — Virtual IVR and smart call routing.
+   - P13: Toll-free 1800 Number (₹1,500/mo, requires GSTIN) — 1800 brand helpline.
+   - P14: Business SMS 10k (₹1,500/mo, requires GSTIN) — Transactional OTP and marketing SMS.
+   - P15: WhatsApp Business API Starter (₹999/mo, requires GSTIN) — Official green-tick verified WhatsApp business messaging.
+
+6. IOT & SMART SURVEILLANCE:
+   - P23: Cloud CCTV (₹199/camera/mo) — Smart AI night-vision security camera with cloud recording.
+   - P24: Machine Monitoring IoT (₹149/sensor/mo, requires GSTIN) — Factory equipment vibration/temperature sensors.
+   - P25: Fleet Tracker (₹199/vehicle/mo) — GPS vehicle tracking for logistics & delivery.
+
+FEASIBILITY & STATUTORY RULES:
+- Broadband fibre starts at 100 Mbps (P01 @ ₹999/mo). Sub-100 Mbps fibre (50M, 30M, 20M) DOES NOT EXIST in Airtel Business!
+- P03 (Biz Fibre 1G) is TIER-1 ONLY. In Tier-2/3, maximum broadband speed is 300 Mbps (P02 @ ₹1,499).
+- Broadband fibre (P01, P02, P04) is accessible WITHOUT GSTIN.
+- STRICT GUARDRAIL: NEVER tell the customer "Since you do not have a GSTIN" or assume their GST status! Do NOT preach about GST unprompted!
 
 CRITICAL INSTRUCTIONS FOR INTENT ROUTING:
 
-A. PROGRESSIVE CLARIFICATION (ONLY WHEN ESSENTIAL DETAILS ARE MISSING):
-   - Check the CURRENT CUSTOMER PROFILE CONTEXT above!
-   - Essential facts needed to recommend a plan:
-     1) City / Location (to determine city tier & speed feasibility)
-     2) Business Type (retail shop, clinic, office, etc.)
-     3) Scale / Headcount (how many staff or devices)
-   - NEVER ask for information that is ALREADY KNOWN in the CURRENT CUSTOMER PROFILE CONTEXT!
-   - If City is already known (e.g. 'Rohtak', 'Pune'), NEVER ask "which city are you in?".
-   - If Business Type is already known (e.g. 'shop'), NEVER ask what their business is.
-   - If Employee Count is already known (e.g. 5, 3), NEVER ask how many staff they have.
-   - ONLY ask for the specific items that are STILL UNKNOWN!
-   - In your returned "profile" JSON, you MUST retain all previously known fields from CURRENT CUSTOMER PROFILE CONTEXT. Do NOT reset them to null!
+A. MULTI-TURN CONVERSATION MEMORY (NEVER FORGET PREVIOUS FACTS):
+   - Review the conversation turns!
+   - If the user previously mentioned their city (e.g. 'Noida'), business type (e.g. 'startup'), or headcount (e.g. '25'), YOU MUST RETAIN THEM IN "profile"!
+   - NEVER ask for information that was ALREADY stated in earlier turns or in CURRENT CUSTOMER PROFILE CONTEXT!
+   - When City, Business Type, and Headcount/Scale are ALL KNOWN:
+     YOU HAVE COMPLETE INFORMATION! DO NOT ASK ANY MORE QUESTIONS!
+     Immediately set intent="recommendation"!
 
-B. AUTOMATIC CONVERGENCE TO RECOMMENDATION:
-   - Once City, Business Type, and Scale/Headcount are ALL KNOWN (either previously in context or answered in this message):
-   - YOU HAVE COMPLETE INFORMATION! DO NOT ASK ANY MORE QUESTIONS!
-   - Immediately set intent="recommendation"!
-   - YOU MUST ALWAYS POPULATE "recommended_bundle", e.g. {{"P01": 1}} for retail shops, {{"P02": 1}} for clinics/offices. NEVER leave recommended_bundle empty!
-   - YOU MUST ALWAYS STATE THE EXACT PRICE IN YOUR MESSAGE:
-     - Biz Fibre 100: ₹999/month (+ 18% GST = ₹1,178.82/month total; ₹2,500 setup fee is 100% waived!).
-     - Biz Fibre 300: ₹1,499/month (+ 18% GST = ₹1,768.82/month total; setup fee is waived!).
+B. PLAN INQUIRIES & CATALOGUE OVERVIEW (intent: "inquiry"):
+   - If user asks "what plans do you have?", "tell me about different plans", "what are the other plans", "what speeds do you have", "show plans":
+     Set intent="inquiry", recommended_bundle=null.
+     Provide a clear, helpful overview of the main plan tiers:
+     1. Biz 5G AirFiber 100 (₹899/mo - Wireless plug-and-play, zero wiring)
+     2. Biz Fibre 100 (₹999/mo - 100 Mbps optical fibre, best for retail & billing)
+     3. Biz Fibre 300 (₹1,499/mo - 300 Mbps high-speed fibre for clinics, offices, 5-20+ staff)
+     4. Biz Fibre 1G (₹3,999/mo - 1 Gbps gigabit fibre in Tier-1 metros for heavy tech usage)
+     5. Internet Leased Line (ILL 20M @ ₹8,000/mo - 1:1 dedicated symmetric SLA)
+     Mention add-ons (Cloud Email @ ₹125/user, Cloud Backup @ ₹499, CCTV @ ₹199, UPI Soundbox @ ₹599, Static IP @ ₹200).
 
-C. PRICE INQUIRIES & PRICING QUESTIONS:
-   - If user asks for price or cost ("ok, what would be the price for that", "what is the price", "how much", "charges", "kitna kharcha"):
-     DO NOT ask for city or headcount again if they are already known in CURRENT CUSTOMER PROFILE CONTEXT!
-     Set intent="recommendation", recommended_bundle={{"P01": 1}}, and immediately state the price clearly: "Biz Fibre 100 is ₹999/month (+ 18% GST = ₹1,178.82/month total with zero setup fee)."
+C. TAILORED RECOMMENDATIONS (intent: "recommendation"):
+   - When recommending for Tech Startups / Software / Agencies (e.g., 25 employees in Noida):
+     Recommend Biz Fibre 300 (P02 @ ₹1,499/mo) or Biz Fibre 1G (P03 @ ₹3,999/mo) + Cloud Email (P16) + Endpoint Security (P20) + Static IP (P11). Set recommended_bundle={{"P02": 1, "P16": 25, "P20": 5, "P11": 1}}.
+   - For Retail / Kirana shops: Biz Fibre 100 (P01 @ ₹999) + UPI Soundbox / POS (P19 @ ₹599).
+   - For Clinics / Healthcare: Biz Fibre 300 (P02 @ ₹1,499) + Cloud Backup 1TB (P17 @ ₹499) + Guest Wi-Fi (P22 @ ₹399).
+   - For Professional Offices (CA, Legal): Biz Fibre 300 (P02) + Cloud Email (P16) + Cloud Backup (P17).
+   - State the monthly commitment and mention that the ₹2,500 setup fee is 100% waived!
 
-B. INFORMATIONAL / FEASIBILITY INQUIRIES (intent: "inquiry"):
-   - If the user asks a question (e.g. "is there a 50 mbps option also?", "do you have a faster wifi option?", "can I get leased line without GST?"):
-     Set intent="inquiry", recommended_bundle=null (LEAVE THEIR CART UNTOUCHED!).
-     Explain the technical catalogue facts accurately. If city is needed to verify exact speed limits, ask for their city.
-
-C. DOWN-SELL (intent: "downsell_request"):
-   - If user asks for a cheaper plan ("sasta", "mehenga", "cheap", "expensive", "kam budget"), set intent="downsell_request", strip optional add-ons, keep essential floor connectivity (P01: 1), and explain the savings.
-
-D. RECOMMENDATION (intent: "recommendation"):
-   - When the user provides their business type, city, and scale/team size (e.g., 'We are a CA accounting firm with 8 auditors in Jaipur', 'Dental clinic in Pune with 6 staff', 'Kirana store in Indore with 2 staff'), this is SUFFICIENT information!
-   - Do NOT ask further questions. Set intent="recommendation" and generate the tailored bundle with explainability tags immediately!
+D. PRICE INQUIRIES & PRICING QUESTIONS:
+   - If user asks for price or cost of their recommended plan:
+     State the exact rental with 18% GST and waived setup fee clearly.
 
 E. EXECUTIVE / CALL REQUESTS (intent: "inquiry"):
    - If user asks to speak to an executive, agent, human, or request a call/callback:
@@ -467,25 +582,37 @@ Return ONLY a valid JSON object matching this schema:
 {{
   "intent": "clarification" | "inquiry" | "recommendation" | "downsell_request",
   "language": "en" | "hi",
-  "message": "Conversational reply in the user's language asking clarifying questions or presenting the bundle.",
+  "message": "Conversational reply in the user's language.",
   "profile": {{
     "business_type": string | null,
     "employee_count": number | null,
     "num_sites": number,
     "city": string | null,
     "city_tier": 1 | 2 | 3 | null,
-    "has_gstin": boolean
+    "has_gstin": boolean | null
   }},
   "recommended_bundle": {{ "<product_id>": <quantity> }} | null,
   "explainability_tags": [
-    {{ "product_id": "P01", "name": "Biz Fibre 100", "tag": "Explanation why chosen" }}
+    {{ "product_id": "P02", "name": "Biz Fibre 300", "tag": "Explanation why chosen" }}
   ]
 }}
 """
 
         candidate_models = [GEMINI_MODEL, "gemini-3.1-flash-lite", "gemini-3-flash-preview"]
+
+        # Build multi-turn contents from conversation history if available
+        contents = []
+        if history:
+            for turn in history[-12:]:
+                r = "user" if turn.get("role") == "user" else "model"
+                txt = turn.get("text", "")
+                if txt:
+                    contents.append({"role": r, "parts": [{"text": txt}]})
+        if not contents or contents[-1]["role"] != "user" or contents[-1]["parts"][0]["text"] != user_message:
+            contents.append({"role": "user", "parts": [{"text": user_message}]})
+
         payload = {
-            "contents": [{"parts": [{"text": user_message}]}],
+            "contents": contents,
             "systemInstruction": {"parts": [{"text": system_instruction}]},
             "generationConfig": {
                 "responseMimeType": "application/json",
@@ -513,9 +640,12 @@ Return ONLY a valid JSON object matching this schema:
                     if merged_profile.get("city") and not merged_profile.get("city_tier"):
                         city_tier_map = {
                             "delhi": 1, "mumbai": 1, "bangalore": 1, "bengaluru": 1, "chennai": 1,
-                            "hyderabad": 1, "pune": 1, "kolkata": 1, "indore": 2, "jaipur": 2,
-                            "ludhiana": 2, "kochi": 2, "nagpur": 2, "bhopal": 2, "vizag": 2,
-                            "patna": 2, "surat": 2, "lucknow": 2, "chandigarh": 2
+                            "hyderabad": 1, "pune": 1, "kolkata": 1, "noida": 1, "gurgaon": 1,
+                            "gurugram": 1, "delhi ncr": 1, "ahmedabad": 1,
+                            "indore": 2, "jaipur": 2, "ludhiana": 2, "kochi": 2, "nagpur": 2,
+                            "bhopal": 2, "vizag": 2, "patna": 2, "surat": 2, "lucknow": 2,
+                            "chandigarh": 2, "faridabad": 2, "ghaziabad": 2, "kanpur": 2,
+                            "rohtak": 3
                         }
                         c_lower = str(merged_profile["city"]).lower().strip()
                         merged_profile["city_tier"] = city_tier_map.get(c_lower, 2)
@@ -526,8 +656,12 @@ Return ONLY a valid JSON object matching this schema:
 
                     # If recommendation intent but bundle was omitted by LLM, auto-populate from recommendation text
                     if intent == "recommendation" and not raw_bundle:
-                        if "300" in resp_message.lower() or "p02" in resp_message.lower():
+                        if "1g" in resp_message.lower() or "1 gbps" in resp_message.lower() or "p03" in resp_message.lower():
+                            raw_bundle = {"P03": 1}
+                        elif "300" in resp_message.lower() or "p02" in resp_message.lower():
                             raw_bundle = {"P02": 1}
+                        elif "airfiber" in resp_message.lower() or "p04" in resp_message.lower():
+                            raw_bundle = {"P04": 1}
                         else:
                             raw_bundle = {"P01": 1}
 
@@ -569,7 +703,14 @@ Return ONLY a valid JSON object matching this schema:
                     base_pids = ["P01", "P02", "P03", "P04", "P07", "P08"]
                     has_base = any(pid in validated_bundle for pid in base_pids)
                     if not has_base and validated_bundle:
-                        validated_bundle["P01"] = 1
+                        if "1g" in resp_message.lower() or "1 gbps" in resp_message.lower() or "p03" in resp_message.lower():
+                            validated_bundle["P03" if city_tier == 1 else "P02"] = 1
+                        elif "300" in resp_message.lower() or "p02" in resp_message.lower():
+                            validated_bundle["P02"] = 1
+                        elif "airfiber" in resp_message.lower() or "p04" in resp_message.lower():
+                            validated_bundle["P04"] = 1
+                        else:
+                            validated_bundle["P01"] = 1
 
                     # Clean tags to only validated products
                     validated_tags = [

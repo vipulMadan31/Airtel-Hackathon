@@ -141,8 +141,14 @@ class WhatsAppHandler:
             "rental", "monthly bill", "kitna", "kharcha", "kimat", "kya rate",
             "what would be the price", "what is the price"
         ]
+        is_plan_inquiry = any(w in lower_text for w in [
+            "other plan", "other plans", "different plan", "different plans", "all plans",
+            "what plans", "types of plan", "plan options", "available plans", "list plans",
+            "show plans", "plans kya hai", "konsa plan", "aur plan", "dusre plan", "tell me about plans",
+            "what are your plans", "show me different plans", "plans list", "which plan", "speed options"
+        ])
         is_downsell = any(w in lower_text for w in ["sasta", "cheap", "expensive", "discount", "kam karo", "kam budget"])
-        if any(w in lower_text for w in price_keywords) and not is_downsell:
+        if any(w in lower_text for w in price_keywords) and not is_downsell and not is_plan_inquiry:
             active_bundle = session.get("active_bundle")
             if not active_bundle or len(active_bundle) == 0:
                 active_bundle = {"P01": 1}
@@ -253,18 +259,20 @@ class WhatsAppHandler:
 
         # 7. Conversational Chat & AI Advisor Flow
         profile = session.get("current_profile") or {}
+        chat_history = session.get("chat_history") or []
 
-        # If user states a fresh discovery request (e.g. "I need wifi", "I need a wifi for my shop"),
+        # If user states a fresh discovery request on Turn 1 (empty chat history),
         # do not inherit stale city or scale from previous completed conversations
         fresh_starters = [
             "need wifi", "need a wifi", "need internet", "wifi chahiye", "internet chahiye",
             "new connection", "broadband chahiye", "wifi for my", "wifi for shop", "wifi for office"
         ]
-        if any(w in lower_text for w in fresh_starters):
+        if len(chat_history) == 0 and any(w in lower_text for w in fresh_starters):
             city_keywords = [
                 "delhi", "mumbai", "bangalore", "bengaluru", "chennai", "hyderabad",
                 "pune", "kolkata", "indore", "jaipur", "ludhiana", "kochi",
-                "nagpur", "bhopal", "vizag", "patna", "surat", "lucknow", "chandigarh"
+                "nagpur", "bhopal", "vizag", "patna", "surat", "lucknow", "chandigarh",
+                "noida", "gurgaon", "rohtak", "delhi ncr"
             ]
             import re
             has_city_in_msg = any(c in lower_text for c in city_keywords)
@@ -276,14 +284,18 @@ class WhatsAppHandler:
             if not has_emp_in_msg:
                 profile["employee_count"] = None
 
-        advisor_res = self.advisor.process_user_message(raw_text, profile, language)
+        advisor_res = self.advisor.process_user_message(raw_text, profile, language, history=chat_history)
         new_profile = advisor_res.get("profile") or profile
         intent = advisor_res.get("intent", "recommendation")
         bot_message = advisor_res.get("message", "")
         bundle = advisor_res.get("recommended_bundle")
 
-        # ALWAYS persist customer context (city, scale, business type) to DB on every turn
-        self.session_mgr.update_session(phone_number, profile=new_profile)
+        # Track conversation history
+        chat_history.append({"role": "user", "text": raw_text})
+        chat_history.append({"role": "model", "text": bot_message})
+
+        # ALWAYS persist customer context (city, scale, business type, dialogue history) to DB on every turn
+        self.session_mgr.update_session(phone_number, profile=new_profile, chat_history=chat_history)
 
         # If recommendation intent, guarantee a valid bundle so pricing quote card is always sent
         if intent == "recommendation" and (not bundle or len(bundle) == 0):
@@ -293,11 +305,11 @@ class WhatsAppHandler:
         buttons = []
 
         if intent == "clarification":
-            self.session_mgr.update_session(phone_number, stage="DISCOVERY", profile=new_profile)
+            self.session_mgr.update_session(phone_number, stage="DISCOVERY", profile=new_profile, chat_history=chat_history)
             buttons = []
 
         elif intent == "inquiry":
-            self.session_mgr.update_session(phone_number, profile=new_profile)
+            self.session_mgr.update_session(phone_number, profile=new_profile, chat_history=chat_history)
 
         elif bundle and len(bundle) > 0:
             quote = self.pricing.calculate_quote(
@@ -310,7 +322,8 @@ class WhatsAppHandler:
                 stage="QUOTED",
                 profile=new_profile,
                 bundle=bundle,
-                quote=quote
+                quote=quote,
+                chat_history=chat_history
             )
             quote_card = self.formatter.format_quote_card(quote, language)
             messages.append(quote_card)

@@ -61,6 +61,7 @@ class ChatRequest(BaseModel):
     message: str
     current_profile: Optional[Dict[str, Any]] = None
     language: str = "en"
+    history: Optional[List[Dict[str, str]]] = None
 
 class BucketRequest(BaseModel):
     city_tier: int = 1
@@ -140,7 +141,7 @@ def health_check():
 # 1. Advisor
 @app.post("/api/advisor/chat")
 def chat_with_advisor(req: ChatRequest):
-    return advisor_adapter.process_user_message(req.message, req.current_profile, req.language)
+    return advisor_adapter.process_user_message(req.message, req.current_profile, req.language, history=req.history)
 
 # 2. Catalog & 3-Bucket Drawer
 @app.get("/api/catalog/products")

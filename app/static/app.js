@@ -28,8 +28,9 @@ const STATE = {
     num_sites: 1,
     city: null,
     city_tier: null,
-    has_gstin: false
+    has_gstin: null
   },
+  chatHistory: [],
   selectedBundle: {},
   downsellStep: 1,
   activeQuote: null,
@@ -967,6 +968,10 @@ async function handleChatSubmit() {
   input.style.height = "auto";
   const typingIndicator = showChatTyping();
 
+  // Track user turn in chat history
+  if (!STATE.chatHistory) STATE.chatHistory = [];
+  STATE.chatHistory.push({ role: "user", text: message });
+
   try {
     const res = await fetch("/api/advisor/chat", {
       method: "POST",
@@ -974,7 +979,8 @@ async function handleChatSubmit() {
       body: JSON.stringify({
         message: message,
         current_profile: STATE.profile,
-        language: STATE.language
+        language: STATE.language,
+        history: STATE.chatHistory
       })
     });
     const data = await res.json();
@@ -985,10 +991,18 @@ async function handleChatSubmit() {
       if (badge) badge.innerText = data.ai_engine;
     }
 
-    if (data.profile && data.intent === 'recommendation') STATE.profile = data.profile;
+    // Always merge profile facts so known context (e.g. city, startup, headcount) is NEVER lost across turns
+    if (data.profile) {
+      STATE.profile = Object.assign({}, STATE.profile, data.profile);
+    }
     if (data.recommended_bundle && Object.keys(data.recommended_bundle).length > 0) {
       STATE.selectedBundle = data.recommended_bundle;
       recalculateQuote();
+    }
+
+    // Track assistant turn in chat history
+    if (data.message) {
+      STATE.chatHistory.push({ role: "model", text: data.message });
     }
 
     addAiChatMessage(data.message, data.explainability_tags);
