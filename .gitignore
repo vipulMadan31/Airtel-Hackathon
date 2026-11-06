@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Temporary / OS
+__MACOSX/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# Local Runtime DB & Uploads
+udyam_orders.db
+uploads/*
+!uploads/.gitkeep

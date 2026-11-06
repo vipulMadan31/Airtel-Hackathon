@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Udyam Digital — Airtel Business</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            airtel: {
+              red: '#E40000',
+              dark: '#990000',
+              light: '#FFF1F1'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <!-- TOP HEADER -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-airtel-red flex items-center justify-center text-white font-black text-xl shadow-md">
+          a
+        </div>
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-airtel-red" id="t-brand-sub">Airtel Business</span>
+          <h1 class="text-lg font-extrabold text-slate-900 leading-tight" id="t-app-title">Project Udyam Digital</h1>
+        </div>
+      </div>
+
+      <!-- Controls: Safe Mode, Language, Partner -->
+      <div class="flex items-center space-x-2 sm:space-x-4">
+        <!-- Non-GST Safe Mode Toggle -->
+        <label class="flex items-center space-x-2 text-xs font-semibold cursor-pointer bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-full border border-slate-200 transition">
+          <input type="checkbox" id="safeModeToggle" class="rounded text-airtel-red focus:ring-0">
+          <span id="t-safe-mode">Non-GST Safe Mode</span>
+        </label>
+
+        <!-- Language Switcher -->
+        <div class="flex rounded-full bg-slate-100 p-0.5 border border-slate-200 text-xs font-bold">
+          <button id="langEn" class="px-2.5 py-1 rounded-full bg-white shadow-sm text-slate-900">EN</button>
+          <button id="langHi" class="px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900">हिंदी</button>
+        </div>
+
+        <!-- Partner Portal Link -->
+        <button id="partnerPortalBtn" class="text-xs font-bold text-slate-600 hover:text-airtel-red border border-slate-300 px-3 py-1.5 rounded-lg transition">
+          <span id="t-partner-btn">Partner Portal</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: CONVERSATIONAL ADVISOR (5 cols on lg) -->
+    <section class="lg:col-span-5 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[640px]">
+      <div class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-sm font-bold" id="t-advisor-title">AI Business Advisor</span>
+        </div>
+        <span class="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono" id="t-rule-guarded">Rule-Engine Guarded</span>
+      </div>
+
+      <!-- Chat Messages Container -->
+      <div id="chatMessages" class="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/50 text-sm">
+        <!-- Messages will be injected by JS -->
+      </div>
+
+      <!-- Quick Reply Chips -->
+      <div class="p-2.5 bg-white border-t border-slate-100 flex flex-wrap gap-1.5 text-xs">
+        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="I run a Kirana / Retail store with 2 staff in Indore." data-msg-hi="मेरी इंदौर में 2 कर्मचारियों के साथ किराना दुकान है।" id="t-chip-retail">Kirana / Retail</button>
+        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="I run a dental clinic in Pune with 6 staff. Need wifi and email." data-msg-hi="मेरा पुणे में 6 स्टाफ का डेंटल क्लिनिक है। वाईफाई और सुरक्षित ईमेल चाहिए।" id="t-chip-clinic">Dental Clinic</button>
+        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="CA Office in Jaipur, 8 employees, need high uptime & secure storage." data-msg-hi="जयपुर में सीए ऑफिस है, 8 लोग काम करते हैं, हाई अपटाइम और सुरक्षित स्टोरेज चाहिए।" id="t-chip-ca">CA / Legal Office</button>
+        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="Restaurant chain in Mumbai, 3 locations, need CCTV and central billing." data-msg-hi="मुंबई में 3 शाखाओं का रेस्टोरेंट है, सीसीटीवी और सेंट्रलाइज्ड बिलिंग चाहिए।" id="t-chip-restaurant">Restaurant (Multi-site)</button>
+        <button class="chip-btn bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-full font-bold transition" data-msg-en="Yeh thoda mehenga hai, sasta plan dikhao." data-msg-hi="यह थोड़ा महंगा है, कोई सस्ता प्लान दिखाओ।" id="t-chip-sasta">Sasta Plan / Cheaper</button>
+      </div>
+
+      <!-- Chat Input -->
+      <div class="p-3 bg-white border-t border-slate-200 flex items-center space-x-2">
+        <input type="text" id="chatInput" placeholder="Describe your business or needs..." class="flex-1 text-sm border border-slate-300 rounded-xl px-3.5 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
+        <button id="sendBtn" class="bg-airtel-red hover:bg-airtel-dark text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition">
+          <span id="t-send-btn">Send</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: MODULAR QUOTE, SMART KYC & TRACKER (7 cols on lg) -->
+    <section class="lg:col-span-7 flex flex-col space-y-6">
+
+      <!-- STEP 1: MODULAR QUOTE & CART -->
+      <div id="quoteCard" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-airtel-red" id="t-quote-badge">Pillar 2: Transparent Pricing</span>
+            <h2 class="text-lg font-extrabold text-slate-900" id="t-quote-heading">Your Customized Udyam Bundle</h2>
+          </div>
+          <button id="browseAllPlansBtn" class="text-xs font-bold text-airtel-red hover:underline flex items-center space-x-1">
+            <span id="t-browse-all">Browse All 25 Plans</span>
+            <span>&rarr;</span>
+          </button>
+        </div>
+
+        <!-- Selected Products List -->
+        <div id="selectedItemsList" class="py-4 space-y-2.5">
+          <!-- Dynamically populated -->
+        </div>
+
+        <!-- Live Totals & Pricing Reconciler -->
+        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 mt-2 space-y-2 text-sm">
+          <div class="flex justify-between text-slate-600">
+            <span id="t-monthly-subtotal">Monthly Recurring Subtotal:</span>
+            <span class="font-semibold text-slate-900" id="monthlySubtotal">₹0.00</span>
+          </div>
+          <div class="flex justify-between text-slate-600">
+            <span id="t-gst-label">GST (18% itemized):</span>
+            <span class="font-semibold text-slate-900" id="gstTotal">₹0.00</span>
+          </div>
+          <div class="flex justify-between text-slate-600">
+            <span id="t-setup-fee-label">One-Time Setup Fee:</span>
+            <span class="font-semibold text-emerald-600" id="t-setup-waived">Waived (Saved ₹2,500)</span>
+          </div>
+          <div class="pt-2 border-t border-slate-200 flex justify-between items-baseline">
+            <div>
+              <span class="text-base font-extrabold text-slate-900" id="t-total-commitment">Total Monthly Commitment:</span>
+              <span class="text-xs block text-slate-500 font-medium" id="t-consolidated-bill">Single consolidated monthly bill</span>
+            </div>
+            <span class="text-2xl font-black text-airtel-red" id="monthlyGrandTotal">₹0.00</span>
+          </div>
+        </div>
+
+        <!-- ₹499 Priority Booking Model -->
+        <div class="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
+          <div>
+            <span class="font-bold text-emerald-900 block" id="t-token-title">Zero Risk Booking: Pay Only ₹499 Refundable Token Today</span>
+            <p class="text-emerald-700" id="t-token-sub">Balance auto-debited via UPI AutoPay only after your line is physically activated.</p>
+          </div>
+          <span class="text-emerald-800 font-bold bg-white px-2.5 py-1 rounded-lg border border-emerald-300" id="t-token-btn">₹499 Now</span>
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-5 flex items-center justify-between">
+          <button id="downsellBtn" class="text-xs font-bold text-slate-600 hover:text-airtel-red border border-slate-300 px-3 py-2 rounded-xl transition">
+            <span id="t-downsell-btn">&darr; Sasta Plan (Down-Sell)</span>
+          </button>
+          <button id="proceedKycBtn" class="bg-airtel-red hover:bg-airtel-dark text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md transition flex items-center space-x-2">
+            <span id="t-proceed-kyc">Proceed to Smart KYC &rarr;</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: SMART KYC & DOCUMENT OCR PIPELINE -->
+      <div id="kycCard" class="hidden bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-600" id="t-kyc-badge">Pillar 3: Smart KYC</span>
+            <h2 class="text-lg font-extrabold text-slate-900" id="t-kyc-heading">Instant Verification & DPDP Consent</h2>
+          </div>
+          <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full" id="t-rule3-badge">Rule 3 Aligned</span>
+        </div>
+
+        <!-- DPDP Rule 3 Statutory Notice Modal/Box -->
+        <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 text-xs text-blue-900 space-y-1.5">
+          <span class="font-bold block text-blue-950 uppercase tracking-wider text-[11px]" id="t-dpdp-title">DPDP ACT 2023 & RULES 2025 NOTICE</span>
+          <p id="t-dpdp-itemized"><strong>Itemized Data:</strong> Principal business address, GSTIN/Udyam registry records, signatory ID.</p>
+          <p id="t-dpdp-purpose"><strong>Specified Purpose:</strong> DoT Subscriber Verification and physical line activation only.</p>
+          <div class="flex items-center space-x-3 text-[11px] text-blue-800 pt-1">
+            <a href="#" class="underline hover:text-blue-950" id="t-dpdp-withdraw">Withdraw Consent Anytime</a>
+            <span>&bull;</span>
+            <span id="t-dpdp-dpo">DPO: privacy@accelbusiness.in</span>
+          </div>
+        </div>
+
+        <!-- REAL DOCUMENT UPLOAD / SPECIMEN SWITCHER -->
+        <div class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+            <span class="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Document Upload & Automated OCR</span>
+            <span class="text-[11px] text-slate-500">Live OpenCV & Windows Media OCR</span>
+          </div>
+
+          <!-- Upload Option A: Real File Upload -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
+              <label class="block text-xs font-bold text-slate-800" id="t-upload-gst-label">1. Upload GST Certificate (PNG/JPG):</label>
+              <input type="file" id="gstFileInput" accept="image/*,.pdf" class="text-xs text-slate-600 w-full file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-airtel-red file:text-white hover:file:bg-airtel-dark cursor-pointer">
+            </div>
+            <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
+              <label class="block text-xs font-bold text-slate-800" id="t-upload-address-label">2. Upload Address Proof (Electricity Bill):</label>
+              <input type="file" id="addressFileInput" accept="image/*,.pdf" class="text-xs text-slate-600 w-full file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-white hover:file:bg-black cursor-pointer">
+            </div>
+          </div>
+
+          <!-- Upload Option B: 1-Click Hackathon Specimen Loader -->
+          <div class="pt-2 border-t border-slate-200">
+            <span class="block text-xs font-bold text-slate-700 mb-1.5" id="t-or-choose-specimen">Or test with official hackathon specimen applicant:</span>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button class="specimen-chip bg-white hover:bg-slate-200 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-lg text-xs font-semibold transition" data-code="K12">K12 (Golden Path Pass)</button>
+              <button class="specimen-chip bg-white hover:bg-slate-200 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-lg text-xs font-semibold transition" data-code="K01">K01 (Cancelled GST Trap)</button>
+              <button class="specimen-chip bg-white hover:bg-slate-200 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-lg text-xs font-semibold transition" data-code="K04">K04 (Blurry Document Trap)</button>
+              <button class="specimen-chip bg-white hover:bg-slate-200 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-lg text-xs font-semibold transition" data-code="K11">K11 (Expired Bill >90d Trap)</button>
+            </div>
+          </div>
+
+          <!-- Document Preview Box -->
+          <div id="docPreviewContainer" class="hidden bg-white p-3 rounded-lg border border-slate-200 flex items-start space-x-3">
+            <img id="docPreviewImg" src="" alt="Document Preview" class="w-20 h-24 object-contain rounded border border-slate-200 bg-slate-50">
+            <div class="text-xs space-y-1 flex-1">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-900" id="docPreviewName">Document Loaded</span>
+                <span id="docBlurBadge" class="px-2 py-0.5 rounded text-[10px] font-bold"></span>
+              </div>
+              <p class="text-slate-500 text-[11px]" id="docTypeDetected">Type: Analyzing...</p>
+              <p class="text-slate-400 font-mono text-[10px] line-clamp-2" id="docRawSnippet"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- EDITABLE EXTRACTED FIELDS REVIEW (Brief: "Show extracted values to user for correction") -->
+        <div id="ocrReviewCard" class="border border-slate-200 rounded-xl p-4 bg-white space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h4 class="font-extrabold text-xs uppercase tracking-wider text-slate-800" id="t-review-heading">Review Extracted Data (Editable)</h4>
+            <span class="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold">OCR Auto-Extracted</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1" id="t-field-gstin">Extracted GSTIN:</label>
+              <input type="text" id="extractedGstinInput" placeholder="e.g. 37NBLXS1145E1ZU" class="w-full border border-slate-300 rounded-lg p-2 font-mono font-bold text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-airtel-red">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1" id="t-field-name">Trade / Entity Name:</label>
+              <input type="text" id="extractedNameInput" placeholder="e.g. Star Electronics" class="w-full border border-slate-300 rounded-lg p-2 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-airtel-red">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1" id="t-field-date">Bill / Issue Date:</label>
+              <input type="date" id="extractedDateInput" value="2026-07-06" class="w-full border border-slate-300 rounded-lg p-2 font-semibold text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-airtel-red">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1" id="t-field-address">Registered Address:</label>
+              <input type="text" id="extractedAddressInput" placeholder="e.g. Shop/Unit 216, Nehru Nagar, Visakhapatnam" class="w-full border border-slate-300 rounded-lg p-2 text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:border-airtel-red">
+            </div>
+          </div>
+
+          <!-- Verify Button -->
+          <div class="pt-2 flex justify-end">
+            <button id="verifyExtractedBtn" class="bg-slate-900 hover:bg-black text-white px-5 py-2 rounded-xl text-xs font-bold transition shadow-sm">
+              <span id="t-verify-rule-btn">Verify Against Registries & Rules</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- KYC Decision Outcome Display -->
+        <div id="kycResultBox" class="hidden rounded-xl p-3.5 text-xs space-y-2">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="pt-2 flex justify-between items-center border-t border-slate-100">
+          <button id="backToQuoteBtn" class="text-xs text-slate-500 hover:text-slate-900 font-bold">
+            <span id="t-back-quote">← Back to Quote</span>
+          </button>
+          <button id="confirmOrderBtn" class="bg-airtel-red hover:bg-airtel-dark text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md transition disabled:opacity-50" disabled>
+            <span id="t-confirm-order-btn">Confirm & Schedule Installation</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3: ORDER TRACKER & HANDOVER -->
+      <div id="trackerCard" class="hidden bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-airtel-red" id="t-tracker-badge">Pillar 4: Self-Serve Tracker</span>
+            <h2 class="text-lg font-extrabold text-slate-900" id="t-tracker-heading">Order Status & Installation Timeline</h2>
+          </div>
+          <span id="trackerOrderIdBadge" class="font-mono text-xs font-bold bg-slate-100 px-2.5 py-1 rounded-lg"></span>
+        </div>
+
+        <!-- Milestone Timeline -->
+        <div class="py-2 space-y-3" id="timelineList">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Assigned Engineer Card -->
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-700">RS</div>
+            <div>
+              <span class="font-bold text-slate-900 block" id="engName">Ramesh Sharma (Field Lead)</span>
+              <span class="text-slate-500">Installation Date: <strong id="installDateText" class="text-slate-800"></strong></span>
+            </div>
+          </div>
+          <button id="rescheduleBtn" class="bg-white hover:bg-slate-100 border border-slate-300 px-3 py-1.5 rounded-lg font-bold text-slate-700 transition">
+            <span id="t-change-date-btn">Change Date</span>
+          </button>
+        </div>
+
+        <!-- Speed Test & NPS Rating Handover -->
+        <div class="pt-3 border-t border-slate-100 space-y-2">
+          <span class="text-xs font-bold text-slate-800 block" id="t-handover-nps">Digital Handover & NPS Rating</span>
+          <div class="flex items-center space-x-1.5" id="npsButtonsContainer">
+            <!-- 0 to 10 buttons -->
+          </div>
+          <p id="npsSubmittedText" class="hidden text-xs font-bold text-emerald-600 pt-1">
+            <span id="t-nps-thanks">Thank you! NPS Rating recorded.</span>
+          </p>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- 3-BUCKET CATALOG DRAWER (MODAL) -->
+  <div id="catalogModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="text-base font-extrabold text-slate-900">Browse All 25 Accel Business Products</h3>
+          <p class="text-xs text-slate-500">Structured into 3 transparent buckets to prevent catalog confusion.</p>
+        </div>
+        <button id="closeCatalogModalBtn" class="text-slate-400 hover:text-slate-700 font-black text-xl">&times;</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-6 flex-1 text-xs">
+        <!-- Bucket A -->
+        <div>
+          <h4 class="font-extrabold text-slate-900 text-sm mb-2 flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+            <span>Bucket A: Alternative Base Connectivity Plans</span>
+          </h4>
+          <div id="bucketAList" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+        </div>
+
+        <!-- Bucket B -->
+        <div>
+          <h4 class="font-extrabold text-slate-900 text-sm mb-2 flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <span>Bucket B: Modular Value Add-Ons</span>
+          </h4>
+          <div id="bucketBList" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+        </div>
+
+        <!-- Bucket C -->
+        <div>
+          <h4 class="font-extrabold text-slate-500 text-sm mb-2 flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span>
+            <span>Bucket C: Ineligible / Locked Enterprise Plans</span>
+          </h4>
+          <div id="bucketCList" class="space-y-1.5 opacity-75"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTNER PORTAL MODAL -->
+  <div id="partnerModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white">
+        <div>
+          <span class="text-xs font-bold text-amber-400 uppercase tracking-wider" id="t-partner-sub">Channel Harmony & Lead Recovery</span>
+          <h3 class="text-base font-extrabold" id="t-partner-title">Partner & Sales Executive Portal</h3>
+        </div>
+        <button id="closePartnerModalBtn" class="text-slate-400 hover:text-white font-black text-xl">&times;</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
+        <!-- Partner Referral Link Section -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-center justify-between">
+          <div>
+            <span class="font-bold text-amber-900 block" id="t-partner-code">Your Partner Referral Code: REF-PTR-IND-882</span>
+            <p class="text-amber-700" id="t-partner-desc">Customers who onboard using your link or QR code earn you 15% recurring commission.</p>
+          </div>
+          <button class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg" id="t-partner-copy">Copy Link</button>
+        </div>
+
+        <!-- Stalled Leads Table with Propensity Score -->
+        <div>
+          <h4 class="font-extrabold text-slate-900 text-sm mb-2" id="t-partner-table-title">Unresolved Leads Queue (Calibrated Propensity Scores)</h4>
+          <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                <tr>
+                  <th class="p-2.5">Lead ID</th>
+                  <th class="p-2.5">Business</th>
+                  <th class="p-2.5">Last Stage</th>
+                  <th class="p-2.5">Drop Reason</th>
+                  <th class="p-2.5">Propensity</th>
+                  <th class="p-2.5">Action</th>
+                </tr>
+              </thead>
+              <tbody id="partnerLeadsTableBody" class="divide-y divide-slate-100">
+                <!-- Dynamically populated from smb_leads.csv -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/locales.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

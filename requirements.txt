@@ -1,0 +1,11 @@
+fastapi>=0.110.0
+uvicorn>=0.28.0
+opencv-python-headless>=4.8.0
+pillow>=10.0.0
+thefuzz>=0.20.0
+python-Levenshtein>=0.25.0
+pandas>=2.0.0
+requests>=2.31.0
+websockets>=12.0
+winocr>=0.0.15; sys_platform == 'win32'
+python-multipart>=0.0.9

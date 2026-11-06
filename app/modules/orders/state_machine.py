@@ -1,0 +1,126 @@
+import sqlite3
+import json
+import uuid
+from datetime import datetime, timedelta
+from typing import Dict, Any, Optional
+from app.config import DB_PATH
+
+class OrderStateMachine:
+    def __init__(self):
+        self._init_db()
+
+    def _get_connection(self):
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _init_db(self):
+        with self._get_connection() as conn:
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS orders (
+                order_id TEXT PRIMARY KEY,
+                business_name TEXT,
+                contact_phone TEXT,
+                language TEXT,
+                bundle_json TEXT,
+                monthly_total REAL,
+                kyc_status TEXT,
+                current_milestone INTEGER,
+                scheduled_install_date TEXT,
+                engineer_name TEXT,
+                engineer_phone TEXT,
+                nps_rating INTEGER,
+                created_at TEXT
+            )
+            """)
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS consent_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id TEXT,
+                data_items TEXT,
+                purpose TEXT,
+                action TEXT,
+                timestamp TEXT
+            )
+            """)
+            conn.commit()
+
+    def create_order(
+        self,
+        business_name: str,
+        contact_phone: str,
+        bundle_data: Dict[str, Any],
+        kyc_status: str = "VERIFIED",
+        language: str = "en",
+        typical_install_days: int = 5
+    ) -> Dict[str, Any]:
+        order_id = f"UDYAM-{uuid.uuid4().hex[:6].upper()}"
+        install_date = (datetime.now() + timedelta(days=typical_install_days)).strftime("%Y-%m-%d")
+
+        with self._get_connection() as conn:
+            conn.execute("""
+            INSERT INTO orders (
+                order_id, business_name, contact_phone, language,
+                bundle_json, monthly_total, kyc_status, current_milestone,
+                scheduled_install_date, engineer_name, engineer_phone, nps_rating, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                order_id,
+                business_name,
+                contact_phone,
+                language,
+                json.dumps(bundle_data),
+                bundle_data.get("total_monthly_inr", 0.0),
+                kyc_status,
+                3, # Milestone 3: Order Confirmed / Scheduled
+                install_date,
+                "Ramesh Sharma (Field Lead)",
+                "+91 98765 43210",
+                None,
+                datetime.now().isoformat()
+            ))
+
+            # Log DPDP Rule 3 Consent Event
+            conn.execute("""
+            INSERT INTO consent_logs (order_id, data_items, purpose, action, timestamp)
+            VALUES (?, ?, ?, ?, ?)
+            """, (
+                order_id,
+                "GSTIN, Udyam Registration, Principal Address Proof, Signatory ID",
+                "DoT Subscriber Verification and Optical Line Installation",
+                "EXPLICIT_AFFIRMATIVE_CONSENT_GIVEN",
+                datetime.now().isoformat()
+            ))
+            conn.commit()
+
+        return self.get_order(order_id)
+
+    def get_order(self, order_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cursor = conn.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            res = dict(row)
+            res["bundle"] = json.loads(res["bundle_json"])
+            res["dpdp_consent_recorded"] = True
+            return res
+
+    def reschedule_installation(self, order_id: str, new_date: str) -> bool:
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "UPDATE orders SET scheduled_install_date = ? WHERE order_id = ?",
+                (new_date, order_id)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def record_nps(self, order_id: str, rating: int) -> bool:
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "UPDATE orders SET nps_rating = ?, current_milestone = 5 WHERE order_id = ?",
+                (rating, order_id)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
