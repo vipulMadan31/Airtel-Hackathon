@@ -64,7 +64,7 @@ def test_pipeline_end_to_end():
         "landmark": "Opposite State Bank ATM",
         "city": "Rohtak",
         "pincode": "124001",
-        "on_site_contact": "Rajesh Kumar (+91 98765 12345)",
+        "on_site_contact": "Amit Sharma (+91 98765 12345)",
         "preferred_slot": "MORNING",
         "formatted_address": "Shop No. 14, Ground Floor, Aggarwal Commercial Complex, Civil Road, Landmark: Opposite State Bank ATM, Rohtak - 124001"
     }
@@ -75,7 +75,7 @@ def test_pipeline_end_to_end():
     }
 
     order = order_sm.create_order(
-        business_name="Rajesh General Store",
+        business_name="Aggarwal Enterprises",
         contact_phone="+91 98765 12345",
         bundle_data=sample_bundle,
         kyc_status="VERIFIED",
@@ -94,7 +94,7 @@ def test_pipeline_end_to_end():
     intent = payment_gw.create_payment_intent(
         order_id=order["order_id"],
         amount_inr=499.0,
-        business_name="Rajesh General Store",
+        business_name="Aggarwal Enterprises",
         phone="+91 98765 12345"
     )
     assert intent["amount_inr"] == 499.0

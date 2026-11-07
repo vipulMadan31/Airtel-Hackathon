@@ -5,15 +5,18 @@ import time
 import json
 import requests
 import uuid
+import tempfile
 
 async def test_login_flow():
+    user_dir = tempfile.mkdtemp()
     proc = subprocess.Popen([
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
         "--headless=new",
+        f"--user-data-dir={user_dir}",
         "--remote-debugging-port=9247",
         "http://127.0.0.1:8000"
     ])
-    time.sleep(2)
+    time.sleep(2.5)
 
     try:
         tabs = requests.get("http://127.0.0.1:9247/json").json()
@@ -38,23 +41,30 @@ async def test_login_flow():
                     if resp.get("id") == curr:
                         return resp.get("result", {}).get("result", {}).get("value")
 
-            print("\n1. Testing Open Auth Modal...")
-            await run_eval("document.getElementById('openAuthModalBtn').click();")
-            await asyncio.sleep(0.5)
-            is_modal_visible = await run_eval("!document.getElementById('authModal').classList.contains('hidden');")
-            print("   Auth Modal Visible:", is_modal_visible)
-            assert is_modal_visible is True, "Auth modal should be visible"
+            print("\n1. Navigating to http://127.0.0.1:8000 fresh without auth...")
+            await run_eval("localStorage.clear(); window.location.href = 'http://127.0.0.1:8000';")
+            await asyncio.sleep(2.5)
 
-            print("\n2. Testing Customer Login with demo credentials...")
+            print("   Testing Default Landing on http://127.0.0.1:8000 directly goes to Login Page...")
+            is_modal_visible_by_default = await run_eval("!document.getElementById('authModal').classList.contains('hidden');")
+            close_btn_hidden = await run_eval("document.getElementById('closeAuthModalBtn').classList.contains('hidden');")
+            fill_demo_btn_exists = await run_eval("!!document.getElementById('fillDemoCustBtn');")
+            print("   Auth Modal Visible Directly on Load:", is_modal_visible_by_default)
+            print("   Close Button Hidden for Guest:", close_btn_hidden)
+            print("   Rajesh Fill Demo Button Exists:", fill_demo_btn_exists)
+            assert is_modal_visible_by_default is True, "Landing on http://127.0.0.1:8000 should directly show the login page"
+            assert fill_demo_btn_exists is False, "Rajesh demo button should be completely removed"
+
+            print("\n2. Testing Customer Login with customer@business.in...")
             await run_eval("""
-                document.getElementById('loginCustEmail').value = 'rajesh@kirana.com';
+                document.getElementById('loginCustEmail').value = 'customer@business.in';
                 document.getElementById('loginCustPassword').value = 'customer123';
                 document.getElementById('submitCustLoginBtn').click();
             """)
             await asyncio.sleep(1.5)
             badge_name = await run_eval("document.getElementById('userAuthName').innerText;")
             print("   Logged In User Badge:", badge_name)
-            assert "Rajesh" in badge_name, f"Expected Rajesh in user badge, got {badge_name}"
+            assert "Airtel MSME" in badge_name or "Customer" in badge_name, f"Expected customer in user badge, got {badge_name}"
 
             print("\n3. Testing Logout...")
             await run_eval("document.getElementById('logoutBtn').click();")
@@ -155,3 +165,4 @@ async def test_login_flow():
 
 if __name__ == "__main__":
     asyncio.run(test_login_flow())
+

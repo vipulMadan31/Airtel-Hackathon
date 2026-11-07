@@ -101,7 +101,7 @@
                 <span class="text-base">🛒</span>
                 <div>
                   <div class="font-extrabold text-slate-900">Customer Mode</div>
-                  <div class="text-[10px] text-slate-500">Rajesh Kirana (Self-Serve MSME)</div>
+                  <div class="text-[10px] text-slate-500">Customer Self-Serve (MSME)</div>
                 </div>
               </button>
               <button id="switchRolePartner" type="button" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-amber-50 flex items-center space-x-2.5 transition">
@@ -468,7 +468,7 @@
             </div>
             <div>
               <label class="block font-bold text-slate-700 mb-1" id="t-addr-contact-lbl">On-Site Contact Person & Phone: <span class="text-red-500">*</span></label>
-              <input type="text" id="installContact" placeholder="e.g. Rajesh Kumar (+91 98765 12345)" value="Rajesh Kumar (+91 98765 12345)" class="w-full border border-slate-300 rounded-lg p-2 font-medium bg-white focus:outline-none focus:border-airtel-red">
+              <input type="text" id="installContact" placeholder="e.g. Amit Sharma (+91 98765 12345)" value="Amit Sharma (+91 98765 12345)" class="w-full border border-slate-300 rounded-lg p-2 font-medium bg-white focus:outline-none focus:border-airtel-red">
             </div>
             <div class="sm:col-span-2">
               <label class="block font-bold text-slate-700 mb-1" id="t-addr-slot-lbl">Preferred Field Technician Time Slot:</label>
@@ -1208,7 +1208,7 @@
   </div>
 
   <!-- OAUTH2 AUTHENTICATION MODAL (LOGIN & SIGN UP) -->
-  <div id="authModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div id="authModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-md overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
       <!-- Modal Header -->
       <div class="p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between">
@@ -1260,12 +1260,11 @@
           <form id="custLoginForm" class="space-y-3" onsubmit="event.preventDefault(); window.submitCustomerLogin();">
             <div>
               <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Email Address</label>
-              <input type="email" id="loginCustEmail" required placeholder="rajesh@kirana.com" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
+              <input type="email" id="loginCustEmail" required placeholder="owner@business.in" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
             </div>
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Password</label>
-                <button type="button" id="fillDemoCustBtn" class="text-[10px] text-airtel-red hover:underline font-bold cursor-pointer">Fill Demo (rajesh@kirana.com)</button>
               </div>
               <input type="password" id="loginCustPassword" required placeholder="Enter password" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
             </div>
@@ -1279,7 +1278,7 @@
           <form id="custSignupForm" class="hidden space-y-3" onsubmit="event.preventDefault(); window.submitCustomerSignup();">
             <div>
               <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Business / Owner Name</label>
-              <input type="text" id="signupCustName" required placeholder="e.g. Rajesh Kirana / Sharma Stores" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
+              <input type="text" id="signupCustName" required placeholder="e.g. Sharma General Stores / Gupta Medical" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
             </div>
             <div>
               <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Email Address</label>

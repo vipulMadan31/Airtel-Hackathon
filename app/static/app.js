@@ -4,13 +4,9 @@ const STATE = {
   language: 'en',
   safeModeNonGst: false,
   auth: {
-    role: 'MERCHANT',
-    token: 'tok_merchant_demo',
-    user: {
-      user_id: 'USR-CUST-1001',
-      name: 'Rajesh Gupta (Rajesh Kirana)',
-      role: 'MERCHANT'
-    }
+    role: null,
+    token: null,
+    user: null
   },
   payment: {
     selectedMethod: 'UPI_PHONEPE',
@@ -70,26 +66,38 @@ function initViewRouter() {
   const urlParams = new URLSearchParams(window.location.search);
   const roleParam = (urlParams.get("role") || "").toUpperCase();
 
-  if (path === "/login") {
-    openAuthModal("MERCHANT", "login");
-  } else if (path === "/mitra" || roleParam === "PARTNER") {
+  const isAuthed = !!(STATE.auth && STATE.auth.token && STATE.auth.user);
+
+  // When visiting http://127.0.0.1:8000 or /login without an active authenticated session,
+  // directly present the Login Page / Authentication Modal
+  if (!isAuthed || path === "/login") {
+    let targetTab = "MERCHANT";
+    if (path === "/mitra" || roleParam === "PARTNER") targetTab = "PARTNER";
+    if (path === "/ops" || path === "/admin" || roleParam === "ADMIN") targetTab = "ADMIN";
+
+    openAuthModal(targetTab, "login", isAuthed);
+    return;
+  }
+
+  if (path === "/mitra" || roleParam === "PARTNER") {
     switchUserRole("PARTNER");
   } else if (path === "/ops" || path === "/admin" || roleParam === "ADMIN") {
     switchUserRole("ADMIN");
   } else {
-    navigateToView("MERCHANT", false);
+    navigateToView(STATE.auth.role || "MERCHANT", false);
   }
 
   window.addEventListener("popstate", () => {
     const curPath = window.location.pathname.toLowerCase();
-    if (curPath === "/login") {
-      openAuthModal("MERCHANT", "login");
+    const curAuthed = !!(STATE.auth && STATE.auth.token && STATE.auth.user);
+    if (!curAuthed || curPath === "/login") {
+      openAuthModal("MERCHANT", "login", curAuthed);
     } else if (curPath === "/mitra") {
       switchUserRole("PARTNER");
     } else if (curPath === "/ops" || curPath === "/admin") {
       switchUserRole("ADMIN");
     } else {
-      switchUserRole("MERCHANT");
+      switchUserRole(STATE.auth.role || "MERCHANT");
     }
   });
 }
@@ -613,9 +621,22 @@ function initAuthSession() {
     try {
       const parsed = JSON.parse(saved);
       if (parsed && parsed.token && parsed.user) {
-        STATE.auth = parsed;
+        // Invalidate any legacy demo session containing "rajesh"
+        if (
+          parsed.token === "tok_merchant_demo" ||
+          (parsed.user.name && parsed.user.name.includes("Rajesh")) ||
+          (parsed.user.email && parsed.user.email.includes("rajesh"))
+        ) {
+          localStorage.removeItem("udyam_auth");
+          STATE.auth = { role: null, token: null, user: null };
+        } else {
+          STATE.auth = parsed;
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      localStorage.removeItem("udyam_auth");
+      STATE.auth = { role: null, token: null, user: null };
+    }
   }
   updateAuthUI();
 }
@@ -641,7 +662,7 @@ function updateAuthUI() {
   }
 }
 
-function openAuthModal(defaultRole = "MERCHANT", subTab = "login") {
+function openAuthModal(defaultRole = "MERCHANT", subTab = "login", canClose = null) {
   const modal = document.getElementById("authModal");
   if (!modal) return;
   modal.classList.remove("hidden");
@@ -650,9 +671,24 @@ function openAuthModal(defaultRole = "MERCHANT", subTab = "login") {
   if (defaultRole === "MERCHANT") {
     switchCustSubTab(subTab);
   }
+
+  const isAuthed = !!(STATE.auth && STATE.auth.token && STATE.auth.user);
+  const closeBtn = document.getElementById("closeAuthModalBtn");
+  const allowClose = canClose !== null ? canClose : isAuthed;
+  if (closeBtn) {
+    if (allowClose) {
+      closeBtn.classList.remove("hidden");
+    } else {
+      closeBtn.classList.add("hidden");
+    }
+  }
 }
 
-function closeAuthModal() {
+function closeAuthModal(force = false) {
+  const isAuthed = !!(STATE.auth && STATE.auth.token && STATE.auth.user);
+  if (!isAuthed && !force) {
+    return; // Block dismissal when user is unauthenticated
+  }
   const modal = document.getElementById("authModal");
   if (modal) modal.classList.add("hidden");
   clearAuthAlert();
@@ -761,7 +797,7 @@ window.submitCustomerLogin = async function() {
     setAuthAlert("success", `Welcome back, ${data.user.name}!`);
     saveAuthSession(data);
     setTimeout(() => {
-      closeAuthModal();
+      closeAuthModal(true);
       navigateToView("MERCHANT");
     }, 400);
   } catch (err) {
@@ -809,7 +845,7 @@ window.submitCustomerSignup = async function() {
     setAuthAlert("success", `Account created successfully! Welcome, ${data.user.name}.`);
     saveAuthSession(data);
     setTimeout(() => {
-      closeAuthModal();
+      closeAuthModal(true);
       navigateToView("MERCHANT");
     }, 500);
   } catch (err) {
@@ -846,7 +882,7 @@ window.submitMitraLogin = async function() {
     setAuthAlert("success", `Mitra Partner authenticated! Welcome, ${data.user.name}.`);
     saveAuthSession(data);
     setTimeout(() => {
-      closeAuthModal();
+      closeAuthModal(true);
       navigateToView("PARTNER");
     }, 400);
   } catch (err) {
@@ -883,7 +919,7 @@ window.submitAdminLogin = async function() {
     setAuthAlert("success", `Enterprise Ops Admin authenticated! Welcome, ${data.user.name}.`);
     saveAuthSession(data);
     setTimeout(() => {
-      closeAuthModal();
+      closeAuthModal(true);
       navigateToView("ADMIN");
     }, 400);
   } catch (err) {
@@ -919,18 +955,13 @@ window.handleLogout = async function() {
   } catch (e) {}
 
   STATE.auth = {
-    role: "MERCHANT",
-    token: "tok_merchant_demo",
-    user: {
-      user_id: "USR-CUST-1001",
-      name: "Rajesh Gupta (Rajesh Kirana)",
-      role: "MERCHANT"
-    }
+    role: null,
+    token: null,
+    user: null
   };
 
   updateAuthUI();
-  navigateToView("MERCHANT");
-  openAuthModal("MERCHANT", "login");
+  openAuthModal("MERCHANT", "login", false);
 };
 
 async function switchUserRole(roleName) {
@@ -1103,8 +1134,8 @@ function initEventListeners() {
   safeOn("closeAdminModalBtn", "click", closeAdminModal);
 
   // OAuth2 Authentication Modal Listeners
-  safeOn("openAuthModalBtn", "click", () => openAuthModal(STATE.auth.role || "MERCHANT"));
-  safeOn("closeAuthModalBtn", "click", closeAuthModal);
+  safeOn("openAuthModalBtn", "click", () => openAuthModal(STATE.auth.role || "MERCHANT", "login", true));
+  safeOn("closeAuthModalBtn", "click", () => closeAuthModal(false));
   safeOn("logoutBtn", "click", window.handleLogout);
 
   safeOn("authTabCustomer", "click", () => switchAuthTab("MERCHANT"));
@@ -1114,12 +1145,14 @@ function initEventListeners() {
   safeOn("custSubTabLogin", "click", () => switchCustSubTab("login"));
   safeOn("custSubTabSignup", "click", () => switchCustSubTab("signup"));
 
-  safeOn("fillDemoCustBtn", "click", () => {
-    const em = document.getElementById("loginCustEmail");
-    const pw = document.getElementById("loginCustPassword");
-    if (em) em.value = "rajesh@kirana.com";
-    if (pw) pw.value = "customer123";
-  });
+  const authModal = document.getElementById("authModal");
+  if (authModal) {
+    authModal.addEventListener("click", (e) => {
+      if (e.target === authModal) {
+        closeAuthModal(false);
+      }
+    });
+  }
 
   safeOn("fillDemoMitraBtn", "click", () => {
     const em = document.getElementById("loginMitraEmail");

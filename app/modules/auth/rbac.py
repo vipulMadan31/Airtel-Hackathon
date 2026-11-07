@@ -12,7 +12,7 @@ ROLE_ADMIN = "ADMIN"
 PERSONAS: Dict[str, Dict[str, Any]] = {
     "MERCHANT": {
         "user_id": "USR-CUST-1001",
-        "name": "Rajesh Gupta (Rajesh Kirana)",
+        "name": "Customer Self-Serve (MSME)",
         "phone": "+91 98110 12345",
         "role": ROLE_MERCHANT,
         "badge": "🛒 Customer Mode",

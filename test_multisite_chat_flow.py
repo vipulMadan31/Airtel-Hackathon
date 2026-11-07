@@ -37,6 +37,16 @@ async def test_multisite_flow():
                     if resp.get("id") == curr:
                         return resp.get("result", {}).get("result", {}).get("value")
 
+            # Ensure customer is authenticated on entry
+            await run_eval("""
+                if (!document.getElementById('authModal').classList.contains('hidden')) {
+                    document.getElementById('loginCustEmail').value = 'customer@business.in';
+                    document.getElementById('loginCustPassword').value = 'customer123';
+                    document.getElementById('submitCustLoginBtn').click();
+                }
+            """)
+            await asyncio.sleep(2)
+
             # Multi-site message
             await run_eval("""
                 document.getElementById('chatInput').value = 'i live in rohtak and have 2 shops. one has 10 employees and the other has 100. I need to install wifi for them';

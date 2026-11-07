@@ -108,21 +108,29 @@ class UserDatabase:
                 badge="🤝 Mitra Channel Partner"
             )
 
-        # 3. Customer Demo
-        customer = self.get_user_by_email("rajesh@kirana.com")
+        # 3. Customer Seed Account
+        customer = self.get_user_by_email("customer@business.in")
         if not customer:
             h, s = self._hash_password("customer123")
             self._insert_user_raw(
                 user_id="USR-CUST-1001",
-                email="rajesh@kirana.com",
+                email="customer@business.in",
                 password_hash=h,
                 salt=s,
                 role="MERCHANT",
-                name="Rajesh Gupta (Rajesh Kirana)",
+                name="Airtel MSME Customer",
                 phone="+91 98110 12345",
                 assigned_pincode="452001",
                 badge="🛒 Customer Mode"
             )
+        
+        # Purge legacy demo accounts if present
+        try:
+            with self._get_connection() as conn:
+                conn.execute("DELETE FROM users WHERE email = 'rajesh@kirana.com'")
+                conn.commit()
+        except Exception:
+            pass
 
     def _insert_user_raw(
         self,
@@ -352,3 +360,4 @@ class UserDatabase:
             "salt": row["salt"],
             "password_hash": row["password_hash"]
         }
+

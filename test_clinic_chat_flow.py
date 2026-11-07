@@ -37,6 +37,16 @@ async def test_clinic_flow():
                     if resp.get("id") == curr:
                         return resp.get("result", {}).get("result", {}).get("value")
 
+            # Ensure customer is authenticated on entry
+            await run_eval("""
+                if (!document.getElementById('authModal').classList.contains('hidden')) {
+                    document.getElementById('loginCustEmail').value = 'customer@business.in';
+                    document.getElementById('loginCustPassword').value = 'customer123';
+                    document.getElementById('submitCustLoginBtn').click();
+                }
+            """)
+            await asyncio.sleep(2)
+
             # Turn 1: "Hi, I live in rohtak and need wifi"
             await run_eval("""
                 document.getElementById('chatInput').value = 'Hi, I live in rohtak and need wifi';
