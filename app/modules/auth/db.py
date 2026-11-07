@@ -5,6 +5,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from pathlib import Path
+from contextlib import contextmanager
 from app.config import DB_PATH
 
 FIXED_ADMIN_PASSWORD = "airteladmin"
@@ -23,11 +24,19 @@ class UserDatabase:
         self.db_path = db_path or DB_PATH
         self._init_db()
 
-    def _get_connection(self) -> sqlite3.Connection:
+    @contextmanager
+    def _get_connection(self):
         conn = sqlite3.connect(self.db_path, timeout=30.0)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA busy_timeout=30000;")
-        return conn
+        conn.execute("PRAGMA journal_mode=WAL;")
+        try:
+            yield conn
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     def _init_db(self):
         with self._get_connection() as conn:

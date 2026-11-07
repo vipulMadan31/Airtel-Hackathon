@@ -1,6 +1,7 @@
 import sqlite3
 import json
 from typing import Dict, Any, Optional, List
+from contextlib import contextmanager
 from app.config import DB_PATH
 
 class WhatsAppSessionManager:
@@ -12,10 +13,19 @@ class WhatsAppSessionManager:
         self.db_path = db_path
         self._init_table()
 
+    @contextmanager
     def _get_connection(self):
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
         conn.row_factory = sqlite3.Row
-        return conn
+        conn.execute("PRAGMA busy_timeout=30000;")
+        conn.execute("PRAGMA journal_mode=WAL;")
+        try:
+            yield conn
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     def _init_table(self):
         with self._get_connection() as conn:

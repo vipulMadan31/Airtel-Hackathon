@@ -1173,48 +1173,48 @@
           </div>
 
           <!-- Customer Sign In Form -->
-          <form id="custLoginForm" class="space-y-3" onsubmit="event.preventDefault(); window.submitCustomerLogin();">
+          <form id="custLoginForm" action="javascript:void(0);" method="post" class="space-y-3" onsubmit="event.preventDefault(); window.submitCustomerLogin(); return false;">
             <div>
               <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Email Address</label>
-              <input type="email" id="loginCustEmail" required placeholder="owner@business.in" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
+              <input type="email" id="loginCustEmail" required placeholder="owner@business.in" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitCustomerLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
             </div>
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Password</label>
               </div>
-              <input type="password" id="loginCustPassword" required placeholder="Enter password" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
+              <input type="password" id="loginCustPassword" required placeholder="Enter password" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitCustomerLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
             </div>
-            <button type="submit" id="submitCustLoginBtn" class="w-full bg-airtel-red hover:bg-airtel-dark text-white font-bold py-2.5 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1.5 cursor-pointer">
+            <button type="button" id="submitCustLoginBtn" onclick="window.submitCustomerLogin()" class="w-full bg-airtel-red hover:bg-airtel-dark text-white font-bold py-2.5 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1.5 cursor-pointer">
               <span>Sign In as Customer</span>
               <span>&rarr;</span>
             </button>
           </form>
 
           <!-- Customer Sign Up Form -->
-          <form id="custSignupForm" class="hidden space-y-3" onsubmit="event.preventDefault(); window.submitCustomerSignup();">
+          <form id="custSignupForm" action="javascript:void(0);" method="post" class="hidden space-y-3" onsubmit="event.preventDefault(); window.submitCustomerSignup(); return false;">
             <div>
               <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Business / Owner Name</label>
-              <input type="text" id="signupCustName" required placeholder="e.g. Sharma General Stores / Gupta Medical" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
+              <input type="text" id="signupCustName" required placeholder="e.g. Sharma General Stores / Gupta Medical" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitCustomerSignup();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
             </div>
             <div>
               <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Email Address</label>
-              <input type="email" id="signupCustEmail" required placeholder="owner@mybusiness.in" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
+              <input type="email" id="signupCustEmail" required placeholder="owner@mybusiness.in" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitCustomerSignup();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
             </div>
             <div>
               <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Contact Phone</label>
-              <input type="tel" id="signupCustPhone" placeholder="+91 98110 12345" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
+              <input type="tel" id="signupCustPhone" placeholder="+91 98110 12345" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitCustomerSignup();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Password</label>
-                <input type="password" id="signupCustPassword" required minlength="6" placeholder="Min 6 chars" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
+                <input type="password" id="signupCustPassword" required minlength="6" placeholder="Min 6 chars" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitCustomerSignup();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Confirm</label>
-                <input type="password" id="signupCustConfirmPassword" required minlength="6" placeholder="Confirm" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
+                <input type="password" id="signupCustConfirmPassword" required minlength="6" placeholder="Confirm" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitCustomerSignup();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-airtel-red focus:ring-1 focus:ring-airtel-red">
               </div>
             </div>
-            <button type="submit" id="submitCustSignupBtn" class="w-full bg-airtel-red hover:bg-airtel-dark text-white font-bold py-2.5 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1.5 cursor-pointer">
+            <button type="button" id="submitCustSignupBtn" onclick="window.submitCustomerSignup()" class="w-full bg-airtel-red hover:bg-airtel-dark text-white font-bold py-2.5 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1.5 cursor-pointer">
               <span>Create MSME Account</span>
               <span>&rarr;</span>
             </button>
@@ -1233,19 +1233,19 @@
             </div>
           </div>
 
-          <form id="mitraLoginForm" class="space-y-3" onsubmit="event.preventDefault(); window.submitMitraLogin();">
+          <form id="mitraLoginForm" action="javascript:void(0);" method="post" class="space-y-3" onsubmit="event.preventDefault(); window.submitMitraLogin(); return false;">
             <div>
               <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Partner Email</label>
-              <input type="email" id="loginMitraEmail" required value="mitra@airtel.com" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+              <input type="email" id="loginMitraEmail" required value="mitra@airtel.com" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitMitraLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
             </div>
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Fixed Security Password</label>
                 <button type="button" id="fillDemoMitraBtn" class="text-[10px] text-amber-800 hover:underline font-bold cursor-pointer">Auto-fill (airtelmitra)</button>
               </div>
-              <input type="password" id="loginMitraPassword" required value="airtelmitra" placeholder="Fixed: airtelmitra" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 font-mono">
+              <input type="password" id="loginMitraPassword" required value="airtelmitra" placeholder="Fixed: airtelmitra" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitMitraLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 font-mono">
             </div>
-            <button type="submit" id="submitMitraLoginBtn" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1.5 cursor-pointer">
+            <button type="button" id="submitMitraLoginBtn" onclick="window.submitMitraLogin()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1.5 cursor-pointer">
               <span>Authenticate as Mitra Partner</span>
               <span>&rarr;</span>
             </button>
@@ -1264,19 +1264,19 @@
             </div>
           </div>
 
-          <form id="adminLoginForm" class="space-y-3" onsubmit="event.preventDefault(); window.submitAdminLogin();">
+          <form id="adminLoginForm" action="javascript:void(0);" method="post" class="space-y-3" onsubmit="event.preventDefault(); window.submitAdminLogin(); return false;">
             <div>
               <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Admin Email</label>
-              <input type="email" id="loginAdminEmail" required value="admin@airtel.com" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600">
+              <input type="email" id="loginAdminEmail" required value="admin@airtel.com" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitAdminLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600">
             </div>
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Fixed Security Password</label>
                 <button type="button" id="fillDemoAdminBtn" class="text-[10px] text-purple-800 hover:underline font-bold cursor-pointer">Auto-fill (airteladmin)</button>
               </div>
-              <input type="password" id="loginAdminPassword" required value="airteladmin" placeholder="Fixed: airteladmin" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 font-mono">
+              <input type="password" id="loginAdminPassword" required value="airteladmin" placeholder="Fixed: airteladmin" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitAdminLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 font-mono">
             </div>
-            <button type="submit" id="submitAdminLoginBtn" class="w-full bg-slate-900 hover:bg-black text-white font-bold py-2.5 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1.5 cursor-pointer">
+            <button type="button" id="submitAdminLoginBtn" onclick="window.submitAdminLogin()" class="w-full bg-slate-900 hover:bg-black text-white font-bold py-2.5 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1.5 cursor-pointer">
               <span>Authenticate as Ops Admin</span>
               <span>&rarr;</span>
             </button>

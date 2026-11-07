@@ -43,6 +43,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -552,6 +553,10 @@ def login_user(req: LoginRequest):
         }
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Authentication service error: {str(e)}")
 
 @app.post("/api/auth/signup")
 @app.post("/api/auth/register")
@@ -585,6 +590,10 @@ def signup_user(req: SignUpRequest):
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Registration service error: {str(e)}")
 
 @app.post("/api/auth/token")
 def oauth_token(form_data: OAuth2PasswordRequestForm = Depends()):

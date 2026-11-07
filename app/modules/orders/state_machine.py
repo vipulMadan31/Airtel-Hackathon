@@ -3,16 +3,26 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
+from contextlib import contextmanager
 from app.config import DB_PATH
 
 class OrderStateMachine:
     def __init__(self):
         self._init_db()
 
+    @contextmanager
     def _get_connection(self):
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=30.0)
         conn.row_factory = sqlite3.Row
-        return conn
+        conn.execute("PRAGMA busy_timeout=30000;")
+        conn.execute("PRAGMA journal_mode=WAL;")
+        try:
+            yield conn
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     def _init_db(self):
         with self._get_connection() as conn:

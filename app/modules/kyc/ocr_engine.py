@@ -1,7 +1,10 @@
 import os
 import re
 import cv2
-import winocr
+try:
+    import winocr
+except ImportError:
+    winocr = None
 import asyncio
 from PIL import Image
 from typing import Dict, Any, Optional
@@ -32,12 +35,14 @@ class OCREngine:
         """
         is_clear, blur_var = self.compute_blur(image_path)
         
-        try:
-            pil_img = Image.open(image_path)
-            ocr_res = await winocr.recognize_pil(pil_img, 'en')
-            raw_text = ocr_res.text
-        except Exception as e:
-            raw_text = ""
+        raw_text = ""
+        if winocr is not None:
+            try:
+                pil_img = Image.open(image_path)
+                ocr_res = await winocr.recognize_pil(pil_img, 'en')
+                raw_text = ocr_res.text
+            except Exception as e:
+                raw_text = ""
 
         # Identify document type
         doc_type = "UNKNOWN"

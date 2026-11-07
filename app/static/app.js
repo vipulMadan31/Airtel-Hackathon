@@ -688,7 +688,12 @@ async function loadOpsViewData() {
 let CURRENT_AUTH_ROLE = "MERCHANT";
 
 function initAuthSession() {
-  const saved = localStorage.getItem("udyam_auth");
+  let saved = null;
+  try {
+    saved = localStorage.getItem("udyam_auth");
+  } catch (e) {
+    console.warn("Storage access restricted:", e);
+  }
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
@@ -699,14 +704,14 @@ function initAuthSession() {
           (parsed.user.name && parsed.user.name.includes("Rajesh")) ||
           (parsed.user.email && parsed.user.email.includes("rajesh"))
         ) {
-          localStorage.removeItem("udyam_auth");
+          try { localStorage.removeItem("udyam_auth"); } catch (e) {}
           STATE.auth = { role: null, token: null, user: null };
         } else {
           STATE.auth = parsed;
         }
       }
     } catch (e) {
-      localStorage.removeItem("udyam_auth");
+      try { localStorage.removeItem("udyam_auth"); } catch (e) {}
       STATE.auth = { role: null, token: null, user: null };
     }
   }
@@ -848,6 +853,33 @@ function switchCustSubTab(sub) {
   }
 }
 
+async function parseJsonResponse(res) {
+  let data = null;
+  let text = "";
+  try {
+    text = await res.text();
+    data = JSON.parse(text);
+  } catch (e) {
+    data = null;
+  }
+  return { data, text };
+}
+
+function extractErrorMessage(data, text, fallback) {
+  if (data) {
+    if (typeof data.detail === "string") return data.detail;
+    if (Array.isArray(data.detail) && data.detail.length > 0) {
+      return data.detail.map(d => (typeof d === "string" ? d : (d.msg || JSON.stringify(d)))).join(", ");
+    }
+    if (data.message) return data.message;
+    if (data.error) return data.error;
+  }
+  if (text && text.trim().length > 0 && text.length < 250 && !text.includes("<!DOCTYPE")) {
+    return text.trim();
+  }
+  return fallback;
+}
+
 window.submitCustomerLogin = async function() {
   const email = document.getElementById("loginCustEmail")?.value?.trim();
   const password = document.getElementById("loginCustPassword")?.value;
@@ -861,26 +893,38 @@ window.submitCustomerLogin = async function() {
   if (btn) btn.disabled = true;
 
   try {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, role: "MERCHANT" })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setAuthAlert("error", data.detail || "Login failed. Please check your credentials.");
+    let res;
+    try {
+      res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, role: "MERCHANT" })
+      });
+    } catch (fetchErr) {
+      console.error("Login fetch error:", fetchErr);
+      setAuthAlert("error", "Unable to reach server. Please check your network connection.");
       return;
     }
 
-    setAuthAlert("success", `Welcome back, ${data.user.name}!`);
+    const { data, text } = await parseJsonResponse(res);
+    if (!res.ok || !data) {
+      const msg = extractErrorMessage(data, text, "Login failed. Please check your credentials.");
+      setAuthAlert("error", msg);
+      return;
+    }
+
+    setAuthAlert("success", `Welcome back, ${data.user?.name || "Customer"}!`);
     saveAuthSession(data);
-    if (window.syncCustomerLeadActivity) window.syncCustomerLeadActivity("LOGGED_IN");
+    if (window.syncCustomerLeadActivity) {
+      try { window.syncCustomerLeadActivity("LOGGED_IN"); } catch (e) {}
+    }
     setTimeout(() => {
       closeAuthModal(true);
       navigateToView("MERCHANT");
     }, 400);
   } catch (err) {
-    setAuthAlert("error", "Network error during login. Please try again.");
+    console.error("submitCustomerLogin exception:", err);
+    setAuthAlert("error", err.message || "An unexpected error occurred during login.");
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -910,26 +954,38 @@ window.submitCustomerSignup = async function() {
   if (btn) btn.disabled = true;
 
   try {
-    const res = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, phone, password, role: "MERCHANT" })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setAuthAlert("error", data.detail || "Registration failed. An account may already exist.");
+    let res;
+    try {
+      res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone, password, role: "MERCHANT" })
+      });
+    } catch (fetchErr) {
+      console.error("Signup fetch error:", fetchErr);
+      setAuthAlert("error", "Unable to reach server. Please check your network connection.");
       return;
     }
 
-    setAuthAlert("success", `Account created successfully! Welcome, ${data.user.name}.`);
+    const { data, text } = await parseJsonResponse(res);
+    if (!res.ok || !data) {
+      const msg = extractErrorMessage(data, text, "Registration failed. An account may already exist.");
+      setAuthAlert("error", msg);
+      return;
+    }
+
+    setAuthAlert("success", `Account created successfully! Welcome, ${data.user?.name || name}.`);
     saveAuthSession(data);
-    if (window.syncCustomerLeadActivity) window.syncCustomerLeadActivity("LOGGED_IN");
+    if (window.syncCustomerLeadActivity) {
+      try { window.syncCustomerLeadActivity("LOGGED_IN"); } catch (e) {}
+    }
     setTimeout(() => {
       closeAuthModal(true);
       navigateToView("MERCHANT");
     }, 500);
   } catch (err) {
-    setAuthAlert("error", "Network error during registration.");
+    console.error("submitCustomerSignup exception:", err);
+    setAuthAlert("error", err.message || "An unexpected error occurred during registration.");
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -948,25 +1004,35 @@ window.submitMitraLogin = async function() {
   if (btn) btn.disabled = true;
 
   try {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, role: "PARTNER" })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setAuthAlert("error", data.detail || "Authentication failed. Partner password must be 'airtelmitra'.");
+    let res;
+    try {
+      res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, role: "PARTNER" })
+      });
+    } catch (fetchErr) {
+      console.error("Mitra login fetch error:", fetchErr);
+      setAuthAlert("error", "Unable to reach server. Please check your network connection.");
       return;
     }
 
-    setAuthAlert("success", `Mitra Partner authenticated! Welcome, ${data.user.name}.`);
+    const { data, text } = await parseJsonResponse(res);
+    if (!res.ok || !data) {
+      const msg = extractErrorMessage(data, text, "Authentication failed. Partner password must be 'airtelmitra'.");
+      setAuthAlert("error", msg);
+      return;
+    }
+
+    setAuthAlert("success", `Mitra Partner authenticated! Welcome, ${data.user?.name || "Partner"}.`);
     saveAuthSession(data);
     setTimeout(() => {
       closeAuthModal(true);
       navigateToView("PARTNER");
     }, 400);
   } catch (err) {
-    setAuthAlert("error", "Network error during Mitra login.");
+    console.error("submitMitraLogin exception:", err);
+    setAuthAlert("error", err.message || "An unexpected error occurred during Mitra login.");
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -985,34 +1051,45 @@ window.submitAdminLogin = async function() {
   if (btn) btn.disabled = true;
 
   try {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, role: "ADMIN" })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setAuthAlert("error", data.detail || "Authentication failed. Admin password must be 'airteladmin'.");
+    let res;
+    try {
+      res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, role: "ADMIN" })
+      });
+    } catch (fetchErr) {
+      console.error("Admin login fetch error:", fetchErr);
+      setAuthAlert("error", "Unable to reach server. Please check your network connection.");
       return;
     }
 
-    setAuthAlert("success", `Enterprise Ops Admin authenticated! Welcome, ${data.user.name}.`);
+    const { data, text } = await parseJsonResponse(res);
+    if (!res.ok || !data) {
+      const msg = extractErrorMessage(data, text, "Authentication failed. Admin password must be 'airteladmin'.");
+      setAuthAlert("error", msg);
+      return;
+    }
+
+    setAuthAlert("success", `Enterprise Ops Admin authenticated! Welcome, ${data.user?.name || "Admin"}.`);
     saveAuthSession(data);
     setTimeout(() => {
       closeAuthModal(true);
       navigateToView("ADMIN");
     }, 400);
   } catch (err) {
-    setAuthAlert("error", "Network error during Admin login.");
+    console.error("submitAdminLogin exception:", err);
+    setAuthAlert("error", err.message || "An unexpected error occurred during Admin login.");
   } finally {
     if (btn) btn.disabled = false;
   }
 };
 
 function saveAuthSession(data) {
+  if (!data) return;
   STATE.auth.token = data.access_token || data.token;
-  STATE.auth.role = data.user.role;
-  STATE.auth.user = data.user;
+  STATE.auth.role = data.user ? data.user.role : (STATE.auth.role || "MERCHANT");
+  STATE.auth.user = data.user || null;
   try {
     localStorage.setItem("udyam_auth", JSON.stringify(STATE.auth));
   } catch (e) {}
