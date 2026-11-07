@@ -743,6 +743,13 @@ function updateAuthUI() {
       if (userIcon) userIcon.innerText = "🛒";
     }
     if (logoutBtn) logoutBtn.classList.remove("hidden");
+
+    if (STATE.auth?.user?.email) {
+      const installEmail = document.getElementById("installEmail");
+      if (installEmail && (!installEmail.value || installEmail.value === "customer@business.in")) {
+        installEmail.value = STATE.auth.user.email;
+      }
+    }
   } else {
     userName.innerText = "Sign In / Register";
     if (userIcon) userIcon.innerText = "👤";
@@ -1405,6 +1412,18 @@ function initEventListeners() {
   if (closeReceiptModalBtn) closeReceiptModalBtn.addEventListener("click", closeReceiptModal);
   const closeReceiptBtn = document.getElementById("closeReceiptBtn");
   if (closeReceiptBtn) closeReceiptBtn.addEventListener("click", closeReceiptModal);
+
+  // Email Notification Modal
+  const viewEmailBtn = document.getElementById("viewEmailBtn");
+  if (viewEmailBtn) viewEmailBtn.addEventListener("click", () => openEmailModal());
+  const closeEmailModalBtn = document.getElementById("closeEmailModalBtn");
+  if (closeEmailModalBtn) closeEmailModalBtn.addEventListener("click", () => {
+    document.getElementById("emailPreviewModal")?.classList.add("hidden");
+  });
+  const closeEmailModalFooterBtn = document.getElementById("closeEmailModalFooterBtn");
+  if (closeEmailModalFooterBtn) closeEmailModalFooterBtn.addEventListener("click", () => {
+    document.getElementById("emailPreviewModal")?.classList.add("hidden");
+  });
 
   // Partner Link & QR Actions
   const copyLinkBtn = document.getElementById("copyPartnerLinkBtn");
@@ -2233,6 +2252,7 @@ async function handleConfirmOrder() {
 
   const phoneMatch = contact.match(/(\+?\d[\d\s-]{8,})/);
   const cleanPhone = phoneMatch ? phoneMatch[0].replace(/[\s-]/g, '') : (STATE.auth?.user?.phone || "+919876512345");
+  const customerEmail = document.getElementById("installEmail")?.value?.trim() || STATE.auth?.user?.email || "customer@business.in";
   const extractedUdyam = document.getElementById("extractedUdyamInput")?.value?.trim() || null;
   const extractedGstin = document.getElementById("extractedGstinInput")?.value?.trim() || null;
 
@@ -2251,7 +2271,8 @@ async function handleConfirmOrder() {
         user_id: STATE.auth?.user?.user_id || null,
         udyam_number: extractedUdyam,
         gstin: extractedGstin,
-        kyc_details: STATE.kycDecision || STATE.lastExtractedDoc || null
+        kyc_details: STATE.kycDecision || STATE.lastExtractedDoc || null,
+        customer_email: customerEmail
       })
     });
     const order = await res.json();
@@ -2363,6 +2384,20 @@ function renderTracker(order) {
     </div>
     ${addrHtml}
   `;
+
+  // Update Email Notification Card Status
+  const targetEmail = order.customer_email || STATE.auth?.user?.email || "customer@business.in";
+  const emailTargetEl = document.getElementById("emailTargetText");
+  if (emailTargetEl) emailTargetEl.innerText = targetEmail;
+
+  const emailHeadingEl = document.getElementById("emailNotifHeading");
+  if (emailHeadingEl) {
+    if (isTokenPaid) {
+      emailHeadingEl.innerText = "Payment & Installation Schedule Email Dispatched";
+    } else {
+      emailHeadingEl.innerText = "Smart KYC & Installation Schedule Email Dispatched";
+    }
+  }
 }
 
 // --- ACTIVE ORDER PERSISTENCE & RESTORATION ---
@@ -2591,6 +2626,39 @@ function openReceiptModal(customReceipt = null) {
 function closeReceiptModal() {
   const modal = document.getElementById("receiptModal");
   if (modal) modal.classList.add("hidden");
+}
+
+async function openEmailModal() {
+  const modal = document.getElementById("emailPreviewModal");
+  if (!modal) return;
+
+  const orderId = STATE.activeOrder?.order_id || "";
+  const targetEmail = STATE.activeOrder?.customer_email || STATE.auth?.user?.email || "";
+
+  try {
+    const query = new URLSearchParams();
+    if (orderId) query.set("order_id", orderId);
+    if (targetEmail) query.set("email", targetEmail);
+
+    const res = await fetch(`/api/notifications/emails/latest?${query.toString()}`);
+    if (res.ok) {
+      const notif = await res.json();
+      const toEl = document.getElementById("emailModalTo");
+      if (toEl) toEl.innerText = notif.recipient_email;
+      const statusEl = document.getElementById("emailModalStatus");
+      if (statusEl) statusEl.innerText = notif.status || "SENT";
+      const dateEl = document.getElementById("emailModalDate");
+      if (dateEl) dateEl.innerText = new Date(notif.sent_at).toLocaleString();
+      const bodyEl = document.getElementById("emailModalBodyContainer");
+      if (bodyEl) bodyEl.innerHTML = notif.body_html;
+      modal.classList.remove("hidden");
+    } else {
+      alert("No email notification found for this order yet.");
+    }
+  } catch (e) {
+    console.error("Failed to load email preview:", e);
+    alert("Could not load email notification preview.");
+  }
 }
 
 // Reschedule

@@ -94,6 +94,8 @@ class OrderStateMachine:
                 conn.execute("ALTER TABLE orders ADD COLUMN gstin TEXT")
             if "kyc_details_json" not in cols:
                 conn.execute("ALTER TABLE orders ADD COLUMN kyc_details_json TEXT")
+            if "customer_email" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN customer_email TEXT")
             conn.commit()
 
     def create_order(
@@ -109,7 +111,8 @@ class OrderStateMachine:
         user_id: Optional[str] = None,
         udyam_number: Optional[str] = None,
         gstin: Optional[str] = None,
-        kyc_details: Optional[Dict[str, Any]] = None
+        kyc_details: Optional[Dict[str, Any]] = None,
+        customer_email: Optional[str] = None
     ) -> Dict[str, Any]:
         order_id = f"UDYAM-{uuid.uuid4().hex[:6].upper()}"
         install_date = (datetime.now() + timedelta(days=typical_install_days)).strftime("%Y-%m-%d")
@@ -121,8 +124,8 @@ class OrderStateMachine:
                 bundle_json, monthly_total, kyc_status, current_milestone,
                 scheduled_install_date, engineer_name, engineer_phone, nps_rating, 
                 partner_attribution_id, installation_address,
-                user_id, udyam_number, gstin, kyc_details_json, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                user_id, udyam_number, gstin, kyc_details_json, customer_email, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 order_id,
                 business_name,
@@ -142,6 +145,7 @@ class OrderStateMachine:
                 udyam_number,
                 gstin,
                 json.dumps(kyc_details) if kyc_details else None,
+                customer_email,
                 datetime.now().isoformat()
             ))
 
@@ -177,6 +181,26 @@ class OrderStateMachine:
                 datetime.now().isoformat()
             ))
             conn.commit()
+
+        # Dispatch immediate post-KYC confirmation email (covers: money given / deferred, what was done, install date)
+        try:
+            from app.modules.notifications.email_service import EmailNotificationService
+            notif_svc = EmailNotificationService.get_instance()
+            notif_svc.send_kyc_order_email(
+                order_id=order_id,
+                recipient_email=customer_email or "customer@business.in",
+                business_name=business_name,
+                installation_address=installation_address or {},
+                scheduled_install_date=install_date,
+                bundle_data=bundle_data,
+                amount_paid_inr=0.0,
+                txn_id=None,
+                udyam_number=udyam_number,
+                gstin=gstin,
+                kyc_status=kyc_status
+            )
+        except Exception as e:
+            pass
 
         return self.get_order(order_id)
 
@@ -281,7 +305,32 @@ class OrderStateMachine:
                 order_id
             ))
             conn.commit()
-            return cursor.rowcount > 0
+            if cursor.rowcount > 0:
+                try:
+                    from app.modules.notifications.email_service import EmailNotificationService
+                    order = self.get_order(order_id)
+                    if order:
+                        notif_svc = EmailNotificationService.get_instance()
+                        notif_svc.send_kyc_order_email(
+                            order_id=order_id,
+                            recipient_email=order.get("customer_email") or "customer@business.in",
+                            business_name=order.get("business_name", "Valued Customer"),
+                            installation_address=order.get("installation_address") or {},
+                            scheduled_install_date=order.get("scheduled_install_date", ""),
+                            bundle_data=order.get("bundle") or {},
+                            engineer_name=order.get("engineer_name") or "Ramesh Sharma (Field Lead)",
+                            engineer_phone=order.get("engineer_phone") or "+91 98765 43210",
+                            amount_paid_inr=amount_inr,
+                            txn_id=txn_id,
+                            payment_method=payment_method,
+                            udyam_number=order.get("udyam_number"),
+                            gstin=order.get("gstin"),
+                            kyc_status=order.get("kyc_status", "VERIFIED")
+                        )
+                except Exception:
+                    pass
+                return True
+            return False
 
     def reschedule_installation(self, order_id: str, new_date: str) -> bool:
         with self._get_connection() as conn:

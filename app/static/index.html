@@ -407,6 +407,10 @@
               <label class="block font-bold text-slate-700 mb-1" id="t-addr-contact-lbl">On-Site Contact Person & Phone: <span class="text-red-500">*</span></label>
               <input type="text" id="installContact" placeholder="e.g. Amit Sharma (+91 98765 12345)" value="Amit Sharma (+91 98765 12345)" class="w-full border border-slate-300 rounded-lg p-2 font-medium bg-white focus:outline-none focus:border-airtel-red">
             </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1" id="t-addr-email-lbl">Notification & E-Billing Email: <span class="text-red-500">*</span></label>
+              <input type="email" id="installEmail" placeholder="e.g. business@domain.com" value="customer@business.in" class="w-full border border-slate-300 rounded-lg p-2 font-medium bg-white focus:outline-none focus:border-airtel-red">
+            </div>
             <div class="sm:col-span-2">
               <label class="block font-bold text-slate-700 mb-1" id="t-addr-slot-lbl">Preferred Field Technician Time Slot:</label>
               <select id="installSlotSelect" class="w-full border border-slate-300 rounded-lg p-2 font-medium bg-white focus:outline-none focus:border-airtel-red text-xs">
@@ -467,6 +471,21 @@
           <p id="npsSubmittedText" class="hidden text-xs font-bold text-emerald-600 pt-1">
             <span id="t-nps-thanks">Thank you! NPS Rating recorded.</span>
           </p>
+        </div>
+
+        <!-- Email Notification Status Banner -->
+        <div id="emailNotificationCard" class="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
+          <div class="flex items-center space-x-2.5">
+            <span class="text-base">📧</span>
+            <div>
+              <span class="font-bold text-emerald-950 block" id="emailNotifHeading">Smart KYC & Installation Update Email Dispatched</span>
+              <span class="text-[11px] text-emerald-700" id="emailNotifRecipient">Delivered to: <strong id="emailTargetText" class="font-mono">customer@business.in</strong></span>
+            </div>
+          </div>
+          <button id="viewEmailBtn" type="button" class="bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1.5 rounded-lg font-bold text-[11px] transition shadow-2xs flex items-center space-x-1">
+            <span>👁️</span>
+            <span>View Sent Email</span>
+          </button>
         </div>
 
         <!-- Action to view Tax Invoice & Token Receipt -->
@@ -1143,6 +1162,44 @@
             <span id="t-receipt-close">Close Receipt</span>
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMAIL NOTIFICATION PREVIEW MODAL -->
+  <div id="emailPreviewModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white">
+        <div class="flex items-center space-x-2">
+          <span class="text-base">📧</span>
+          <div>
+            <h3 class="text-sm font-extrabold" id="emailModalTitle">Airtel Business — Post-KYC Customer Email Update</h3>
+            <span class="text-[10px] text-slate-400" id="emailModalSub">Official Automated E-Notification Dispatch</span>
+          </div>
+        </div>
+        <button id="closeEmailModalBtn" type="button" class="text-slate-400 hover:text-white font-black text-xl">&times;</button>
+      </div>
+
+      <div class="px-5 py-2.5 bg-slate-50 border-b border-slate-200 text-xs flex justify-between items-center text-slate-600">
+        <div>
+          <span>To: </span><strong id="emailModalTo" class="font-mono text-slate-900">customer@business.in</strong>
+          <span class="mx-2">&bull;</span>
+          <span>Status: </span><span id="emailModalStatus" class="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-[10px]">SENT</span>
+        </div>
+        <div class="text-[11px] text-slate-500" id="emailModalDate">Just now</div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 bg-slate-100">
+        <div id="emailModalBodyContainer" class="bg-white rounded-lg shadow-xs overflow-hidden">
+          <!-- Rendered HTML Email Content -->
+        </div>
+      </div>
+
+      <div class="px-5 py-3 border-t border-slate-200 bg-slate-50 flex justify-between items-center text-xs">
+        <span class="text-slate-500 text-[11px]">Includes money collected status, Smart KYC outcome, and technician arrival date.</span>
+        <button type="button" id="closeEmailModalFooterBtn" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold">
+          Close Preview
+        </button>
       </div>
     </div>
   </div>

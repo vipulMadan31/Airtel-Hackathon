@@ -126,6 +126,7 @@ class CreateOrderRequest(BaseModel):
     udyam_number: Optional[str] = None
     gstin: Optional[str] = None
     kyc_details: Optional[Dict[str, Any]] = None
+    customer_email: Optional[str] = None
 
 class RescheduleRequest(BaseModel):
     new_date: str
@@ -406,8 +407,38 @@ def create_order(req: CreateOrderRequest):
         user_id=req.user_id,
         udyam_number=req.udyam_number,
         gstin=req.gstin,
-        kyc_details=req.kyc_details
+        kyc_details=req.kyc_details,
+        customer_email=req.customer_email
     )
+
+@app.get("/api/notifications/emails/latest")
+def get_latest_email_notification(
+    order_id: Optional[str] = None,
+    email: Optional[str] = None
+):
+    from app.modules.notifications.email_service import EmailNotificationService
+    svc = EmailNotificationService.get_instance()
+    if order_id:
+        notifs = svc.get_notifications_for_order(order_id)
+        if notifs:
+            return notifs[0]
+    if email:
+        notif = svc.get_latest_notification_for_email(email)
+        if notif:
+            return notif
+    # Fallback to latest
+    with svc._get_connection() as conn:
+        row = conn.execute("SELECT * FROM email_notifications ORDER BY id DESC LIMIT 1").fetchone()
+        if row:
+            return dict(row)
+    raise HTTPException(status_code=404, detail="No email notification found")
+
+@app.get("/api/notifications/emails/{order_id}")
+def get_order_email_notifications(order_id: str):
+    from app.modules.notifications.email_service import EmailNotificationService
+    svc = EmailNotificationService.get_instance()
+    notifs = svc.get_notifications_for_order(order_id)
+    return {"order_id": order_id, "notifications": notifs}
 
 @app.get("/api/orders/user/latest")
 def get_latest_user_order(
