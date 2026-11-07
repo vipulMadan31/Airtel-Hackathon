@@ -218,10 +218,18 @@ class AdvisorAdapter:
         if profile.get("city") and not profile.get("pincode"):
             profile["pincode"] = CITY_BENCHMARK_PINCODES.get(profile["city"], "452001")
 
-        # Extract Employee / device / scale count if mentioned
-        emp_match = re.search(r'(\d+)\s*(people|staff|employees|workers|log|devices|pc|systems|chairs|beds|doctors|seats|users|counters|कर्मचारी|लोग)', msg)
+        # Extract Employee / device / scale count if mentioned (with typo resilience e.g. employess)
+        emp_match = re.search(
+            r'(\d+)\s*(people|staff|employee[s]?|employess?|employe[s]?|emp\b|workers?|log|devices?|pc\b|systems?|chairs?|beds?|doctors?|seats?|users?|counters?|team\s*members?|bande|कर्मचारी|लोग)',
+            msg,
+            re.IGNORECASE
+        )
         if emp_match:
             profile["employee_count"] = int(emp_match.group(1))
+        elif not profile.get("employee_count"):
+            emp_fallback = re.search(r'\b(?:i have|we have|we are|around|about|approx|total)\s*(\d{1,4})\b', msg, re.IGNORECASE)
+            if emp_fallback:
+                profile["employee_count"] = int(emp_fallback.group(1))
 
         # 0b. Village / Rural / Outskirts Infrastructure Feasibility Check (Biz Fibre vs Biz 5G AirFiber)
         rural_keywords = ["गांव", "देहात", "गाँव", "gram", "village", "rural", "kasba", "dehat", "panchayat", "basti", "outskirts", "dumra dehat", "dumra"]
@@ -563,67 +571,7 @@ class AdvisorAdapter:
                 ]
             }
 
-        # 3. Check for Business Type
-        has_business_type = bool(profile.get("business_type")) or any(
-            w in msg for w in [
-                "clinic", "doctor", "hospital", "dental", "pharma", "क्लिनिक", "डॉक्टर", "दवा",
-                "ca", "accountant", "office", "law", "firm", "consulting", "वकील", "दफ्तर",
-                "restaurant", "cafe", "hotel", "branch", "chain", "होटल", "खाना",
-                "factory", "manufacturing", "textile", "parts", "workshop", "कारखाना",
-                "kirana", "shop", "bakery", "store", "salon", "retail", "दुकान", "किराना",
-                "startup", "tech", "software", "agency", "it", "स्टार्टअप"
-            ]
-        )
-
-        # 4. MANDATORY CLARIFICATION CHECK:
-        # If city is missing OR employee count is missing OR business type is missing:
-        is_profile_incomplete = (
-            profile.get("city") is None or
-            profile.get("employee_count") is None or
-            not has_business_type
-        )
-
-        if is_profile_incomplete:
-            detected_b = "business"
-            if any(w in msg for w in ["shop", "store", "kirana", "retail", "दुकान"]):
-                detected_b = "shop"
-                profile["business_type"] = "Micro Retail"
-            elif any(w in msg for w in ["clinic", "doctor", "dental", "pharma", "क्लिनिक"]):
-                detected_b = "clinic"
-                profile["business_type"] = "Clinic / Healthcare"
-            elif any(w in msg for w in ["ca", "accountant", "office", "law", "दफ्तर"]):
-                detected_b = "office"
-                profile["business_type"] = "Professional Office"
-            elif any(w in msg for w in ["restaurant", "cafe", "hotel", "होटल"]):
-                detected_b = "restaurant"
-                profile["business_type"] = "Restaurant / Multi-site"
-            elif any(w in msg for w in ["startup", "tech", "software", "agency", "it", "स्टार्टअप"]):
-                detected_b = "startup"
-                profile["business_type"] = "Tech Startup"
-
-            if is_hindi:
-                clarify_msg = (
-                    f"नमस्ते! आपके {detected_b} के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?\n\n"
-                    "1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?\n"
-                    "2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?\n"
-                    "3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?"
-                )
-            else:
-                clarify_msg = (
-                    f"Welcome! We'd love to help set up business wifi for your {detected_b}. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:\n\n"
-                    "1. Which city or locality is your business located in?\n"
-                    "2. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?\n"
-                    "3. Do you also need add-ons like a UPI QR Soundbox for payment voice alerts, CCTV cameras, or cloud billing POS?"
-                )
-            return {
-                "intent": "clarification",
-                "message": clarify_msg,
-                "profile": profile,
-                "recommended_bundle": None,
-                "explainability_tags": []
-            }
-
-        # 5. Extract Business Type Details (only if city and staff are both known)
+        # 3. Check / Infer Business Type
         if any(w in msg for w in ["clinic", "doctor", "hospital", "dental", "pharma", "क्लिनिक", "डॉक्टर", "दवा"]):
             profile["business_type"] = "Clinic / Healthcare"
             profile["has_gstin"] = True
@@ -640,9 +588,65 @@ class AdvisorAdapter:
         elif any(w in msg for w in ["startup", "tech", "software", "agency", "it", "स्टार्टअप"]):
             profile["business_type"] = "Tech Startup"
             profile["num_sites"] = 1
-        elif any(w in msg for w in ["kirana", "shop", "bakery", "store", "salon", "retail", "दुकान", "किराना"]):
-            profile["business_type"] = "Micro Retail"
+        elif any(w in msg for w in ["kirana", "shop", "bakery", "store", "salon", "retail", "दुकान", "किराना", "soundbox", "upi qr", "qr soundbox", "upi"]):
+            profile["business_type"] = "Micro Retail / Commercial Store"
             profile["num_sites"] = 1
+        elif any(w in msg for w in ["business", "company", "firm", "व्यापार", "व्यवसाय"]) and not profile.get("business_type"):
+            profile["business_type"] = "Commercial Enterprise"
+
+        has_business_type = bool(profile.get("business_type"))
+
+        # 4. ADAPTIVE CLARIFICATION CHECK (Never ask for what is already known!):
+        has_city = bool(profile.get("city"))
+        has_emp = bool(profile.get("employee_count"))
+        has_btype = bool(profile.get("business_type"))
+
+        if not has_city or not has_emp:
+            questions = []
+            q_num = 1
+            if not has_city:
+                questions.append(
+                    f"{q_num}. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?"
+                    if is_hindi else
+                    f"{q_num}. Which city or locality is your business located in?"
+                )
+                q_num += 1
+            if not has_emp:
+                questions.append(
+                    f"{q_num}. दुकान/ऑफिस में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?"
+                    if is_hindi else
+                    f"{q_num}. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?"
+                )
+                q_num += 1
+            if not has_btype:
+                questions.append(
+                    f"{q_num}. आपका किस प्रकार का व्यवसाय है (जैसे दुकान, क्लिनिक, ऑफिस, या स्टार्टअप) और क्या आपको UPI साउंडबॉक्स या CCTV की आवश्यकता है?"
+                    if is_hindi else
+                    f"{q_num}. What type of business do you run (e.g., retail store, clinic, office, or startup) and do you also need add-ons like a UPI QR Soundbox or CCTV?"
+                )
+                q_num += 1
+
+            if has_city:
+                ack_prefix = (
+                    f"नमस्ते! {profile['city']} में Airtel Business का हाई-स्पीड नेटवर्क उपलब्ध है। आपके व्यवसाय के लिए सही प्लान चुनने के लिए कृपया बताएं:\n\n"
+                    if is_hindi else
+                    f"Welcome! {profile['city']} has high-speed Airtel Business network coverage. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:\n\n"
+                )
+            else:
+                ack_prefix = (
+                    f"नमस्ते! आपके व्यवसाय के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये विवरण साझा कर सकते हैं?\n\n"
+                    if is_hindi else
+                    f"Welcome! We'd love to help set up business wifi for your business. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:\n\n"
+                )
+
+            clarify_msg = ack_prefix + "\n".join(questions)
+            return {
+                "intent": "clarification",
+                "message": clarify_msg,
+                "profile": profile,
+                "recommended_bundle": None,
+                "explainability_tags": []
+            }
 
         # 6. Build Recommendation with Explainability Tags
         bundle = {}
@@ -717,19 +721,27 @@ class AdvisorAdapter:
                     {"product_id": "P19", "name": "Cloud POS Billing", "tag": "Unified billing & table management"},
                     {"product_id": "P23", "name": "Cloud CCTV", "tag": "Central live security view on your phone"}
                 ]
-        else: # Micro Retail / Kirana
-            bundle = {"P01": 1, "P07": 2, "P19": 1}
+        else: # Micro Retail / Commercial / Kirana
+            if emp_cnt >= 10:
+                bundle = {"P02": 1, "P19": 1}
+                speed_id = "P02"
+                speed_title = "बिज़ फाइबर 300" if is_hindi else "Biz Fibre 300"
+                speed_desc = f"{emp_cnt} कर्मचारियों और उपकरणों के लिए 300 Mbps हाई-स्पीड फाइबर ब्रॉडबैंड" if is_hindi else f"300 Mbps high-speed fibre broadband for {emp_cnt} staff and devices"
+            else:
+                bundle = {"P01": 1, "P07": 2, "P19": 1}
+                speed_id = "P01"
+                speed_title = "बिज़ फाइबर 100" if is_hindi else "Biz Fibre 100"
+                speed_desc = "दुकान पर यूपीआई साउंडबॉक्स, क्यूआर कोड और कार्ड स्वाइप के लिए स्थिर इंटरनेट" if is_hindi else "Dedicated business internet for UPI QR code soundbox & card swipe"
+
             if is_hindi:
                 tags = [
-                    {"product_id": "P01", "name": "बिज़ फाइबर 100", "tag": "दुकान पर यूपीआई साउंडबॉक्स, क्यूआर कोड और कार्ड स्वाइप के लिए स्थिर इंटरनेट"},
-                    {"product_id": "P07", "name": "बिज़नेस पोस्टपेड सिम", "tag": "मालिक और डिलीवरी स्टाफ के लिए 2 अनलिमिटेड कॉलिंग सिम"},
-                    {"product_id": "P19", "name": "क्लाउड पीओएस एवं बिलिंग", "tag": "आसान डिजिटल टैक्स बिलिंग और इन्वेंट्री ट्रैकिंग"}
+                    {"product_id": speed_id, "name": speed_title, "tag": speed_desc},
+                    {"product_id": "P19", "name": "क्लाउड पीओएस एवं बिलिंग", "tag": "यूपीआई साउंडबॉक्स आवाज अलर्ट और आसान डिजिटल बिलिंग"}
                 ]
             else:
                 tags = [
-                    {"product_id": "P01", "name": "Biz Fibre 100", "tag": "Dedicated business internet for UPI QR code soundbox & card swipe"},
-                    {"product_id": "P07", "name": "Business Postpaid SIM", "tag": "2 SIMs with unlimited calling for delivery and owner phone"},
-                    {"product_id": "P19", "name": "Cloud POS & Billing", "tag": "Easy inventory tracking and digital tax invoices"}
+                    {"product_id": speed_id, "name": speed_title, "tag": speed_desc},
+                    {"product_id": "P19", "name": "Cloud POS & Billing", "tag": "UPI QR voice alert soundbox & payment audio alerts"}
                 ]
 
         city_str = f" in {profile['city']}" if profile.get("city") else ""
@@ -842,15 +854,17 @@ FEASIBILITY & STATUTORY RULES:
     (or in English if chatting in English).
   - If the customer mentions that there is NO wire / cable ("bina taar", "no wire", "no cable", "taar nahi hai") or asks for wireless or confirms AirFiber:
     Set intent="recommendation". Recommend Biz 5G AirFiber 100 (P04 @ ₹899) + Cloud POS & UPI Soundbox (P19 @ ₹599).
-    Set recommended_bundle={"P04": 1, "P19": 1}.
+    Set recommended_bundle={{"P04": 1, "P19": 1}}.
     Explain that Biz 5G AirFiber needs zero civil drilling or wire-pulling, works over 5G mobile towers, and is ideal for village shops!
 
 CRITICAL INSTRUCTIONS FOR INTENT ROUTING:
 
 A. MULTI-TURN CONVERSATION MEMORY (NEVER FORGET PREVIOUS FACTS):
    - Review the conversation turns!
-   - If the user previously mentioned their city (e.g. 'Noida'), business type (e.g. 'startup'), or headcount (e.g. '25'), YOU MUST RETAIN THEM IN "profile"!
+   - If the user previously mentioned their city (e.g. 'Noida' or 'Rohtak'), business type, or headcount (e.g. '20' or '25'), YOU MUST RETAIN THEM IN "profile"!
    - NEVER ask for information that was ALREADY stated in earlier turns or in CURRENT CUSTOMER PROFILE CONTEXT!
+   - Specifically, if City is already known (e.g. 'Rohtak'), DO NOT ask 'Which city or locality is your business located in?'. Acknowledge the known city and ask ONLY for the remaining missing fields!
+   - Catch user typos and informal phrasing gracefully (e.g. '20 employess' = 20 employees; 'need upi qr soundbox' = commercial retail merchant needing UPI Soundbox P19).
    - When City, Business Type, and Headcount/Scale are ALL KNOWN:
      YOU HAVE COMPLETE INFORMATION! DO NOT ASK ANY MORE QUESTIONS!
      Immediately set intent="recommendation"!
