@@ -425,6 +425,11 @@ class PartnerPortal:
         try:
             cursor = conn.execute("""
                 SELECT * FROM customer_leads 
+                WHERE email != 'customer@business.in'
+                  AND business_name NOT IN ('Airtel MSME Customer', 'Sharma General Stores', 'Friend Business', 'Mobile Friend Store')
+                  AND email NOT LIKE '%example.com%'
+                  AND email NOT LIKE '%stores.in%'
+                  AND email NOT LIKE '%clinic.in%'
                 ORDER BY propensity_score DESC, last_activity_at DESC
             """)
             real_rows = [dict(r) for r in cursor.fetchall()]

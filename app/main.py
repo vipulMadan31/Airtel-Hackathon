@@ -533,15 +533,17 @@ def login_user(req: LoginRequest):
         res = user_db.authenticate(req.email, req.password, role=req.role)
         if res["user"]["role"] == ROLE_MERCHANT:
             try:
-                partner_portal.record_customer_activity(
-                    user_id=res["user"]["user_id"],
-                    business_name=res["user"]["name"],
-                    email=res["user"]["email"],
-                    phone=res["user"].get("phone", "+91 98110 12345"),
-                    action="LOGGED_IN",
-                    city="Rohtak",
-                    pincode="124001"
-                )
+                # Only record live customer activity for real business accounts (not demo seed)
+                if res["user"]["email"] != "customer@business.in":
+                    partner_portal.record_customer_activity(
+                        user_id=res["user"]["user_id"],
+                        business_name=res["user"]["name"],
+                        email=res["user"]["email"],
+                        phone=res["user"].get("phone", "+91 98110 12345"),
+                        action="LOGGED_IN",
+                        city="Rohtak",
+                        pincode="124001"
+                    )
             except Exception:
                 pass
         return {

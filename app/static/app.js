@@ -47,8 +47,8 @@ function safeOn(id, event, handler) {
 window.syncCustomerLeadActivity = async function(action, extra = {}) {
   // Only track customer leads
   if (STATE.auth && STATE.auth.role && STATE.auth.role !== 'MERCHANT') return;
-
   const user = STATE.auth?.user || {};
+  if (user.email === 'customer@business.in' || user.name === 'Airtel MSME Customer') return;
   const bundle = STATE.selectedBundle || {};
   const profile = STATE.profile || {};
 

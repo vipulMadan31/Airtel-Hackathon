@@ -161,6 +161,15 @@ async def test_login_flow():
             print("=======================================================")
 
     finally:
+        try:
+            import sqlite3
+            from app.config import DB_PATH
+            with sqlite3.connect(DB_PATH) as conn:
+                conn.execute("DELETE FROM customer_leads WHERE email LIKE 'verma.%@stores.in' OR email = 'customer@business.in'")
+                conn.execute("DELETE FROM users WHERE email LIKE 'verma.%@stores.in'")
+                conn.commit()
+        except Exception:
+            pass
         proc.kill()
 
 if __name__ == "__main__":
