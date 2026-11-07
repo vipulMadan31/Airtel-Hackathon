@@ -428,6 +428,23 @@ async function loadPartnerViewData() {
         const isClaimed = l.is_claimed || false;
         const scoreBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] ${l.propensity_score >= 70 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">Score: ${l.propensity_score}/100 (${l.priority})</span>`;
 
+        let slaBadge = '';
+        if (isClaimed) {
+          slaBadge = `<span class="inline-block text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">🔒 24h Outreach Active</span>`;
+        } else if (l.sla_status === "BREACHED") {
+          slaBadge = `<span class="inline-block text-[10px] font-mono font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded border border-red-300 animate-pulse">⛔ 4h SLA Expired</span>`;
+        } else if (l.sla_status === "WARNING") {
+          slaBadge = `<span class="inline-block text-[10px] font-mono font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 animate-pulse">⏳ ${l.sla_remaining}</span>`;
+        } else if (l.propensity_score >= 70) {
+          slaBadge = `<span class="inline-block text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">⏳ ${l.sla_remaining}</span>`;
+        } else {
+          slaBadge = `<span class="inline-block text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">${l.sla_remaining || 'Standard SLA'}</span>`;
+        }
+
+        const routingBadge = l.routing_label 
+          ? `<span class="mt-1 inline-block text-[9px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">${l.routing_label}</span>`
+          : '';
+
         let actionButtons = '';
         if (isClaimed) {
           actionButtons = `
@@ -438,6 +455,17 @@ async function loadPartnerViewData() {
               </span>
               <button class="bg-slate-900 hover:bg-black text-white px-2 py-1 rounded text-[10px] font-bold" onclick="alert('Calling claimed customer ${l.business_name} (${l.phone || '+91 98765 12345'})...')">
                 ${isHi ? 'कॉल करें' : 'Call'}
+              </button>
+            </div>
+          `;
+        } else if (l.sla_status === "BREACHED") {
+          actionButtons = `
+            <div class="flex items-center space-x-1.5">
+              <span class="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded text-[10px] font-extrabold">
+                Escalated to HQ
+              </span>
+              <button class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-2 py-1 rounded text-[10px] font-bold" onclick="alert('Viewing escalation details for ${l.business_name} (Escalated to Central Tele-Sales)...')">
+                View
               </button>
             </div>
           `;
@@ -460,10 +488,14 @@ async function loadPartnerViewData() {
             <td class="p-3 font-semibold text-slate-900">
               ${l.business_name}
               <span class="text-slate-400 block text-[10px]">${l.city} &bull; ${l.phone || '+91 98765 12345'}</span>
+              ${routingBadge}
             </td>
             <td class="p-3 text-slate-600">${l.stage_reached}</td>
             <td class="p-3 text-red-600 font-medium">${l.drop_reason}</td>
-            <td class="p-3">${scoreBadge}</td>
+            <td class="p-3">
+              ${scoreBadge}
+              <div class="mt-1">${slaBadge}</div>
+            </td>
             <td class="p-3">${actionButtons}</td>
           </tr>
         `;

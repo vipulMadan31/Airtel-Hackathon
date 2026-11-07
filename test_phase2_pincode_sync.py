@@ -79,3 +79,4 @@ def test_pincode_city_sync():
 
 if __name__ == "__main__":
     test_pincode_city_sync()
+

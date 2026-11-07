@@ -129,14 +129,24 @@ def get_admin_telemetry() -> Dict[str, Any]:
                 "business_name": "Ganesh Woodcraft",
                 "issue": "Low OCR Laplacian Blur Variance (1.03) - Re-upload pending",
                 "assigned_agent": "Airtel Tier-2 Support (Indore)",
-                "sla_remaining_hours": 6
+                "sla_remaining_hours": 6,
+                "escalation_type": "STATUTORY_OCR_BLUR"
             },
             {
                 "escalation_id": "ESC-2026-082",
                 "business_name": "Vindhya Tours & Travels",
                 "issue": "GSTIN Cancelled on 2025-11-20 - Non-GST Udyam Switch Advised",
                 "assigned_agent": "Field Mitra Executive (Bhopal)",
-                "sla_remaining_hours": 12
+                "sla_remaining_hours": 12,
+                "escalation_type": "STATUTORY_REGISTRY_TRAP"
+            },
+            {
+                "escalation_id": "ESC-SLA-007",
+                "business_name": "Saffron Dental Care LLP",
+                "issue": "Mitra Partner 4-Hour SLA Expired (Unclaimed) - Fast-Track Tele-Sales Assigned",
+                "assigned_agent": "Central Outbound Queue (Pan-India HQ)",
+                "sla_remaining_hours": 0.5,
+                "escalation_type": "PARTNER_4H_SLA_BREACH"
             }
         ]
     }
