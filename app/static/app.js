@@ -133,25 +133,31 @@ function initViewRouter() {
     return;
   }
 
-  if (path === "/mitra" || roleParam === "PARTNER") {
-    switchUserRole("PARTNER");
-  } else if (path === "/ops" || path === "/admin" || roleParam === "ADMIN") {
-    switchUserRole("ADMIN");
+  // Enforce role-segregated view for authenticated sessions
+  if (STATE.auth.role === "PARTNER") {
+    navigateToView("PARTNER", false);
+  } else if (STATE.auth.role === "ADMIN") {
+    navigateToView("ADMIN", false);
   } else {
-    navigateToView(STATE.auth.role || "MERCHANT", false);
+    // Customer mode: cannot view /mitra or /ops
+    if (path === "/mitra" || path === "/ops" || path === "/admin") {
+      try { window.history.replaceState({ role: 'MERCHANT' }, '', '/'); } catch (e) {}
+    }
+    navigateToView("MERCHANT", false);
   }
 
   window.addEventListener("popstate", () => {
-    const curPath = window.location.pathname.toLowerCase();
     const curAuthed = !!(STATE.auth && STATE.auth.token && STATE.auth.user);
-    if (!curAuthed || curPath === "/login") {
-      openAuthModal("MERCHANT", "login", curAuthed);
-    } else if (curPath === "/mitra") {
-      switchUserRole("PARTNER");
-    } else if (curPath === "/ops" || curPath === "/admin") {
-      switchUserRole("ADMIN");
+    if (!curAuthed) {
+      openAuthModal("MERCHANT", "login", false);
+      return;
+    }
+    if (STATE.auth.role === "PARTNER") {
+      navigateToView("PARTNER", false);
+    } else if (STATE.auth.role === "ADMIN") {
+      navigateToView("ADMIN", false);
     } else {
-      switchUserRole(STATE.auth.role || "MERCHANT");
+      navigateToView("MERCHANT", false);
     }
   });
 }
@@ -365,79 +371,48 @@ function setText(elementId, text) {
   if (el && text !== undefined) el.innerText = text;
 }
 
-// --- ENTERPRISE RBAC & ROLE SWITCHER ---
+// --- ENTERPRISE RBAC & ROLE STATUS BADGE ---
 function updateRoleSwitcherUI() {
   const dict = LOCALES[STATE.language] || LOCALES.en;
   const roleBadgeIcon = document.getElementById("roleBadgeIcon");
   const roleBadgeLabel = document.getElementById("roleBadgeLabel");
-  const partnerBtn = document.getElementById("partnerPortalBtn");
-  const adminBtn = document.getElementById("adminPortalBtn");
 
   if (!roleBadgeIcon || !roleBadgeLabel) return;
 
-  if (STATE.auth.role === 'MERCHANT') {
-    roleBadgeIcon.innerText = "🛒";
-    roleBadgeLabel.innerText = dict.role_merchant_label || "Customer Mode";
-    if (partnerBtn) {
-      partnerBtn.classList.add("hidden");
-      partnerBtn.classList.remove("flex");
-    }
-    if (adminBtn) {
-      adminBtn.classList.add("hidden");
-      adminBtn.classList.remove("flex");
-    }
+  if (STATE.auth.role === 'ADMIN') {
+    roleBadgeIcon.innerText = "🛡️";
+    roleBadgeLabel.innerText = dict.role_admin_label || "Ops Admin";
   } else if (STATE.auth.role === 'PARTNER') {
     roleBadgeIcon.innerText = "🤝";
     roleBadgeLabel.innerText = dict.role_partner_label || "Mitra Partner";
-    if (partnerBtn) {
-      partnerBtn.classList.remove("hidden");
-      partnerBtn.classList.add("flex");
-    }
-    if (adminBtn) {
-      adminBtn.classList.add("hidden");
-      adminBtn.classList.remove("flex");
-    }
-  } else if (STATE.auth.role === 'ADMIN') {
-    roleBadgeIcon.innerText = "🛡️";
-    roleBadgeLabel.innerText = dict.role_admin_label || "Ops Admin";
-    if (partnerBtn) {
-      partnerBtn.classList.remove("hidden");
-      partnerBtn.classList.add("flex");
-    }
-    if (adminBtn) {
-      adminBtn.classList.remove("hidden");
-      adminBtn.classList.add("flex");
-    }
+  } else {
+    roleBadgeIcon.innerText = "🛒";
+    roleBadgeLabel.innerText = dict.role_merchant_label || "Customer Mode";
   }
 }
 
 // --- VIEW ROUTER (CUSTOMER / MITRA / OPS) ---
 function navigateToView(role, pushHistory = true) {
-  const normRole = (role || 'MERCHANT').toUpperCase();
+  let normRole = (role || 'MERCHANT').toUpperCase();
+
+  // Strict role segregation: Enforce that users can ONLY view their authenticated persona's screen.
+  // Customers cannot switch to Mitra or Admin without logging out.
+  if (STATE.auth && STATE.auth.token) {
+    if (STATE.auth.role === 'MERCHANT' && normRole !== 'MERCHANT') {
+      normRole = 'MERCHANT';
+    } else if (STATE.auth.role === 'PARTNER' && normRole !== 'PARTNER') {
+      normRole = 'PARTNER';
+    } else if (STATE.auth.role === 'ADMIN' && normRole !== 'ADMIN') {
+      normRole = 'ADMIN';
+    }
+  }
+
   STATE.auth.role = normRole;
 
   const customerView = document.getElementById("customerView");
   const mitraView = document.getElementById("mitraView");
   const opsView = document.getElementById("opsView");
   const safeModeToggleWrapper = document.getElementById("safeModeToggle")?.closest("label");
-
-  // Highlight Top Navigation Bar Tabs
-  const tabMerchant = document.getElementById("navTabMerchant");
-  const tabPartner = document.getElementById("navTabPartner");
-  const tabAdmin = document.getElementById("navTabAdmin");
-
-  if (tabMerchant && tabPartner && tabAdmin) {
-    [tabMerchant, tabPartner, tabAdmin].forEach(t => {
-      t.className = "px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 text-slate-600 hover:text-slate-900 hover:bg-white/60";
-    });
-    if (normRole === 'PARTNER') {
-      tabPartner.className = "px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-amber-600 text-white shadow-sm border border-amber-700 font-extrabold";
-    } else if (normRole === 'ADMIN') {
-      tabAdmin.className = "px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-purple-900 text-white shadow-sm border border-purple-950 font-extrabold";
-    } else {
-      tabMerchant.className = "px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-white text-slate-900 shadow-sm border border-slate-200/80 font-extrabold";
-    }
-  }
 
   if (!customerView || !mitraView || !opsView) return;
 
@@ -710,11 +685,17 @@ function updateAuthUI() {
 
   if (!userName) return;
 
-  if (STATE.auth && STATE.auth.user && STATE.auth.user.name && STATE.auth.token) {
-    const isCustom = STATE.auth.token.startsWith("oa_");
-    userName.innerText = isCustom ? STATE.auth.user.name : (STATE.auth.user.name.split(" ")[0] || "Account");
-    if (userIcon) {
-      userIcon.innerText = STATE.auth.role === 'ADMIN' ? '🛡️' : (STATE.auth.role === 'PARTNER' ? '🤝' : '🛒');
+  if (STATE.auth && STATE.auth.token && (STATE.auth.user || STATE.auth.role)) {
+    if (STATE.auth.role === 'ADMIN') {
+      userName.innerText = "Ops Admin";
+      if (userIcon) userIcon.innerText = "🛡️";
+    } else if (STATE.auth.role === 'PARTNER') {
+      userName.innerText = "Mitra Partner";
+      if (userIcon) userIcon.innerText = "🤝";
+    } else {
+      const displayName = STATE.auth.user ? (STATE.auth.user.name || STATE.auth.user.email || "Customer") : "Customer";
+      userName.innerText = displayName;
+      if (userIcon) userIcon.innerText = "🛒";
     }
     if (logoutBtn) logoutBtn.classList.remove("hidden");
   } else {
@@ -1029,33 +1010,9 @@ window.handleLogout = async function() {
 };
 
 async function switchUserRole(roleName) {
-  const dropdown = document.getElementById("roleDropdownMenu");
-  if (dropdown) dropdown.classList.add("hidden");
-
-  try {
-    const res = await fetch("/api/auth/switch-role", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: roleName })
-    });
-    const data = await res.json();
-    if (data.status === "success") {
-      STATE.auth.role = data.user.role;
-      STATE.auth.token = data.token;
-      STATE.auth.user = data.user;
-      try { localStorage.setItem("udyam_auth", JSON.stringify(STATE.auth)); } catch (e) {}
-      updateAuthUI();
-      navigateToView(data.user.role, true);
-
-      const isHi = STATE.language === 'hi';
-      const toastMsg = isHi
-        ? `सफलतापूर्वक प्रोफ़ाइल स्विच की गई: ${data.user.name} (${data.user.role})`
-        : `Switched profile to: ${data.user.name} (${data.user.role})`;
-      console.log(toastMsg);
-    }
-  } catch (err) {
-    console.error("Role switch failed:", err);
-  }
+  // Role switching without authentication is strictly disabled.
+  // Customers cannot switch roles; to access Mitra or Admin, the user must Log Out and Sign In.
+  console.warn("Direct persona switching is disabled for security. Please Log Out and Sign In with the target account.");
 }
 
 // --- UI-ONLY BUSINESS REGISTRATION TRACK SELECTOR (Non-GST Safe Mode vs Registered GSTIN) ---
@@ -1232,33 +1189,8 @@ function initEventListeners() {
     if (pw) pw.value = "airteladmin";
   });
 
-  // Role Switcher Dropdown Toggle
-  const roleDropdownBtn = document.getElementById("roleDropdownBtn");
-  const roleDropdownMenu = document.getElementById("roleDropdownMenu");
-  if (roleDropdownBtn && roleDropdownMenu) {
-    roleDropdownBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      roleDropdownMenu.classList.toggle("hidden");
-    });
-    document.addEventListener("click", (e) => {
-      if (!roleDropdownMenu.contains(e.target) && !roleDropdownBtn.contains(e.target)) {
-        roleDropdownMenu.classList.add("hidden");
-      }
-    });
-  }
-
-  // Top Navigation Bar Tab Handlers
-  safeOn("navTabMerchant", "click", () => switchUserRole("MERCHANT"));
-  safeOn("navTabPartner", "click", () => switchUserRole("PARTNER"));
-  safeOn("navTabAdmin", "click", () => switchUserRole("ADMIN"));
-
   // UI-Only KYC Track Selector
   try { initKycTrackSelector(); } catch (e) { console.warn("Track selector init note:", e); }
-
-  // Role Persona Switch Handlers
-  safeOn("switchRoleMerchant", "click", () => switchUserRole("MERCHANT"));
-  safeOn("switchRolePartner", "click", () => switchUserRole("PARTNER"));
-  safeOn("switchRoleAdmin", "click", () => switchUserRole("ADMIN"));
 
   // Step Transitions
   safeOn("proceedKycBtn", "click", () => {
@@ -1359,10 +1291,7 @@ function initEventListeners() {
     });
   }
 
-  // Back to Customer View Buttons
-  document.querySelectorAll(".backToCustomerBtn").forEach(btn => {
-    btn.addEventListener("click", () => switchUserRole("MERCHANT"));
-  });
+
 
   // Dedicated Mitra View Copy & Download Buttons
   document.querySelectorAll(".copyPartnerViewLinkBtn").forEach(btn => {

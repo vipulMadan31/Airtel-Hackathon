@@ -22,17 +22,17 @@ PERSONAS: Dict[str, Dict[str, Any]] = {
     },
     "PARTNER": {
         "user_id": "PTR-IND-882",
-        "name": "Vikram Telecom (Mitra Channel Partner)",
+        "name": "Airtel Mitra Partner",
         "phone": "+91 98260 55443",
         "role": ROLE_PARTNER,
-        "badge": "🤝 Mitra Channel Partner",
+        "badge": "🤝 Airtel Mitra Partner",
         "assigned_pincode": "452001",
         "token": "tok_partner_demo",
         "permissions": ["view_my_quote", "view_my_order", "submit_kyc", "chat_advisor", "view_partner_leads", "claim_bounty", "generate_referral_qr"]
     },
     "ADMIN": {
         "user_id": "ADM-HQ-001",
-        "name": "Priya Sharma (Airtel Enterprise Ops Lead)",
+        "name": "Airtel Enterprise Ops Admin",
         "phone": "+91 98765 00001",
         "role": ROLE_ADMIN,
         "badge": "🛡️ Airtel Ops Admin",

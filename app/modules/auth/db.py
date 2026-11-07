@@ -24,8 +24,9 @@ class UserDatabase:
         self._init_db()
 
     def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout=30000;")
         return conn
 
     def _init_db(self):
@@ -86,7 +87,7 @@ class UserDatabase:
                 password_hash=h,
                 salt=s,
                 role="ADMIN",
-                name="Priya Sharma (Airtel Enterprise Ops Lead)",
+                name="Airtel Enterprise Ops Admin",
                 phone="+91 98765 00001",
                 assigned_pincode="ALL",
                 badge="🛡️ Airtel Ops Admin"
@@ -102,11 +103,20 @@ class UserDatabase:
                 password_hash=h,
                 salt=s,
                 role="PARTNER",
-                name="Vikram Telecom (Mitra Channel Partner)",
+                name="Airtel Mitra Partner",
                 phone="+91 98260 55443",
                 assigned_pincode="452001",
-                badge="🤝 Mitra Channel Partner"
+                badge="🤝 Airtel Mitra Partner"
             )
+
+        # Ensure canonical names for admin and mitra
+        try:
+            with self._get_connection() as conn:
+                conn.execute("UPDATE users SET name = 'Airtel Enterprise Ops Admin' WHERE role = 'ADMIN'")
+                conn.execute("UPDATE users SET name = 'Airtel Mitra Partner' WHERE role = 'PARTNER'")
+                conn.commit()
+        except Exception:
+            pass
 
         # 3. Customer Seed Account
         customer = self.get_user_by_email("customer@business.in")

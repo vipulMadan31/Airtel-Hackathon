@@ -10,7 +10,7 @@ from app.data_loader import DataLoader
 PARTNER_REGISTRY: Dict[str, Dict[str, Any]] = {
     "PTR-IND-882": {
         "partner_id": "PTR-IND-882",
-        "name": "Vikram Telecom (Mitra Channel Partner)",
+        "name": "Airtel Mitra Partner",
         "hub_pincode": "452001",
         "district_prefix": "452",
         "city": "Indore",
@@ -68,14 +68,7 @@ class PartnerPortal:
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path or DB_PATH
         self.loader = DataLoader.get_instance()
-        self.claimed_leads: Dict[str, Dict[str, Any]] = {
-            "L00001": {
-                "partner_id": "PTR-IND-882",
-                "claimed_at": "2026-11-06T18:30:00",
-                "bounty_inr": 1000,
-                "status": "IN_PROGRESS"
-            }
-        }
+        self.claimed_leads: Dict[str, Dict[str, Any]] = {}
         self.commissions: Dict[str, Any] = {
             "active_referrals_count": 28,
             "monthly_recurring_trail_inr": 42850.0,
@@ -84,59 +77,45 @@ class PartnerPortal:
         self._init_db()
 
     def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout=30000;")
         return conn
 
     def _init_db(self):
-        with self._get_connection() as conn:
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS customer_leads (
-                lead_id TEXT PRIMARY KEY,
-                user_id TEXT,
-                business_name TEXT,
-                email TEXT,
-                phone TEXT,
-                city TEXT,
-                pincode TEXT,
-                business_type TEXT,
-                employee_count INTEGER DEFAULT 1,
-                num_sites INTEGER DEFAULT 1,
-                monthly_spend_inr REAL DEFAULT 0.0,
-                has_gstin TEXT DEFAULT 'N',
-                stage_reached TEXT,
-                drop_reason TEXT,
-                propensity_score INTEGER DEFAULT 35,
-                priority TEXT DEFAULT 'STANDARD',
-                bundle_json TEXT,
-                is_claimed INTEGER DEFAULT 0,
-                claimed_by TEXT,
-                claimed_at TEXT,
-                recovery_bounty_inr REAL DEFAULT 1000.0,
-                created_at TEXT,
-                last_activity_at TEXT
-            )
-            """)
-            conn.commit()
-
-            cursor = conn.execute("SELECT COUNT(*) FROM customer_leads")
-            if cursor.fetchone()[0] == 0:
-                now_str = datetime.now().isoformat()
+        conn = self._get_connection()
+        try:
+            with conn:
+                conn.execute("PRAGMA journal_mode=WAL;")
                 conn.execute("""
-                    INSERT INTO customer_leads (
-                        lead_id, user_id, business_name, email, phone,
-                        city, pincode, business_type, employee_count, num_sites,
-                        monthly_spend_inr, has_gstin, stage_reached, drop_reason,
-                        propensity_score, priority, bundle_json, is_claimed,
-                        claimed_by, claimed_at, recovery_bounty_inr, created_at, last_activity_at
-                    ) VALUES (
-                        'LD-USR-CUST-1001', 'USR-CUST-1001', 'Airtel MSME Customer', 'customer@business.in',
-                        '+91 98110 12345', 'Rohtak', '124001', 'Clinic / Healthcare', 10, 1,
-                        2397.0, 'Y', 'BUNDLE_CUSTOMIZED', 'Customized Clinic Bundle (₹2397/mo) • Pending Smart KYC',
-                        75, 'HIGH', NULL, 0, NULL, NULL, 1000.0, ?, ?
-                    )
-                """, (now_str, now_str))
-                conn.commit()
+                CREATE TABLE IF NOT EXISTS customer_leads (
+                    lead_id TEXT PRIMARY KEY,
+                    user_id TEXT,
+                    business_name TEXT,
+                    email TEXT,
+                    phone TEXT,
+                    city TEXT,
+                    pincode TEXT,
+                    business_type TEXT,
+                    employee_count INTEGER DEFAULT 1,
+                    num_sites INTEGER DEFAULT 1,
+                    monthly_spend_inr REAL DEFAULT 0.0,
+                    has_gstin TEXT DEFAULT 'N',
+                    stage_reached TEXT,
+                    drop_reason TEXT,
+                    propensity_score INTEGER DEFAULT 35,
+                    priority TEXT DEFAULT 'STANDARD',
+                    bundle_json TEXT,
+                    is_claimed INTEGER DEFAULT 0,
+                    claimed_by TEXT,
+                    claimed_at TEXT,
+                    recovery_bounty_inr REAL DEFAULT 1000.0,
+                    created_at TEXT,
+                    last_activity_at TEXT
+                )
+                """)
+        finally:
+            conn.close()
 
     def compute_customer_propensity(
         self,
@@ -240,8 +219,10 @@ class PartnerPortal:
         Stores and updates real-time propensity score for any customer action.
         Persisted to SQLite database so Mitra Partners always see real data.
         """
-        with self._get_connection() as conn:
-            row = None
+        conn = self._get_connection()
+        try:
+            with conn:
+                row = None
             if lead_id:
                 cursor = conn.execute("SELECT * FROM customer_leads WHERE lead_id = ?", (lead_id,))
                 row = cursor.fetchone()
@@ -327,12 +308,12 @@ class PartnerPortal:
                     p_score, priority, json.dumps(cur_bundle) if cur_bundle else None,
                     now_iso, now_iso
                 ))
-            conn.commit()
-
-            cursor = conn.execute("SELECT * FROM customer_leads WHERE lead_id = ?", (cur_lead_id,))
-            saved_lead = dict(cursor.fetchone())
-            saved_lead["bundle"] = cur_bundle
-            return saved_lead
+                cursor = conn.execute("SELECT * FROM customer_leads WHERE lead_id = ?", (cur_lead_id,))
+                saved_lead = dict(cursor.fetchone())
+                saved_lead["bundle"] = cur_bundle
+                return saved_lead
+        finally:
+            conn.close()
 
     def resolve_partner_for_lead(
         self,
@@ -438,15 +419,17 @@ class PartnerPortal:
         results = []
 
         # 1. Fetch Real Live Customer Leads from SQLite Database
+        conn = self._get_connection()
         try:
-            with self._get_connection() as conn:
-                cursor = conn.execute("""
-                    SELECT * FROM customer_leads 
-                    ORDER BY propensity_score DESC, last_activity_at DESC
-                """)
-                real_rows = [dict(r) for r in cursor.fetchall()]
+            cursor = conn.execute("""
+                SELECT * FROM customer_leads 
+                ORDER BY propensity_score DESC, last_activity_at DESC
+            """)
+            real_rows = [dict(r) for r in cursor.fetchall()]
         except Exception:
             real_rows = []
+        finally:
+            conn.close()
 
         for r in real_rows:
             lid = r["lead_id"]
@@ -500,67 +483,8 @@ class PartnerPortal:
                 "last_activity_at": r.get("last_activity_at")
             })
 
-        # 2. Append historical dataset leads
-        raw_leads = self.loader.get_stalled_leads(limit=limit)
-        for idx, l in enumerate(raw_leads):
-            if any(res["lead_id"] == l["lead_id"] for res in results):
-                continue
-
-            p_score = self.calculate_propensity_score(l)
-            lid = l["lead_id"]
-            claim_info = self.claimed_leads.get(lid)
-
-            city_val = l.get("city", "Indore")
-            pin_val = l.get("installation_pincode") or ("452001" if city_val.lower() == "indore" else None)
-            routing = self.resolve_partner_for_lead(
-                pincode=pin_val,
-                city=city_val,
-                tier=l.get("city_tier", 2)
-            )
-
-            is_claimed = bool(claim_info)
-            if is_claimed:
-                sla_remaining = "Locked"
-                sla_status = "CLAIMED"
-            elif lid == "L00007":
-                sla_remaining = "0.0h (Breached)"
-                sla_status = "BREACHED"
-            elif p_score >= 70:
-                hours_left = max(0.5, round(4.0 - ((idx % 6) * 0.6), 1))
-                sla_remaining = f"{hours_left}h left"
-                sla_status = "WARNING" if hours_left < 1.5 else "ACTIVE"
-            else:
-                sla_remaining = "24h SLA"
-                sla_status = "STANDARD"
-
-            results.append({
-                "lead_id": lid,
-                "business_name": l["business_name"],
-                "city": l["city"],
-                "pincode": pin_val or routing.get("hub_pincode", "452001"),
-                "phone": "+91 98260 12345",
-                "stage_reached": l["stage_reached"],
-                "drop_reason": l["drop_reason"],
-                "monthly_spend_inr": l.get("monthly_telecom_spend_inr", 0),
-                "has_gstin": l.get("has_gstin", "N"),
-                "propensity_score": p_score,
-                "priority": "HIGH" if p_score >= 70 else ("MEDIUM" if p_score >= 50 else "STANDARD"),
-                "is_claimed": is_claimed,
-                "claimed_by": claim_info.get("partner_id") if claim_info else None,
-                "recovery_bounty_inr": 1000,
-                "routing_tier": routing["routing_tier"],
-                "routing_label": routing["routing_label"],
-                "assigned_partner_id": routing["partner_id"],
-                "assigned_partner_name": routing["partner_name"],
-                "sla_hours": routing["sla_hours"],
-                "sla_remaining": sla_remaining,
-                "sla_status": sla_status,
-                "is_real_time": False,
-                "source": "DATASET"
-            })
-
-        # Priority sort: Live real customers first, then by propensity score DESC
-        return sorted(results, key=lambda x: (not x.get("is_real_time", False), -x["propensity_score"]))
+        # Only return genuine live customer leads, sorted by propensity score DESC
+        return sorted(results, key=lambda x: -x["propensity_score"])[:limit]
 
     def claim_stalled_lead(self, lead_id: str, partner_id: str = "PTR-IND-882") -> Dict[str, Any]:
         self.claimed_leads[lead_id] = {
@@ -571,16 +495,18 @@ class PartnerPortal:
         }
 
         # Update SQLite if it is a real customer lead
+        conn = self._get_connection()
         try:
-            with self._get_connection() as conn:
+            with conn:
                 conn.execute("""
                     UPDATE customer_leads 
                     SET is_claimed = 1, claimed_by = ?, claimed_at = ?
                     WHERE lead_id = ?
                 """, (partner_id, datetime.now().isoformat(), lead_id))
-                conn.commit()
         except Exception:
             pass
+        finally:
+            conn.close()
 
         return {
             "status": "SUCCESS",
@@ -595,7 +521,7 @@ class PartnerPortal:
     def generate_partner_referral_link(self, partner_id: str = "PTR-IND-882") -> Dict[str, Any]:
         return {
             "partner_id": partner_id,
-            "partner_name": "Vikram Telecom (Mitra Channel Partner)",
+            "partner_name": "Airtel Mitra Partner",
             "referral_code": f"REF-{partner_id}",
             "referral_url": f"http://localhost:8000/?ref={partner_id}",
             "commission_tier": "15% recurring trail commission on all 12 monthly bills",
@@ -607,18 +533,20 @@ class PartnerPortal:
         for lid, c in self.claimed_leads.items():
             if c.get("partner_id") == partner_id:
                 claimed_ids.add(lid)
+        conn = self._get_connection()
         try:
-            with self._get_connection() as conn:
-                cursor = conn.execute("SELECT lead_id FROM customer_leads WHERE is_claimed = 1 AND claimed_by = ?", (partner_id,))
-                for row in cursor.fetchall():
-                    claimed_ids.add(row[0])
+            cursor = conn.execute("SELECT lead_id FROM customer_leads WHERE is_claimed = 1 AND claimed_by = ?", (partner_id,))
+            for row in cursor.fetchall():
+                claimed_ids.add(row[0])
         except Exception:
             pass
+        finally:
+            conn.close()
 
         claimed_count = len(claimed_ids)
         return {
             "partner_id": partner_id,
-            "partner_name": "Vikram Telecom",
+            "partner_name": "Airtel Mitra Partner",
             "assigned_pincode": "452001",
             "active_referrals_count": 28,
             "monthly_recurring_trail_inr": 42850.0,

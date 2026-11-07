@@ -13,7 +13,7 @@ def test_routing_and_sla():
     assert r1["routing_level"] == 1
     assert r1["routing_tier"] == "EXACT_PIN"
     assert r1["partner_id"] == "PTR-IND-882"
-    assert "Vikram Telecom" in r1["partner_name"]
+    assert "Airtel Mitra Partner" in r1["partner_name"]
     assert r1["sla_hours"] == 4.0
     print(f"✔ Level 1 (Exact PIN): {r1['routing_label']} -> {r1['partner_name']} ({r1['partner_id']}), SLA: {r1['sla_hours']}h")
 
@@ -40,29 +40,16 @@ def test_routing_and_sla():
     assert r4["sla_hours"] == 24.0
     print(f"✔ Level 4 (Central Ops Fallback): {r4['routing_label']} -> {r4['partner_name']} ({r4['partner_id']}), SLA: {r4['sla_hours']}h")
 
-    # Test 5: Fast-Track Geo-Routing & 4-Hour SLA in Lead Queue
+    # Test 5: Fast-Track Geo-Routing & 4-Hour SLA in Live Customer Queue
     leads = portal.get_stalled_leads_with_propensity(limit=15)
     assert len(leads) > 0
 
-    # Verify L00001 is claimed
-    l1 = next(l for l in leads if l["lead_id"] == "L00001")
-    assert l1["is_claimed"] is True
-    assert l1["sla_status"] == "CLAIMED"
-    assert l1["sla_remaining"] == "Locked"
-    print(f"✔ Claimed Lead [L00001]: Status={l1['sla_status']}, SLA={l1['sla_remaining']}, Bounty Locked=₹{l1['recovery_bounty_inr']}")
-
-    # Verify L00007 is breached exception
-    l7 = next(l for l in leads if l["lead_id"] == "L00007")
-    assert l7["sla_status"] == "BREACHED"
-    print(f"✔ Planted Breached SLA [L00007]: Status={l7['sla_status']}, Remaining={l7['sla_remaining']}")
-
-    # Verify High-Propensity Fast-Track Leads
-    high_leads = [l for l in leads if l["propensity_score"] >= 70 and not l["is_claimed"] and l["lead_id"] != "L00007"]
-    assert len(high_leads) > 0
-    top_lead = high_leads[0]
+    top_lead = leads[0]
+    assert top_lead["is_real_time"] is True
+    assert top_lead["propensity_score"] >= 70
     assert "left" in top_lead["sla_remaining"]
     assert top_lead["sla_status"] in ["ACTIVE", "WARNING"]
-    print(f"✔ Fast-Track Lead [{top_lead['lead_id']}]: Propensity={top_lead['propensity_score']}, Status={top_lead['sla_status']}, SLA={top_lead['sla_remaining']}")
+    print(f"✔ Live Fast-Track Lead [{top_lead['lead_id']} - {top_lead['business_name']}]: Propensity={top_lead['propensity_score']}, Status={top_lead['sla_status']}, SLA={top_lead['sla_remaining']}")
 
     # Test 6: Admin Exception Desk Integration
     admin_telemetry = get_admin_telemetry()

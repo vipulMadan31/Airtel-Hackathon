@@ -246,7 +246,7 @@ async def test():
             assigned_partner = await run_eval("return window.STATE.attribution.partner_id;")
             assert banner_visible is True
             assert assigned_partner == "PTR-IND-882"
-            print("   -> Partner Attribution Banner displayed: PTR-IND-882 (Vikram Telecom)")
+            print("   -> Partner Attribution Banner displayed: PTR-IND-882 (Airtel Mitra Partner)")
 
             # Click Copy Partner Link button
             await run_eval("document.getElementById('copyPartnerLinkBtn').click();")

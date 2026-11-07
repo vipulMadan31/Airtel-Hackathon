@@ -38,23 +38,7 @@
         </div>
       </div>
 
-      <!-- PROMINENT VIEW TABS: CUSTOMER SELF-SERVE | AIRTEL MITRA PARTNER | OPS ADMIN -->
-      <nav class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold shadow-inner" id="mainRoleNavTabs">
-        <button id="navTabMerchant" type="button" class="px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-white text-slate-900 shadow-sm border border-slate-200/80">
-          <span>🛒</span>
-          <span id="t-nav-customer">Customer Self-Serve</span>
-        </button>
-        <button id="navTabPartner" type="button" class="px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 text-slate-600 hover:text-amber-900 hover:bg-white/60">
-          <span>🤝</span>
-          <span id="t-nav-partner">Airtel Mitra Partner</span>
-        </button>
-        <button id="navTabAdmin" type="button" class="px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 text-slate-600 hover:text-purple-900 hover:bg-white/60">
-          <span>🛡️</span>
-          <span id="t-nav-admin">Enterprise Ops Admin</span>
-        </button>
-      </nav>
-
-      <!-- Controls: Safe Mode, Language, WhatsApp, Role Switcher -->
+      <!-- Controls: Safe Mode, Language, WhatsApp, Active Role Badge -->
       <div class="flex items-center space-x-2 sm:space-x-3">
         <!-- Non-GST Safe Mode Toggle -->
         <label class="flex items-center space-x-2 text-xs font-semibold cursor-pointer bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-full border border-slate-200 transition">
@@ -73,53 +57,10 @@
           <span>📱 WhatsApp</span>
         </a>
 
-        <!-- Role-specific Partner Portal Link (Visible only to Partner & Admin) -->
-        <button id="partnerPortalBtn" class="hidden text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2.5 py-1.5 rounded-lg transition items-center space-x-1">
-          <span>🤝</span>
-          <span id="t-partner-btn">Partner Portal</span>
-        </button>
-
-        <!-- Role-specific Admin Console Link (Visible only to Admin) -->
-        <button id="adminPortalBtn" class="hidden text-xs font-bold text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-300 px-2.5 py-1.5 rounded-lg transition items-center space-x-1">
-          <span>🛡️</span>
-          <span id="t-admin-btn">Ops Console</span>
-        </button>
-
-        <!-- Role Switcher Dropdown (Enterprise RBAC) -->
-        <div class="relative inline-block text-left" id="roleSwitcherWrapper">
-          <button id="roleDropdownBtn" type="button" class="flex items-center space-x-1.5 text-xs font-bold bg-slate-900 text-white hover:bg-black px-3 py-1.5 rounded-full shadow-sm transition">
-            <span id="roleBadgeIcon">🛒</span>
-            <span id="roleBadgeLabel">Customer Mode</span>
-            <svg class="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </button>
-          <div id="roleDropdownMenu" class="hidden absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-white ring-1 ring-black/5 divide-y divide-slate-100 z-50 overflow-hidden">
-            <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-              Switch Persona / View
-            </div>
-            <div class="p-1 space-y-0.5">
-              <button id="switchRoleMerchant" type="button" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-slate-100 flex items-center space-x-2.5 transition">
-                <span class="text-base">🛒</span>
-                <div>
-                  <div class="font-extrabold text-slate-900">Customer Mode</div>
-                  <div class="text-[10px] text-slate-500">Customer Self-Serve (MSME)</div>
-                </div>
-              </button>
-              <button id="switchRolePartner" type="button" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-amber-50 flex items-center space-x-2.5 transition">
-                <span class="text-base">🤝</span>
-                <div>
-                  <div class="font-extrabold text-amber-950">Airtel Mitra Partner</div>
-                  <div class="text-[10px] text-amber-700">Vikram Telecom (PTR-IND-882)</div>
-                </div>
-              </button>
-              <button id="switchRoleAdmin" type="button" class="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-purple-50 flex items-center space-x-2.5 transition">
-                <span class="text-base">🛡️</span>
-                <div>
-                  <div class="font-extrabold text-purple-950">Airtel Ops Admin</div>
-                  <div class="text-[10px] text-purple-700">National Funnel Telemetry & Review</div>
-                </div>
-              </button>
-            </div>
-          </div>
+        <!-- Portal Role Status Indicator (Static / Read-only) -->
+        <div id="roleBadgeContainer" class="flex items-center space-x-1.5 text-xs font-bold bg-slate-900 text-white px-3 py-1.5 rounded-full shadow-sm select-none">
+          <span id="roleBadgeIcon">🛒</span>
+          <span id="roleBadgeLabel">Customer Mode</span>
         </div>
 
         <!-- User Account / OAuth2 Login Button -->
@@ -140,7 +81,7 @@
   <div id="partnerAttributionBanner" class="hidden bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 text-white text-xs font-bold py-2 px-4 shadow-sm flex items-center justify-between">
     <div class="flex items-center space-x-2">
       <span class="text-sm">🤝</span>
-      <span id="t-partner-attribution-banner">Assisted by Mitra Partner: Vikram Telecom (PTR-IND-882) • Special Digital Onboarding Benefits Active</span>
+      <span id="t-partner-attribution-banner">Assisted by Airtel Mitra Partner (PTR-IND-882) • Special Digital Onboarding Benefits Active</span>
     </div>
     <span class="text-[10px] bg-black/20 text-white px-2 py-0.5 rounded font-mono uppercase tracking-wider">15% Recurring Trail Tagged</span>
   </div>
@@ -559,15 +500,9 @@
               <span class="text-xs font-bold uppercase tracking-wider text-amber-200">Airtel Mitra Partner Portal</span>
               <span class="bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 text-[10px] font-bold px-2 py-0.5 rounded-full">Active Partner</span>
             </div>
-            <h2 class="text-xl font-extrabold text-white">Vikram Telecom (PTR-IND-882)</h2>
+            <h2 class="text-xl font-extrabold text-white">Airtel Mitra Partner (PTR-IND-882)</h2>
             <p class="text-amber-100 text-xs">Indore Central Circle • Assigned Hub PIN: 452001 • Retail Counter Tier-2 Lead Recovery Desk</p>
           </div>
-        </div>
-        <div class="flex items-center space-x-3">
-          <button type="button" class="backToCustomerBtn bg-white text-slate-900 hover:bg-slate-100 font-extrabold px-3.5 py-2 rounded-xl text-xs transition shadow-sm flex items-center space-x-1.5">
-            <span>🛒</span>
-            <span>Switch to Customer Mode</span>
-          </button>
         </div>
       </div>
 
@@ -680,15 +615,9 @@
               <span class="text-xs font-bold uppercase tracking-wider text-purple-300">Airtel Enterprise Operations Center</span>
               <span class="bg-purple-500/30 text-purple-200 border border-purple-400/30 text-[10px] font-bold px-2 py-0.5 rounded-full">National Lead Desk</span>
             </div>
-            <h2 class="text-xl font-extrabold text-white">Priya Sharma (Airtel Enterprise Ops Lead)</h2>
+            <h2 class="text-xl font-extrabold text-white">Airtel Enterprise Operations Lead</h2>
             <p class="text-purple-200 text-xs">Pan-India MSME Funnel Telemetry • 4-Hour Partner SLA Escalations • DPDP & DoT Audit Compliance</p>
           </div>
-        </div>
-        <div class="flex items-center space-x-3">
-          <button type="button" class="backToCustomerBtn bg-white text-slate-900 hover:bg-slate-100 font-extrabold px-3.5 py-2 rounded-xl text-xs transition shadow-sm flex items-center space-x-1.5">
-            <span>🛒</span>
-            <span>Switch to Customer Mode</span>
-          </button>
         </div>
       </div>
 

@@ -25,14 +25,14 @@ def test_routes_and_views():
     mitra_resp = serve_mitra_portal()
     assert Path(mitra_resp.path) == index_path
     assert 'id="mitraView"' in html_root
-    assert "Vikram Telecom (PTR-IND-882)" in html_root
+    assert "Airtel Mitra Partner (PTR-IND-882)" in html_root
     print("✔ serve_mitra_portal() returns FileResponse pointing to index.html with dedicated Mitra Portal")
 
     # 3. Test /ops & /admin route handler
     ops_resp = serve_ops_portal()
     assert Path(ops_resp.path) == index_path
     assert 'id="opsView"' in html_root
-    assert "Priya Sharma (Airtel Enterprise Ops Lead)" in html_root
+    assert "Airtel Enterprise Operations Lead" in html_root
     print("✔ serve_ops_portal() returns FileResponse pointing to index.html with dedicated Ops Center")
 
     # 4. Test RBAC Switch Role
@@ -71,7 +71,7 @@ def test_routes_and_views():
     assert "function initViewRouter(" in app_js
     assert "function loadPartnerViewData(" in app_js
     assert "function loadOpsViewData(" in app_js
-    assert "backToCustomerBtn" in app_js
+    assert "updateRoleSwitcherUI" in app_js
     print("✔ app.js verified: navigateToView, initViewRouter, loadPartnerViewData, loadOpsViewData all implemented")
 
     print("\n=======================================================")

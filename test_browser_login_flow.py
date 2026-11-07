@@ -116,7 +116,7 @@ async def test_login_flow():
             mitra_view_visible = await run_eval("!document.getElementById('mitraView').classList.contains('hidden');")
             print("   Mitra Partner Badge:", mitra_badge_name)
             print("   Mitra View Active:", mitra_view_visible)
-            assert "Vikram" in mitra_badge_name or "Mitra" in mitra_badge_name
+            assert "Mitra" in mitra_badge_name
             assert mitra_view_visible is True, "Mitra view should be active"
 
             print("\n6. Testing Admin Login with fixed password 'airteladmin'...")
@@ -146,7 +146,7 @@ async def test_login_flow():
             ops_view_visible = await run_eval("!document.getElementById('opsView').classList.contains('hidden');")
             print("   Admin Badge:", admin_badge_name)
             print("   Ops Admin View Active:", ops_view_visible)
-            assert "Priya" in admin_badge_name or "Admin" in admin_badge_name
+            assert "Admin" in admin_badge_name
             assert ops_view_visible is True, "Ops Admin view should be active"
 
             print("\n7. Testing Direct /login Route Navigation...")
