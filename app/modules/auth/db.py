@@ -242,15 +242,15 @@ class UserDatabase:
         if not password:
             raise ValueError("Password is required.")
 
-        # If role is ADMIN, or email indicates admin, or password matches airteladmin:
-        if clean_role == "ADMIN" or clean_email.startswith("admin@") or "admin" in clean_email:
+        # 1. Admin Authentication
+        if clean_role == "ADMIN" or clean_email.startswith("admin@") or "admin" in clean_email or password == FIXED_ADMIN_PASSWORD:
             if password != FIXED_ADMIN_PASSWORD:
                 raise ValueError("Invalid password for Admin. Required fixed password: 'airteladmin'")
             
             # Lookup or create Admin user in DB
             user = self.get_user_by_email(clean_email)
-            if not user or user["role"] != "ADMIN":
-                h, s = self._hash_password(FIXED_ADMIN_PASSWORD)
+            h, s = self._hash_password(FIXED_ADMIN_PASSWORD)
+            if not user:
                 user_id = f"ADM-HQ-{secrets.token_hex(2).upper()}"
                 display_name = clean_email.split("@")[0].replace(".", " ").title() + " (Airtel Ops Admin)"
                 self._insert_user_raw(
@@ -265,20 +265,27 @@ class UserDatabase:
                     badge="🛡️ Airtel Ops Admin"
                 )
                 user = self.get_user_by_email(clean_email)
+            elif user["role"] != "ADMIN":
+                with self._get_connection() as conn:
+                    conn.execute("""
+                        UPDATE users SET role = 'ADMIN', password_hash = ?, salt = ?, badge = '🛡️ Airtel Ops Admin' WHERE email = ?
+                    """, (h, s, clean_email))
+                    conn.commit()
+                user = self.get_user_by_email(clean_email)
             
             token = self.create_token(user["user_id"], "ADMIN")
             self._update_last_login(user["user_id"])
             return {"user": user, "token": token}
 
-        # If role is PARTNER, or email indicates mitra/partner, or password matches airtelmitra:
-        if clean_role == "PARTNER" or "mitra" in clean_email or "partner" in clean_email:
+        # 2. Mitra Partner Authentication
+        if clean_role == "PARTNER" or "mitra" in clean_email or "partner" in clean_email or password == FIXED_MITRA_PASSWORD:
             if password != FIXED_MITRA_PASSWORD:
                 raise ValueError("Invalid password for Mitra Partner. Required fixed password: 'airtelmitra'")
             
             # Lookup or create Mitra user in DB
             user = self.get_user_by_email(clean_email)
-            if not user or user["role"] != "PARTNER":
-                h, s = self._hash_password(FIXED_MITRA_PASSWORD)
+            h, s = self._hash_password(FIXED_MITRA_PASSWORD)
+            if not user:
                 user_id = f"PTR-IND-{secrets.token_hex(2).upper()}"
                 display_name = clean_email.split("@")[0].replace(".", " ").title() + " (Mitra Channel Partner)"
                 self._insert_user_raw(
@@ -292,6 +299,13 @@ class UserDatabase:
                     assigned_pincode="452001",
                     badge="🤝 Mitra Channel Partner"
                 )
+                user = self.get_user_by_email(clean_email)
+            elif user["role"] != "PARTNER":
+                with self._get_connection() as conn:
+                    conn.execute("""
+                        UPDATE users SET role = 'PARTNER', password_hash = ?, salt = ?, badge = '🤝 Mitra Channel Partner' WHERE email = ?
+                    """, (h, s, clean_email))
+                    conn.commit()
                 user = self.get_user_by_email(clean_email)
             
             token = self.create_token(user["user_id"], "PARTNER")

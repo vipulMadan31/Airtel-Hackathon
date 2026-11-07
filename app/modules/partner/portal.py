@@ -421,16 +421,20 @@ class PartnerPortal:
         results = []
 
         # 1. Fetch Real Live Customer Leads from SQLite Database
+        # Note: If token is already paid or order placed, DO NOT put it out to Mitras.
         conn = self._get_connection()
         try:
             cursor = conn.execute("""
-                SELECT * FROM customer_leads 
-                WHERE email != 'customer@business.in'
-                  AND business_name NOT IN ('Airtel MSME Customer', 'Sharma General Stores', 'Friend Business', 'Mobile Friend Store')
-                  AND email NOT LIKE '%example.com%'
-                  AND email NOT LIKE '%stores.in%'
-                  AND email NOT LIKE '%clinic.in%'
-                ORDER BY propensity_score DESC, last_activity_at DESC
+                SELECT cl.* FROM customer_leads cl
+                WHERE cl.email != 'customer@business.in'
+                  AND cl.business_name NOT IN ('Airtel MSME Customer', 'Sharma General Stores', 'Friend Business', 'Mobile Friend Store')
+                  AND cl.email NOT LIKE '%example.com%'
+                  AND cl.email NOT LIKE '%stores.in%'
+                  AND cl.email NOT LIKE '%clinic.in%'
+                  AND cl.stage_reached NOT IN ('TOKEN_PAID', 'ORDER_CONFIRMED', 'ACTIVATED')
+                  AND (cl.drop_reason IS NULL OR cl.drop_reason NOT LIKE '%Paid%')
+                  AND cl.lead_id NOT IN (SELECT order_id FROM orders WHERE token_paid = 1)
+                ORDER BY cl.propensity_score DESC, cl.last_activity_at DESC
             """)
             real_rows = [dict(r) for r in cursor.fetchall()]
         except Exception:
@@ -439,6 +443,11 @@ class PartnerPortal:
             conn.close()
 
         for r in real_rows:
+            stage_str = (r.get("stage_reached") or "").upper()
+            drop_str = (r.get("drop_reason") or "").lower()
+            if stage_str in ["TOKEN_PAID", "ORDER_CONFIRMED", "ACTIVATED"] or "paid" in drop_str:
+                continue
+
             lid = r["lead_id"]
             claim_info = self.claimed_leads.get(lid)
             is_claimed = bool(r.get("is_claimed")) or bool(claim_info)

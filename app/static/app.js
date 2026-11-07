@@ -498,7 +498,12 @@ async function loadPartnerViewData() {
     });
 
     if (res.ok) {
-      const leads = await res.json();
+      const allLeads = await res.json();
+      const leads = (Array.isArray(allLeads) ? allLeads : []).filter(l => {
+        const st = (l.stage_reached || "").toUpperCase();
+        const dr = (l.drop_reason || "").toLowerCase();
+        return st !== "TOKEN_PAID" && st !== "ORDER_CONFIRMED" && st !== "ACTIVATED" && !dr.includes("paid");
+      });
       const isHi = STATE.language === 'hi';
       const rowsHtml = leads.map(l => {
         const isClaimed = l.is_claimed || false;
@@ -1327,16 +1332,12 @@ function initEventListeners() {
   }
 
   safeOn("fillDemoMitraBtn", "click", () => {
-    const em = document.getElementById("loginMitraEmail");
     const pw = document.getElementById("loginMitraPassword");
-    if (em) em.value = "mitra@airtel.com";
     if (pw) pw.value = "airtelmitra";
   });
 
   safeOn("fillDemoAdminBtn", "click", () => {
-    const em = document.getElementById("loginAdminEmail");
     const pw = document.getElementById("loginAdminPassword");
-    if (em) em.value = "admin@airtel.com";
     if (pw) pw.value = "airteladmin";
   });
 
@@ -2898,7 +2899,12 @@ async function openPartnerModal() {
       return;
     }
 
-    const leads = await res.json();
+    const allLeads = await res.json();
+    const leads = (Array.isArray(allLeads) ? allLeads : []).filter(l => {
+      const st = (l.stage_reached || "").toUpperCase();
+      const dr = (l.drop_reason || "").toLowerCase();
+      return st !== "TOKEN_PAID" && st !== "ORDER_CONFIRMED" && st !== "ACTIVATED" && !dr.includes("paid");
+    });
     const isHi = STATE.language === 'hi';
     tbody.innerHTML = leads.map(l => {
       const isClaimed = l.is_claimed || false;
