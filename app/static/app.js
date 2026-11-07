@@ -1261,7 +1261,7 @@ async function handleChatSubmit() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: message,
-        current_profile: STATE.profile,
+        current_profile: Object.assign({}, STATE.profile, { current_bundle: STATE.selectedBundle }),
         language: STATE.language,
         history: STATE.chatHistory
       })
@@ -1287,7 +1287,13 @@ async function handleChatSubmit() {
         }
       }
     }
-    if (data.recommended_bundle && Object.keys(data.recommended_bundle).length > 0) {
+    if (data.action === "remove_addon" && data.removed_product_id) {
+      delete STATE.selectedBundle[data.removed_product_id];
+      if (data.recommended_bundle) {
+        STATE.selectedBundle = data.recommended_bundle;
+      }
+      recalculateQuote();
+    } else if (data.recommended_bundle && Object.keys(data.recommended_bundle).length > 0) {
       STATE.selectedBundle = data.recommended_bundle;
       recalculateQuote();
     }
@@ -1372,17 +1378,28 @@ function renderSelectedItems(items) {
     return;
   }
 
+  const basePids = ["P01", "P02", "P03", "P04", "P05", "P06"];
+  const baseItems = items.filter(i => basePids.includes(i.product_id));
+  const isMultiSiteBase = baseItems.length > 1;
+
+  let siteIndex = 1;
   items.forEach(item => {
+    const isBase = basePids.includes(item.product_id);
+    let siteBadge = "";
+    if (isBase && isMultiSiteBase) {
+      siteBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1">Shop / Site ${siteIndex++}</span>`;
+    }
+
     const div = document.createElement("div");
     div.className = "flex items-center justify-between p-2.5 bg-slate-50/80 rounded-xl border border-slate-100 text-xs";
     div.innerHTML = `
       <div>
-        <span class="font-bold text-slate-900 block">${item.product_name} <span class="text-[10px] text-slate-400 font-mono">(${item.product_id})</span></span>
+        <span class="font-bold text-slate-900 block">${siteBadge}${item.product_name} <span class="text-[10px] text-slate-400 font-mono">(${item.product_id})</span></span>
         <span class="text-[11px] text-slate-500">${item.category} &bull; ₹${item.unit_price_inr}/mo</span>
       </div>
       <div class="flex items-center space-x-2">
         <span class="font-extrabold text-slate-900">₹${item.line_monthly_inr}</span>
-        <button class="text-slate-400 hover:text-airtel-red text-base font-black px-1" onclick="removeProduct('${item.product_id}')">&times;</button>
+        <button class="text-[11px] font-semibold text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-200 px-2 py-0.5 rounded-lg transition duration-150 cursor-pointer flex items-center space-x-0.5" onclick="removeProduct('${item.product_id}')" title="Remove ${item.product_name}"><span>Remove</span><span class="font-bold">&times;</span></button>
       </div>
     `;
     container.appendChild(div);
@@ -1391,8 +1408,12 @@ function renderSelectedItems(items) {
 
 function removeProduct(productId) {
   if (STATE.selectedBundle[productId]) {
+    const prodName = (STATE.activeQuote && STATE.activeQuote.items)
+      ? (STATE.activeQuote.items.find(i => i.product_id === productId)?.product_name || productId)
+      : productId;
     delete STATE.selectedBundle[productId];
     recalculateQuote();
+    addAiChatMessage(`I have removed **${prodName}** (${productId}) from your quote. Your updated monthly commitment has been recalculated in your pricing drawer.`);
   }
 }
 

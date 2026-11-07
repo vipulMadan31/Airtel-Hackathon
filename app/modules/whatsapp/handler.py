@@ -261,6 +261,8 @@ class WhatsAppHandler:
 
         # 7. Conversational Chat & AI Advisor Flow
         profile = session.get("current_profile") or {}
+        if session.get("active_bundle"):
+            profile["current_bundle"] = session.get("active_bundle")
         chat_history = session.get("chat_history") or []
 
         # If user states a fresh discovery request on Turn 1 (empty chat history),

@@ -130,6 +130,36 @@ class AdvisorAdapter:
         """
         Extracts structured profile, intent, and outputs recommended bundle with explainability tags.
         """
+        msg = (user_message or "").lower().strip()
+
+        # 1. High-confidence Add-on Removal Intent (e.g. "remove soundbox", "soundbox hata do", "don't need backup")
+        remove_keywords = [
+            "remove", "hata", "hatao", "delete", "hata do", "nahi chahiye",
+            "cancel", "drop", "don't need", "dont need", "remove addon",
+            "remove add-on", "no need", "re-move", "hatayein", "हटाओ", "हटा दो", "नहीं चाहिए"
+        ]
+        if any(w in msg for w in remove_keywords):
+            return self._process_deterministic(user_message, current_profile, language, history=history)
+
+        # 2. High-confidence Multi-Site Heterogeneous Request (e.g. 2 shops: one has 10, other has 100)
+        pA = re.search(
+            r'(?:one|first|1st|ek|shop\s*1|site\s*1|branch\s*1)[^\d]*(\d+)[^\d]*(?:other|second|2nd|another|dusre|shop\s*2|site\s*2|branch\s*2)[^\d]*(\d+)',
+            msg,
+            re.IGNORECASE
+        )
+        pB = re.search(
+            r'(\d+)\s*(?:employees?|employess?|staff|people|workers?|log|users?|pc)?\s*(?:in|for|at)\s*(?:one|first|1st|ek)[^\d]*(\d+)\s*(?:employees?|employess?|staff|people|workers?|log|users?|pc)?\s*(?:in|for|at)\s*(?:other|second|2nd|another|dusre)',
+            msg,
+            re.IGNORECASE
+        )
+        pC = re.search(
+            r'(?:2|two|दो)\s*(?:shops?|stores?|branches?|sites?|locations?|दुकानें?|शाखाएं?)[^\d]*(\d+)[^\d]+(\d+)',
+            msg,
+            re.IGNORECASE
+        )
+        if pA or pB or pC:
+            return self._process_deterministic(user_message, current_profile, language, history=history)
+
         if self.has_llm_key:
             try:
                 result = self._call_external_llm(user_message, current_profile, language, history=history)
@@ -230,6 +260,125 @@ class AdvisorAdapter:
             emp_fallback = re.search(r'\b(?:i have|we have|we are|around|about|approx|total)\s*(\d{1,4})\b', msg, re.IGNORECASE)
             if emp_fallback:
                 profile["employee_count"] = int(emp_fallback.group(1))
+
+        # 0c. Multi-Site / Multi-Shop Heterogeneous Extraction (e.g. 2 shops: one has 10, other has 100)
+        pA = re.search(
+            r'(?:one|first|1st|ek|shop\s*1|site\s*1|branch\s*1)[^\d]*(\d+)[^\d]*(?:other|second|2nd|another|dusre|shop\s*2|site\s*2|branch\s*2)[^\d]*(\d+)',
+            msg,
+            re.IGNORECASE
+        )
+        pB = re.search(
+            r'(\d+)\s*(?:employees?|employess?|staff|people|workers?|log|users?|pc)?\s*(?:in|for|at)\s*(?:one|first|1st|ek)[^\d]*(\d+)\s*(?:employees?|employess?|staff|people|workers?|log|users?|pc)?\s*(?:in|for|at)\s*(?:other|second|2nd|another|dusre)',
+            msg,
+            re.IGNORECASE
+        )
+        pC = re.search(
+            r'(?:2|two|दो)\s*(?:shops?|stores?|branches?|sites?|locations?|दुकानें?|शाखाएं?)[^\d]*(\d+)[^\d]+(\d+)',
+            msg,
+            re.IGNORECASE
+        )
+        multisite_counts = None
+        if pA:
+            multisite_counts = (int(pA.group(1)), int(pA.group(2)))
+        elif pB:
+            multisite_counts = (int(pB.group(1)), int(pB.group(2)))
+        elif pC:
+            multisite_counts = (int(pC.group(1)), int(pC.group(2)))
+
+        if multisite_counts:
+            s1_emp, s2_emp = multisite_counts
+            profile["num_sites"] = 2
+            profile["site_scales"] = [s1_emp, s2_emp]
+            profile["employee_count"] = s1_emp + s2_emp
+            profile["business_type"] = "Multi-Site Retail / Commercial Outlets"
+            profile["has_gstin"] = True
+
+            # Determine product for Site 1
+            if s1_emp <= 5:
+                s1_pid, s1_name, s1_speed, s1_price = "P01", "Biz Fibre 100", "100 Mbps", 999
+            elif s1_emp <= 30:
+                s1_pid, s1_name, s1_speed, s1_price = "P02", "Biz Fibre 300", "300 Mbps", 1499
+            else:
+                s1_pid, s1_name, s1_speed, s1_price = "P03", "Biz Fibre 1G", "1 Gbps", 3999
+
+            # Determine product for Site 2
+            if s2_emp <= 5:
+                s2_pid, s2_name, s2_speed, s2_price = "P01", "Biz Fibre 100", "100 Mbps", 999
+            elif s2_emp <= 30:
+                s2_pid, s2_name, s2_speed, s2_price = "P02", "Biz Fibre 300", "300 Mbps", 1499
+            else:
+                s2_pid, s2_name, s2_speed, s2_price = "P03", "Biz Fibre 1G", "1 Gbps", 3999
+
+            if s1_pid == s2_pid:
+                multi_bundle = {
+                    s1_pid: 2,
+                    "P10": 1,
+                    "P19": 1,
+                    "P20": min(max(s1_emp, s2_emp) // 5, 10) or 2
+                }
+            else:
+                multi_bundle = {
+                    s1_pid: 1,
+                    s2_pid: 1,
+                    "P10": 1,
+                    "P19": 1,
+                    "P20": min(max(s1_emp, s2_emp) // 5, 10) or 2
+                }
+
+            city_name = profile.get("city") or ("आपकी लोकेशन" if is_hindi else "your locations")
+
+            if is_hindi:
+                multi_msg = (
+                    f"🏢 **एयरटेल मल्टी-साइट एंटरप्राइज बंडल (2 दुकानें / शाखाएं - {city_name}):**\n\n"
+                    f"📍 **दुकान 1 ({s1_emp} कर्मचारी):**\n"
+                    f"• **{s1_name} ({s1_speed}):** ₹{s1_price:,}/माह — {s1_emp} कर्मचारियों व बिलिंग के लिए ऑप्टिकल फाइबर ब्रॉडबैंड।\n"
+                    f"• **ऐड-ऑन:** Cloud POS & UPI Soundbox (₹599/माह) डिजिटल पेमेंट व आवाज अलर्ट के लिए।\n\n"
+                    f"📍 **दुकान 2 ({s2_emp} कर्मचारी):**\n"
+                    f"• **{s2_name} ({s2_speed}):** ₹{s2_price:,}/माह — {s2_emp} कर्मचारियों के भारी वर्कलोड और तेज डेटा के लिए अल्ट्रा-हाई-स्पीड इंटरनेट।\n\n"
+                    f"🌐 **मल्टी-ब्रांच प्राइवेट इंटर-कनेक्ट:**\n"
+                    f"• **Managed SD-WAN (P10):** ₹2,500/माह — दोनों दुकानों को एक सुरक्षित प्राइवेट नेटवर्क में जोड़ता है, जिससे बिलिंग व इन्वेंट्री शून्य रुकावट पर सिंक होती है।\n\n"
+                    f"💼 **अनुशंसित डिजिटल ऐड-ऑन्स:**\n"
+                    f"• **Cloud POS & UPI Soundbox (P19 @ ₹599/माह)**\n"
+                    f"• **Endpoint Security (P20 @ ₹99/उपकरण)**\n\n"
+                    f"💡 *नोट: हमने आपकी सुविधा के लिए उपयोगी ऐड-ऑन्स जोड़े हैं, लेकिन आप अपने कोटेशन ड्रॉअर में किसी भी ऐड-ऑन को 'Remove' बटन दबाकर हटा सकते हैं! दोनों लोकेशन्स पर ₹2,500 का इंस्टॉलेशन शुल्क पूरी तरह माफ है।*"
+                )
+                tags = [
+                    {"product_id": s1_pid, "name": s1_name, "tag": f"दुकान 1 ({s1_emp} स्टाफ) के लिए {s1_speed} फाइबर"},
+                    {"product_id": s2_pid, "name": s2_name, "tag": f"दुकान 2 ({s2_emp} स्टाफ) के लिए {s2_speed} हाई-थ्रूपुट इंटरनेट"},
+                    {"product_id": "P10", "name": "Managed SD-WAN", "tag": "दोनों दुकानों को जोड़ने वाला सेंट्रलाइज्ड प्राइवेट नेटवर्क"},
+                    {"product_id": "P19", "name": "Cloud POS & UPI Soundbox", "tag": "दुकान पर डिजिटल पेमेंट और आवाज अलर्ट"},
+                    {"product_id": "P20", "name": "Endpoint Security", "tag": "दुकानों के कंप्यूटरों के लिए एंटीवायरस सुरक्षा"}
+                ]
+            else:
+                multi_msg = (
+                    f"🏢 **Airtel Multi-Site Solution (2 Shops / Branches - {city_name}):**\n\n"
+                    f"📍 **Shop 1 ({s1_emp} Employees):**\n"
+                    f"• **{s1_name} ({s1_speed}):** ₹{s1_price:,}/mo — Optical fibre broadband sized for {s1_emp} staff and POS billing.\n"
+                    f"• **Add-on:** Cloud POS & UPI Soundbox (₹599/mo) for instant payment audio alerts.\n\n"
+                    f"📍 **Shop 2 ({s2_emp} Employees):**\n"
+                    f"• **{s2_name} ({s2_speed}):** ₹{s2_price:,}/mo — Ultra-high-speed connectivity engineered for {s2_emp} concurrent users, video calls, and cloud operations.\n\n"
+                    f"🌐 **Inter-Site Private Networking:**\n"
+                    f"• **Managed SD-WAN (P10):** ₹2,500/mo — Seamlessly connects both shops under a single, secure private network with centralized traffic prioritization and one consolidated bill.\n\n"
+                    f"💼 **Recommended Add-ons:**\n"
+                    f"• **Cloud POS & UPI Soundbox (P19 @ ₹599/mo)**\n"
+                    f"• **Endpoint Security (P20 @ ₹99/device)**\n\n"
+                    f"💡 *Note: I have pre-selected recommended digital add-ons for your business, but you can freely toggle or remove any add-on in your customized quote drawer! Both locations qualify for 100% waived setup fees (saved ₹5,000).* "
+                )
+                tags = [
+                    {"product_id": s1_pid, "name": s1_name, "tag": f"Shop 1 ({s1_emp} staff): {s1_speed} optical fibre broadband"},
+                    {"product_id": s2_pid, "name": s2_name, "tag": f"Shop 2 ({s2_emp} staff): {s2_speed} high-throughput connection"},
+                    {"product_id": "P10", "name": "Managed SD-WAN", "tag": "Centralized private SD-WAN mesh interconnecting both shops"},
+                    {"product_id": "P19", "name": "Cloud POS & UPI Soundbox", "tag": "UPI QR voice alert soundbox for store payment confirmation"},
+                    {"product_id": "P20", "name": "Endpoint Security", "tag": "Antivirus and endpoint protection for store PCs"}
+                ]
+
+            return {
+                "intent": "recommendation",
+                "message": multi_msg,
+                "profile": profile,
+                "recommended_bundle": multi_bundle,
+                "explainability_tags": tags
+            }
 
         # 0b. Village / Rural / Outskirts Infrastructure Feasibility Check (Biz Fibre vs Biz 5G AirFiber)
         rural_keywords = ["गांव", "देहात", "गाँव", "gram", "village", "rural", "kasba", "dehat", "panchayat", "basti", "outskirts", "dumra dehat", "dumra"]
@@ -547,6 +696,54 @@ class AdvisorAdapter:
                 "explainability_tags": []
             }
 
+        # 1g. Add-on Removal Intent (e.g. "remove soundbox", "soundbox hata do", "don't need backup")
+        remove_keywords = ["remove", "hata", "hatao", "delete", "hata do", "nahi chahiye", "cancel", "drop", "don't need", "dont need", "remove addon", "remove add-on"]
+        if any(w in msg for w in remove_keywords):
+            addon_map = {
+                "P19": ["soundbox", "upi", "pos", "qr", "sound box", "साउंडबॉक्स", "साउंड बॉक्स", "पीओएस"],
+                "P16": ["email", "workspace", "m365", "mail", "ईमेल", "मेल"],
+                "P17": ["backup", "cloud backup", "tally backup", "बैकअप"],
+                "P20": ["security", "antivirus", "endpoint", "एंटीवायरस", "सुरक्षा"],
+                "P23": ["cctv", "camera", "सीसीटीवी", "कैमरा"],
+                "P11": ["static ip", "ip", "आईपी", "स्टैटिक"],
+                "P10": ["sd-wan", "sdwan", "एसडीवैन"],
+                "P22": ["guest wifi", "wifi router", "गेस्ट वाईफाई"]
+            }
+            removed_pid = None
+            removed_pname = None
+            for pid, kws in addon_map.items():
+                if any(kw in msg for kw in kws):
+                    removed_pid = pid
+                    prod_info = self.loader.get_product(pid)
+                    removed_pname = prod_info["product_name"] if prod_info else pid
+                    break
+
+            if removed_pid:
+                bundle = dict(profile.get("current_bundle") or {})
+                if not bundle:
+                    bundle = {"P02": 1} if (profile.get("employee_count") or 0) >= 10 else {"P01": 1}
+                if removed_pid in bundle:
+                    del bundle[removed_pid]
+                profile["current_bundle"] = bundle
+
+                rem_msg = (
+                    f"समझ गया! मैंने आपके बंडल से **{removed_pname}** हटा दिया है और आपकी कोटेशन अपडेट कर दी है। आप कोटेशन ड्रॉअर में नया मासिक किराया देख सकते हैं।"
+                    if is_hindi else
+                    f"Understood! I have removed **{removed_pname}** from your bundle and updated your monthly quote. You can see the updated commitment in your pricing drawer."
+                )
+                return {
+                    "intent": "recommendation",
+                    "action": "remove_addon",
+                    "removed_product_id": removed_pid,
+                    "message": rem_msg,
+                    "profile": profile,
+                    "recommended_bundle": bundle,
+                    "explainability_tags": [
+                        {"product_id": pid, "name": self.loader.get_product(pid)["product_name"], "tag": "Customized selection"}
+                        for pid in bundle.keys() if self.loader.get_product(pid)
+                    ]
+                }
+
         # 2. Cost Objection / Downsell Intent
         downsell_keywords = ["sasta", "mehenga", "cheap", "expensive", "discount", "kam karo", "budget", "कम", "सस्ता", "महंगा", "छूट"]
         if any(w in msg for w in downsell_keywords):
@@ -745,11 +942,16 @@ class AdvisorAdapter:
                 ]
 
         city_str = f" in {profile['city']}" if profile.get("city") else ""
-        greeting = (
-            f"नमस्ते! आपके {profile['business_type']}{city_str} सेटअप के अनुसार हमने यह संपूर्ण डिजिटल बंडल तैयार किया है।"
-            if is_hindi else
-            f"Welcome! Based on your {profile['business_type']}{city_str} setup, here is your customized bundle."
-        )
+        if is_hindi:
+            greeting = (
+                f"नमस्ते! आपके {profile['business_type']}{city_str} सेटअप के अनुसार हमने यह संपूर्ण डिजिटल बंडल तैयार किया है।\n\n"
+                f"💡 *सुझाव:* हमने आपके व्यवसाय के लिए उपयोगी डिजिटल ऐड-ऑन भी शामिल किया है। यदि आपको किसी ऐड-ऑन (जैसे साउंडबॉक्स या एंटीवायरस) की आवश्यकता नहीं है, तो आप चैट में बताकर (जैसे \"soundbox हटा दो\") या कोटेशन ड्रॉअर में 'Remove ×' बटन दबाकर उसे तुरंत हटा सकते हैं!"
+            )
+        else:
+            greeting = (
+                f"Welcome! Based on your {profile['business_type']}{city_str} setup, here is your customized bundle.\n\n"
+                f"💡 *Note:* I have also included recommended digital add-ons for your business. If you don't need any add-on (such as UPI Soundbox or Antivirus), you can simply tell me (e.g. \"remove soundbox\") or click the 'Remove ×' button in your quote drawer to remove it instantly!"
+            )
 
         return {
             "intent": "recommendation",
@@ -896,6 +1098,25 @@ E. EXECUTIVE / CALL REQUESTS (intent: "inquiry"):
    - If user asks to speak to an executive, agent, human, or request a call/callback:
      Set intent="inquiry", recommended_bundle=null.
      Reply politely: "Thanks for your time! An Airtel Business executive will reach out to you shortly on this number to assist you further. 🙏" (or in Hindi if chatting in Hindi).
+
+F. MULTI-SITE / MULTI-SHOP HETEROGENEOUS INQUIRIES (intent: "recommendation"):
+   - When user specifies multiple shops or branches with varying scales (e.g. "i have 2 shops one has 10 employees and other has 100"):
+     - IMMEDIATELY set intent="recommendation"! Do NOT hold back or ask redundant clarifying questions!
+     - Determine appropriate plans for each location:
+       * Location 1 (e.g. 10 staff): Biz Fibre 300 (P02 @ ₹1,499/mo)
+       * Location 2 (e.g. 100 staff): Biz Fibre 1G (P03 @ ₹3,999/mo)
+     - Include recommended digital add-ons: Cloud POS & UPI Soundbox (P19 @ ₹599/mo) for payment voice alerts and Endpoint Security (P20 @ ₹99/mo) for PCs.
+     - Put BOTH base plans and add-ons in recommended_bundle:
+       {{"P02": 1, "P03": 1, "P19": 1, "P20": 2}} (or {{"P02": 2, "P19": 1, "P20": 2}} if both sites take P02).
+     - In the message, clearly break down Shop 1 vs Shop 2, line rentals, and add-ons. Explicitly inform the user: "I have suggested Cloud POS & UPI Soundbox and Endpoint Security add-ons. If you do not need any of these add-ons, simply ask me to remove it (e.g. 'remove soundbox') or click 'Remove ×' in your quote drawer!"
+     - Qualify both locations for 100% waived setup fees (₹5,000 saved).
+
+G. ADD-ON PROACTIVE SUGGESTIONS & REMOVALS:
+   - Proactively suggest relevant add-ons when recommending plans (e.g. UPI Soundbox P19 for shops/retail, Endpoint Security P20 for PCs, Cloud Backup P17 for databases, Professional Cloud Email P16 for staff). Proactively tell the user that they can freely remove any add-on anytime!
+   - When the user asks to remove an add-on (e.g. "remove soundbox", "soundbox hata do", "don't need backup", "remove email", "remove security"):
+     - Set intent="recommendation".
+     - Delete the requested product from recommended_bundle.
+     - Warmly acknowledge the removal: e.g. "Understood! I have removed [Product Name] from your bundle and updated your monthly quote. Your new commitment is reflected in the quote drawer."
 
 JSON FORMAT:
 Return ONLY a valid JSON object matching this schema:
