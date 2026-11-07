@@ -1,5 +1,5 @@
 # Project Udyam Digital — AI Assistant Comprehensive Evaluation Report
-**Execution Date:** 2026-11-07 16:22:07 IST  
+**Execution Date:** 2026-11-07 21:11:52 IST  
 **Evaluator:** Automated Multi-Persona Dialogue Benchmark Suite  
 **Model:** Google Gemini 3.5 Flash + Airtel 5D Feasibility Guardrail Engine  
 **Coverage:** 10 Distinct MSME Customer Personas (Hindi & English) across both Website & WhatsApp  
@@ -13,18 +13,18 @@
 | **P1** | Kirana Store in Rohtak (Tier-3 City) | Micro Retail / Tier-3 | `HI` | **8.0 / 10** | **8.0 / 10** | ✅ Passed |
 | **P2** | Software Tech Startup in Noida (Tier-1 Metro) | Tech Startup / High Scale | `EN` | **10.0 / 10** | **10.0 / 10** | 🌟 Exceptional |
 | **P3** | Dental Clinic in Pune (Tier-1 Metro) | Healthcare / Clinic | `EN` | **10.0 / 10** | **10.0 / 10** | 🌟 Exceptional |
-| **P4** | Chartered Accountant Firm in Jaipur (Tier-2 City) | Professional Office / Tier-2 | `HI` | **8.0 / 10** | **8.0 / 10** | ✅ Passed |
+| **P4** | Chartered Accountant Firm in Jaipur (Tier-2 City) | Professional Office / Tier-2 | `HI` | **10.0 / 10** | **10.0 / 10** | 🌟 Exceptional |
 | **P5** | Budget-Conscious Shop in Bhopal (Down-sell Objection) | Down-sell / Cost Objection | `EN` | **9.5 / 10** | **10.0 / 10** | 🌟 Exceptional |
 | **P6** | Multi-site Cafe Chain in Mumbai (2 Sites) | Multi-site / Hospitality | `EN` | **10.0 / 10** | **10.0 / 10** | 🌟 Exceptional |
-| **P7** | Speed Boundary & 1G Feasibility Check in Kochi (Tier-2) | Feasibility Boundary Guardrail | `EN` | **8.5 / 10** | **9.0 / 10** | ✅ Passed |
+| **P7** | Speed Boundary & 1G Feasibility Check in Kochi (Tier-2) | Feasibility Boundary Guardrail | `EN` | **9.0 / 10** | **9.0 / 10** | 🌟 Exceptional |
 | **P8** | Comprehensive Plan Portfolio Inquiry (Hindi) | Plan Portfolio Exploration | `HI` | **8.0 / 10** | **8.0 / 10** | ✅ Passed |
 | **P9** | Executive Callback Request & KYC Hand-off | Human Escalation & Web Handoff | `EN` | **10.0 / 10** | **10.0 / 10** | 🌟 Exceptional |
 | **P10** | Pricing Transparency & Tax Clarification | Pricing & Tax Breakdown | `EN` | **10.0 / 10** | **10.0 / 10** | 🌟 Exceptional |
 
 **Overall Benchmarking Summary:**
-- **Website Average Score:** `9.20 / 10` (97.5% compliance)
-- **WhatsApp Average Score:** `9.30 / 10` (98.0% compliance)
-- **Unified Cross-Channel Score:** `9.25 / 10`  
+- **Website Average Score:** `9.45 / 10` (97.5% compliance)
+- **WhatsApp Average Score:** `9.50 / 10` (98.0% compliance)
+- **Unified Cross-Channel Score:** `9.47 / 10`  
 
 ---
 
@@ -53,20 +53,16 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 
 > **User (Turn 1):** नमस्ते, मेरी रोहतक में एक छोटी किराने की दुकान है और मुझे दुकान के लिए वाईफाई चाहिए
 >
-> **Assistant:** नमस्ते! आपके shop के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> **Assistant:** नमस्ते! Rohtak में Airtel Business का हाई-स्पीड नेटवर्क उपलब्ध है। आपके व्यवसाय के लिए सही प्लान चुनने के लिए कृपया बताएं:
 
-1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+1. दुकान/ऑफिस में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
 
 
 > **User (Turn 2):** मेरी दुकान में 2 लड़के काम करते हैं और हमें यूपीआई साउंडबॉक्स की भी जरूरत है
 >
-> **Assistant:** नमस्ते! आपके shop के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> **Assistant:** नमस्ते! Rohtak में Airtel Business का हाई-स्पीड नेटवर्क उपलब्ध है। आपके व्यवसाय के लिए सही प्लान चुनने के लिए कृपया बताएं:
 
-1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+1. दुकान/ऑफिस में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
 
 
 #### B. WhatsApp Agent Dialogue
@@ -77,21 +73,17 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 > **Customer (Turn 1):** नमस्ते, मेरी रोहतक में एक छोटी किराने की दुकान है और मुझे दुकान के लिए वाईफाई चाहिए
 >
 > **WhatsApp Bot:**
-> नमस्ते! आपके shop के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> नमस्ते! Rohtak में Airtel Business का हाई-स्पीड नेटवर्क उपलब्ध है। आपके व्यवसाय के लिए सही प्लान चुनने के लिए कृपया बताएं:
 > 
-> 1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-> 2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-> 3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+> 1. दुकान/ऑफिस में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
 >
 
 > **Customer (Turn 2):** मेरी दुकान में 2 लड़के काम करते हैं और हमें यूपीआई साउंडबॉक्स की भी जरूरत है
 >
 > **WhatsApp Bot:**
-> नमस्ते! आपके shop के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> नमस्ते! Rohtak में Airtel Business का हाई-स्पीड नेटवर्क उपलब्ध है। आपके व्यवसाय के लिए सही प्लान चुनने के लिए कृपया बताएं:
 > 
-> 1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-> 2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-> 3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+> 1. दुकान/ऑफिस में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
 >
 
 ---
@@ -107,11 +99,9 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 
 > **User (Turn 1):** iron a small startup in Noida
 >
-> **Assistant:** Welcome! We'd love to help set up business wifi for your startup. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
+> **Assistant:** Welcome! Noida has high-speed Airtel Business network coverage. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
 
-1. Which city or locality is your business located in?
-2. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?
-3. Do you also need add-ons like a UPI QR Soundbox for payment voice alerts, CCTV cameras, or cloud billing POS?
+1. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?
 
 
 > **User (Turn 2):** I have around 25 employees and we need fast internet and business emails
@@ -129,11 +119,9 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 > **Customer (Turn 1):** iron a small startup in Noida
 >
 > **WhatsApp Bot:**
-> Welcome! We'd love to help set up business wifi for your startup. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
+> Welcome! Noida has high-speed Airtel Business network coverage. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
 > 
-> 1. Which city or locality is your business located in?
-> 2. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?
-> 3. Do you also need add-ons like a UPI QR Soundbox for payment voice alerts, CCTV cameras, or cloud billing POS?
+> 1. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?
 >
 
 > **Customer (Turn 2):** I have around 25 employees and we need fast internet and business emails
@@ -183,8 +171,12 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 >
 > **Assistant:** Welcome! Based on your Clinic / Healthcare in Pune setup, here is your customized bundle.
 
-> *Cart Updated:* `{'P02': 1, 'P09': 1, 'P16': 4, 'P20': 2}`  
-> *Explainability Tags:* Biz Fibre 300 (High-speed broadband for patient records & cloud clinical software), Backup 4G/5G Failover (Automatic cellular backup so clinic appointments never halt if fibre cuts), Cloud Email Suite (Secure professional email to protect patient confidentiality), Endpoint Security (Antivirus & ransomware defense for clinical desktops)  
+💰 **Monthly Commitment:** ₹2,997/month (+ 18% GST = ₹3,536.46/month total), and your ₹2,500 setup fee is 100% waived!
+
+💡 *Note:* I have also included recommended digital add-ons for your business. If you don't need any add-on (such as UPI Soundbox or Antivirus), you can simply tell me (e.g. "remove soundbox") or click the 'Remove ×' button in your quote drawer to remove it instantly!
+
+> *Cart Updated:* `{'P02': 1, 'P09': 1, 'P17': 1}`  
+> *Explainability Tags:* Biz Fibre 300 (High-speed broadband for patient records & cloud clinical software), Backup 4G/5G Failover (Automatic cellular backup so clinic appointments never halt if fibre cuts), Automated Cloud Backup (Automated 1 TB cloud backup safeguarding patient X-rays and clinical records)  
 
 > **User (Turn 2):** We need cloud backup for patient X-rays and guest wifi for waiting patients
 >
@@ -202,6 +194,10 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 >
 > **WhatsApp Bot:**
 > Welcome! Based on your Clinic / Healthcare in Pune setup, here is your customized bundle.
+> 
+> 💰 **Monthly Commitment:** ₹2,997/month (+ 18% GST = ₹3,536.46/month total), and your ₹2,500 setup fee is 100% waived!
+> 
+> 💡 *Note:* I have also included recommended digital add-ons for your business. If you don't need any add-on (such as UPI Soundbox or Antivirus), you can simply tell me (e.g. "remove soundbox") or click the 'Remove ×' button in your quote drawer to remove it instantly!
 >
 > **WhatsApp Bot:**
 > 📋 *AIRTEL BUSINESS — DIGITAL QUOTATION*
@@ -210,14 +206,12 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 >   ₹1499.00/mo  _Connectivity_
 > • *Backup 4G/5G Failover* (P09) × 1
 >   ₹499.00/mo  _Connectivity_
-> • *Cloud Email & Office Suite* (P16) × 4
->   ₹500.00/mo  _Cloud & Productivity_
-> • *Endpoint Security* (P20) × 2
->   ₹198.00/mo  _Security_
+> • *Cloud Backup 1 TB* (P17) × 1
+>   ₹499.00/mo  _Cloud & Productivity_
 > ────────────────────────
-> 💵 *Monthly Subtotal:* ₹2696.00
-> 🏛️ *18% GST:* ₹485.28
-> 🏷️ *Total Monthly Commitment:* *₹3181.28* (Consolidated)
+> 💵 *Monthly Subtotal:* ₹2497.00
+> 🏛️ *18% GST:* ₹449.46
+> 🏷️ *Total Monthly Commitment:* *₹2946.46* (Consolidated)
 > 🎁 *One-time Setup Fee:* ~₹2,500.00~ *₹0.00 (Waived)*
 >
 > **WhatsApp Bot:**
@@ -267,52 +261,108 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 **Description:** 8-person CA audit firm in Jaipur needing high-speed internet and cloud Tally backup for tax filing season.
 
 #### A. Main Website Assistant Dialogue
-**Score:** `8.0 / 10`  
-**Scoring Breakdown:** {"memory": 2.0, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
-**Key Findings:** Memory: Correctly retained city 'Jaipur' across turns (+2.0); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Cart bundle was not populated (+1.0)
+**Score:** `10.0 / 10`  
+**Scoring Breakdown:** {"memory": 2.0, "feasibility": 2.0, "pricing": 2.0, "tone": 2.0, "actionability": 2.0}  
+**Key Findings:** Memory: Correctly retained city 'Jaipur' across turns (+2.0); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Transparent rates and ₹2,500 waived setup fee highlighted (+2.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Generated structured bundle and updated web cart (+2.0)
 
 > **User (Turn 1):** जयपुर में हमारी 8 लोगों की सीए फर्म (अकाउंटिंग ऑफिस) है, हमें हाई स्पीड ब्रॉडबैंड चाहिए
 >
-> **Assistant:** नमस्ते! आपके business के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> **Assistant:** नमस्ते! आपके Professional Office in Jaipur सेटअप के अनुसार हमने यह संपूर्ण डिजिटल बंडल तैयार किया है।
 
-1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+💰 **मासिक किराया:** ₹11,988/माह (+ 18% GST = ₹14,145.84/माह कुल), स्थापना शुल्क (~₹2,500) 100% माफ है!
 
+💡 *सुझाव:* हमने आपके व्यवसाय के लिए उपयोगी डिजिटल ऐड-ऑन भी शामिल किए हैं। यदि आपको किसी ऐड-ऑन (जैसे साउंडबॉक्स या एंटीवायरस) की आवश्यकता नहीं है, तो आप चैट में बताकर (जैसे "soundbox हटा दो") या कोटेशन ड्रॉअर में 'Remove ×' बटन दबाकर उसे तुरंत हटा सकते हैं!
+
+> *Cart Updated:* `{'P02': 1, 'P09': 1, 'P16': 8, 'P20': 2}`  
+> *Explainability Tags:* बिज़ फाइबर 300 (8 कर्मचारियों के ऑफिस के लिए 300 Mbps हाई-स्पीड इंटरनेट), बैकअप 4G/5G फेलओवर (टैक्स और जीएसटी फाइलिंग के दौरान शून्य इंटरनेट डाउनटाइम), क्लाउड ईमेल सुइट (क्लाइंट और ऑडिट फाइलों के लिए आधिकारिक प्रोफेशनल ईमेल), एंडपॉइंट सिक्योरिटी (ऑफिस सिस्टम्स के लिए एंटीवायरस व साइबर सुरक्षा)  
 
 > **User (Turn 2):** हमें टैली डेटा सुरक्षित रखने के लिए क्लाउड बैकअप और प्रोफेशनल ईमेल भी चाहिए
 >
-> **Assistant:** नमस्ते! आपके business के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> **Assistant:** नमस्ते! आपके Professional Office in Jaipur सेटअप के अनुसार हमने यह संपूर्ण डिजिटल बंडल तैयार किया है।
 
-1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+💰 **मासिक किराया:** ₹11,988/माह (+ 18% GST = ₹14,145.84/माह कुल), स्थापना शुल्क (~₹2,500) 100% माफ है!
 
+💡 *सुझाव:* हमने आपके व्यवसाय के लिए उपयोगी डिजिटल ऐड-ऑन भी शामिल किए हैं। यदि आपको किसी ऐड-ऑन (जैसे साउंडबॉक्स या एंटीवायरस) की आवश्यकता नहीं है, तो आप चैट में बताकर (जैसे "soundbox हटा दो") या कोटेशन ड्रॉअर में 'Remove ×' बटन दबाकर उसे तुरंत हटा सकते हैं!
+
+> *Cart Updated:* `{'P02': 1, 'P09': 1, 'P16': 8, 'P20': 2}`  
+> *Explainability Tags:* बिज़ फाइबर 300 (8 कर्मचारियों के ऑफिस के लिए 300 Mbps हाई-स्पीड इंटरनेट), बैकअप 4G/5G फेलओवर (टैक्स और जीएसटी फाइलिंग के दौरान शून्य इंटरनेट डाउनटाइम), क्लाउड ईमेल सुइट (क्लाइंट और ऑडिट फाइलों के लिए आधिकारिक प्रोफेशनल ईमेल), एंडपॉइंट सिक्योरिटी (ऑफिस सिस्टम्स के लिए एंटीवायरस व साइबर सुरक्षा)  
 
 #### B. WhatsApp Agent Dialogue
-**Score:** `8.0 / 10`  
-**Scoring Breakdown:** {"memory": 2.0, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
-**Key Findings:** Memory: Correctly retained city 'Jaipur' across turns (+2.0); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Lacked direct next action (+1.0)
+**Score:** `10.0 / 10`  
+**Scoring Breakdown:** {"memory": 2.0, "feasibility": 2.0, "pricing": 2.0, "tone": 2.0, "actionability": 2.0}  
+**Key Findings:** Memory: Correctly retained city 'Jaipur' across turns (+2.0); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Transparent rates and ₹2,500 waived setup fee highlighted (+2.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Provided web KYC handoff link & quick action buttons (+2.0)
 
 > **Customer (Turn 1):** जयपुर में हमारी 8 लोगों की सीए फर्म (अकाउंटिंग ऑफिस) है, हमें हाई स्पीड ब्रॉडबैंड चाहिए
 >
 > **WhatsApp Bot:**
-> नमस्ते! आपके business के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> नमस्ते! आपके Professional Office in Jaipur सेटअप के अनुसार हमने यह संपूर्ण डिजिटल बंडल तैयार किया है।
 > 
-> 1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-> 2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-> 3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+> 💰 **मासिक किराया:** ₹11,988/माह (+ 18% GST = ₹14,145.84/माह कुल), स्थापना शुल्क (~₹2,500) 100% माफ है!
+> 
+> 💡 *सुझाव:* हमने आपके व्यवसाय के लिए उपयोगी डिजिटल ऐड-ऑन भी शामिल किए हैं। यदि आपको किसी ऐड-ऑन (जैसे साउंडबॉक्स या एंटीवायरस) की आवश्यकता नहीं है, तो आप चैट में बताकर (जैसे "soundbox हटा दो") या कोटेशन ड्रॉअर में 'Remove ×' बटन दबाकर उसे तुरंत हटा सकते हैं!
 >
+> **WhatsApp Bot:**
+> 📋 *एयरटेल बिजनेस — आपका डिजिटल कोटेशन*
+> ────────────────────────
+> • *Biz Fibre 300* (P02) × 1
+>   ₹1499.00/माह  _Connectivity_
+> • *Backup 4G/5G Failover* (P09) × 1
+>   ₹499.00/माह  _Connectivity_
+> • *Cloud Email & Office Suite* (P16) × 8
+>   ₹1000.00/माह  _Cloud & Productivity_
+> • *Endpoint Security* (P20) × 2
+>   ₹198.00/माह  _Security_
+> ────────────────────────
+> 💵 *मासिक किराया:* ₹3196.00
+> 🏛️ *18% जीएसटी:* ₹575.28
+> 🏷️ *कुल मासिक बिल:* *₹3771.28* (कंसोलिडेटेड)
+> 🎁 *सेटअप शुल्क:* ~₹2,500.00~ *₹0.00 (100% माफ)*
+>
+> **WhatsApp Bot:**
+> 🌐 *वेबसाइट पर तुरंत KYC पूरा करें:*
+> /?token=TK-0004#kyc
+> 
+> _(आपका चुना हुआ प्लान और 18% GST कोटेशन लॉक है। 60 सेकंड में बिना किसी रुकावट के एक्टिवेशन के लिए ऊपर दिए गए लिंक पर क्लिक करें)_
+> 
+> 💬 *नोट:* यदि आपका कोई अन्य प्रश्न है या आप अन्य प्लान्स या बजट विकल्पों के बारे में जानना चाहते हैं, तो कृपया बताएं!
+>
+> *Action Buttons:* `🌐 वेबसाइट पर KYC करें`, `📸 चैट में फोटो अपलोड`, `💸 सस्ता प्लान`  
 
 > **Customer (Turn 2):** हमें टैली डेटा सुरक्षित रखने के लिए क्लाउड बैकअप और प्रोफेशनल ईमेल भी चाहिए
 >
 > **WhatsApp Bot:**
-> नमस्ते! आपके business के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> नमस्ते! आपके Professional Office in Jaipur सेटअप के अनुसार हमने यह संपूर्ण डिजिटल बंडल तैयार किया है।
 > 
-> 1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-> 2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-> 3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+> 💰 **मासिक किराया:** ₹11,988/माह (+ 18% GST = ₹14,145.84/माह कुल), स्थापना शुल्क (~₹2,500) 100% माफ है!
+> 
+> 💡 *सुझाव:* हमने आपके व्यवसाय के लिए उपयोगी डिजिटल ऐड-ऑन भी शामिल किए हैं। यदि आपको किसी ऐड-ऑन (जैसे साउंडबॉक्स या एंटीवायरस) की आवश्यकता नहीं है, तो आप चैट में बताकर (जैसे "soundbox हटा दो") या कोटेशन ड्रॉअर में 'Remove ×' बटन दबाकर उसे तुरंत हटा सकते हैं!
 >
+> **WhatsApp Bot:**
+> 📋 *एयरटेल बिजनेस — आपका डिजिटल कोटेशन*
+> ────────────────────────
+> • *Biz Fibre 300* (P02) × 1
+>   ₹1499.00/माह  _Connectivity_
+> • *Backup 4G/5G Failover* (P09) × 1
+>   ₹499.00/माह  _Connectivity_
+> • *Cloud Email & Office Suite* (P16) × 8
+>   ₹1000.00/माह  _Cloud & Productivity_
+> • *Endpoint Security* (P20) × 2
+>   ₹198.00/माह  _Security_
+> ────────────────────────
+> 💵 *मासिक किराया:* ₹3196.00
+> 🏛️ *18% जीएसटी:* ₹575.28
+> 🏷️ *कुल मासिक बिल:* *₹3771.28* (कंसोलिडेटेड)
+> 🎁 *सेटअप शुल्क:* ~₹2,500.00~ *₹0.00 (100% माफ)*
+>
+> **WhatsApp Bot:**
+> 🌐 *वेबसाइट पर तुरंत KYC पूरा करें:*
+> /?token=TK-0004#kyc
+> 
+> _(आपका चुना हुआ प्लान और 18% GST कोटेशन लॉक है। 60 सेकंड में बिना किसी रुकावट के एक्टिवेशन के लिए ऊपर दिए गए लिंक पर क्लिक करें)_
+> 
+> 💬 *नोट:* यदि आपका कोई अन्य प्रश्न है या आप अन्य प्लान्स या बजट विकल्पों के बारे में जानना चाहते हैं, तो कृपया बताएं!
+>
+> *Action Buttons:* `🌐 वेबसाइट पर KYC करें`, `📸 चैट में फोटो अपलोड`, `💸 सस्ता प्लान`  
 
 ---
 
@@ -327,11 +377,9 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 
 > **User (Turn 1):** I have a small stationery shop in Bhopal with 1 helper
 >
-> **Assistant:** Welcome! We'd love to help set up business wifi for your shop. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
+> **Assistant:** Welcome! Bhopal has high-speed Airtel Business network coverage. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
 
-1. Which city or locality is your business located in?
-2. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?
-3. Do you also need add-ons like a UPI QR Soundbox for payment voice alerts, CCTV cameras, or cloud billing POS?
+1. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?
 
 
 > **User (Turn 2):** This is too expensive for me, do you have any cheaper or sasta plan?
@@ -349,11 +397,9 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 > **Customer (Turn 1):** I have a small stationery shop in Bhopal with 1 helper
 >
 > **WhatsApp Bot:**
-> Welcome! We'd love to help set up business wifi for your shop. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
+> Welcome! Bhopal has high-speed Airtel Business network coverage. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
 > 
-> 1. Which city or locality is your business located in?
-> 2. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?
-> 3. Do you also need add-ons like a UPI QR Soundbox for payment voice alerts, CCTV cameras, or cloud billing POS?
+> 1. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?
 >
 
 > **Customer (Turn 2):** This is too expensive for me, do you have any cheaper or sasta plan?
@@ -397,8 +443,12 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 >
 > **Assistant:** Welcome! Based on your Professional Office in Mumbai setup, here is your customized bundle.
 
+💰 **Monthly Commitment:** ₹13,986/month (+ 18% GST = ₹16,503.48/month total), and your ₹2,500 setup fee is 100% waived!
+
+💡 *Note:* I have also included recommended digital add-ons for your business. If you don't need any add-on (such as UPI Soundbox or Antivirus), you can simply tell me (e.g. "remove soundbox") or click the 'Remove ×' button in your quote drawer to remove it instantly!
+
 > *Cart Updated:* `{'P02': 1, 'P09': 1, 'P16': 10, 'P20': 2}`  
-> *Explainability Tags:* Biz Fibre 300 (High-speed broadband for patient records & cloud clinical software), Backup 4G/5G Failover (Automatic cellular backup so clinic appointments never halt if fibre cuts), Cloud Email Suite (Secure professional email to protect patient confidentiality), Endpoint Security (Antivirus & ransomware defense for clinical desktops)  
+> *Explainability Tags:* Biz Fibre 300 (300 Mbps high-speed broadband for 12-person professional office), Backup 4G/5G Failover (Automatic backup to ensure zero downtime during critical tax filing), Cloud Email Suite (Secure official email for client and audit documents), Endpoint Security (Antivirus & ransomware protection for office PCs)  
 
 > **User (Turn 2):** We need centralized billing sync, CCTV live monitoring, and customer Wi-Fi
 >
@@ -416,6 +466,10 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 >
 > **WhatsApp Bot:**
 > Welcome! Based on your Professional Office in Mumbai setup, here is your customized bundle.
+> 
+> 💰 **Monthly Commitment:** ₹13,986/month (+ 18% GST = ₹16,503.48/month total), and your ₹2,500 setup fee is 100% waived!
+> 
+> 💡 *Note:* I have also included recommended digital add-ons for your business. If you don't need any add-on (such as UPI Soundbox or Antivirus), you can simply tell me (e.g. "remove soundbox") or click the 'Remove ×' button in your quote drawer to remove it instantly!
 >
 > **WhatsApp Bot:**
 > 📋 *AIRTEL BUSINESS — DIGITAL QUOTATION*
@@ -481,9 +535,9 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 **Description:** Architect in Kochi asking for 1 Gbps plan in a Tier-2 city, testing tier feasibility boundary enforcement.
 
 #### A. Main Website Assistant Dialogue
-**Score:** `8.5 / 10`  
-**Scoring Breakdown:** {"memory": 2.0, "feasibility": 1.0, "pricing": 1.5, "tone": 2.0, "actionability": 2.0}  
-**Key Findings:** Memory: Correctly retained city 'Kochi' across turns (+2.0); Feasibility: Boundary explanation could be more explicit (+1.0); Pricing: Rates quoted clearly (+1.5); Tone: Professional, courteous, consultive tone (+2.0); Actionability: Generated structured bundle and updated web cart (+2.0)
+**Score:** `9.0 / 10`  
+**Scoring Breakdown:** {"memory": 2.0, "feasibility": 1.0, "pricing": 2.0, "tone": 2.0, "actionability": 2.0}  
+**Key Findings:** Memory: Correctly retained city 'Kochi' across turns (+2.0); Feasibility: Boundary explanation could be more explicit (+1.0); Pricing: Transparent rates and ₹2,500 waived setup fee highlighted (+2.0); Tone: Professional, courteous, consultive tone (+2.0); Actionability: Generated structured bundle and updated web cart (+2.0)
 
 > **User (Turn 1):** I want a 1 Gbps ultra-fast plan for my architectural studio in Kochi with 10 staff
 >
@@ -494,8 +548,12 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 >
 > **Assistant:** Welcome! Based on your Professional Office in Kochi setup, here is your customized bundle.
 
+💰 **Monthly Commitment:** ₹13,986/month (+ 18% GST = ₹16,503.48/month total), and your ₹2,500 setup fee is 100% waived!
+
+💡 *Note:* I have also included recommended digital add-ons for your business. If you don't need any add-on (such as UPI Soundbox or Antivirus), you can simply tell me (e.g. "remove soundbox") or click the 'Remove ×' button in your quote drawer to remove it instantly!
+
 > *Cart Updated:* `{'P02': 1, 'P09': 1, 'P16': 10, 'P20': 2}`  
-> *Explainability Tags:* Biz Fibre 300 (High-speed broadband for patient records & cloud clinical software), Backup 4G/5G Failover (Automatic cellular backup so clinic appointments never halt if fibre cuts), Cloud Email Suite (Secure professional email to protect patient confidentiality), Endpoint Security (Antivirus & ransomware defense for clinical desktops)  
+> *Explainability Tags:* Biz Fibre 300 (300 Mbps high-speed broadband for 10-person professional office), Backup 4G/5G Failover (Automatic backup to ensure zero downtime during critical tax filing), Cloud Email Suite (Secure official email for client and audit documents), Endpoint Security (Antivirus & ransomware protection for office PCs)  
 
 #### B. WhatsApp Agent Dialogue
 **Score:** `9.0 / 10`  
@@ -512,6 +570,10 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 >
 > **WhatsApp Bot:**
 > Welcome! Based on your Professional Office in Kochi setup, here is your customized bundle.
+> 
+> 💰 **Monthly Commitment:** ₹13,986/month (+ 18% GST = ₹16,503.48/month total), and your ₹2,500 setup fee is 100% waived!
+> 
+> 💡 *Note:* I have also included recommended digital add-ons for your business. If you don't need any add-on (such as UPI Soundbox or Antivirus), you can simply tell me (e.g. "remove soundbox") or click the 'Remove ×' button in your quote drawer to remove it instantly!
 >
 > **WhatsApp Bot:**
 > 📋 *AIRTEL BUSINESS — DIGITAL QUOTATION*
@@ -553,20 +615,18 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 
 > **User (Turn 1):** एयरटेल बिज़नेस में कौन-कौन से प्लान, स्पीड और डिजिटल सेवाएं उपलब्ध हैं? पूरी लिस्ट बताएं
 >
-> **Assistant:** नमस्ते! आपके business के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> **Assistant:** नमस्ते! आपके व्यवसाय के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये विवरण साझा कर सकते हैं?
 
 1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+2. दुकान/ऑफिस में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
+3. आपका किस प्रकार का व्यवसाय है (जैसे दुकान, क्लिनिक, ऑफिस, या स्टार्टअप) और क्या आपको UPI साउंडबॉक्स या CCTV की आवश्यकता है?
 
 
 > **User (Turn 2):** मेरी इंदौर में इलेक्ट्रॉनिक की दुकान है 3 कर्मचारियों के साथ, इसके लिए कौन सा सही रहेगा?
 >
-> **Assistant:** नमस्ते! आपके shop के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> **Assistant:** नमस्ते! Indore में Airtel Business का हाई-स्पीड नेटवर्क उपलब्ध है। आपके व्यवसाय के लिए सही प्लान चुनने के लिए कृपया बताएं:
 
-1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+1. दुकान/ऑफिस में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
 
 
 #### B. WhatsApp Agent Dialogue
@@ -577,21 +637,19 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 > **Customer (Turn 1):** एयरटेल बिज़नेस में कौन-कौन से प्लान, स्पीड और डिजिटल सेवाएं उपलब्ध हैं? पूरी लिस्ट बताएं
 >
 > **WhatsApp Bot:**
-> नमस्ते! आपके business के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> नमस्ते! आपके व्यवसाय के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये विवरण साझा कर सकते हैं?
 > 
 > 1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-> 2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-> 3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+> 2. दुकान/ऑफिस में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
+> 3. आपका किस प्रकार का व्यवसाय है (जैसे दुकान, क्लिनिक, ऑफिस, या स्टार्टअप) और क्या आपको UPI साउंडबॉक्स या CCTV की आवश्यकता है?
 >
 
 > **Customer (Turn 2):** मेरी इंदौर में इलेक्ट्रॉनिक की दुकान है 3 कर्मचारियों के साथ, इसके लिए कौन सा सही रहेगा?
 >
 > **WhatsApp Bot:**
-> नमस्ते! आपके shop के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये 3 विवरण साझा कर सकते हैं?
+> नमस्ते! Indore में Airtel Business का हाई-स्पीड नेटवर्क उपलब्ध है। आपके व्यवसाय के लिए सही प्लान चुनने के लिए कृपया बताएं:
 > 
-> 1. आपकी दुकान/व्यवसाय किस शहर या इलाके में स्थित है?
-> 2. दुकान में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
-> 3. क्या आपको डिजिटल पेमेंट साउंडबॉक्स (UPI आवाज अलर्ट), सीसीटीवी या बिलिंग सॉफ्टवेयर की भी आवश्यकता है?
+> 1. दुकान/ऑफिस में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?
 >
 
 ---
@@ -612,11 +670,10 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 
 > **User (Turn 2):** While waiting for the call, can I check my KYC online?
 >
-> **Assistant:** Welcome! We'd love to help set up business wifi for your office. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
+> **Assistant:** Welcome! We'd love to help set up business wifi for your business. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
 
 1. Which city or locality is your business located in?
 2. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?
-3. Do you also need add-ons like a UPI QR Soundbox for payment voice alerts, CCTV cameras, or cloud billing POS?
 
 
 #### B. WhatsApp Agent Dialogue
@@ -637,11 +694,10 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 > **Customer (Turn 2):** While waiting for the call, can I check my KYC online?
 >
 > **WhatsApp Bot:**
-> Welcome! We'd love to help set up business wifi for your office. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
+> Welcome! We'd love to help set up business wifi for your business. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:
 > 
 > 1. Which city or locality is your business located in?
 > 2. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?
-> 3. Do you also need add-ons like a UPI QR Soundbox for payment voice alerts, CCTV cameras, or cloud billing POS?
 >
 
 ---

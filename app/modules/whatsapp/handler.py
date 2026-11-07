@@ -378,15 +378,16 @@ class WhatsAppHandler:
             )
             return {"messages": [rejection_text], "buttons": []}
 
-        # 2. Run OCR scan
+        # 2. Run OCR scan safely inside thread pool to prevent event loop collision
         try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        try:
-            doc_data = loop.run_until_complete(self.ocr.scan_document(image_path))
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                doc_scan = pool.submit(asyncio.run, self.ocr.scan_document(image_path)).result(timeout=10)
+                if isinstance(doc_scan, dict):
+                    extracted = doc_scan.get("extracted_fields") or {}
+                    doc_data = {**doc_scan, **extracted}
+                else:
+                    doc_data = {}
         except Exception:
             doc_data = {}
 
@@ -398,10 +399,10 @@ class WhatsAppHandler:
                 applicant_code = code
                 break
 
-        gstin = doc_data.get("extracted_gstin")
-        udyam = doc_data.get("extracted_udyam")
-        trade_name = doc_data.get("extracted_entity_name")
-        bill_date = doc_data.get("extracted_bill_date") or doc_data.get("extracted_registration_date")
+        gstin = doc_data.get("extracted_gstin") or doc_data.get("gstin")
+        udyam = doc_data.get("extracted_udyam") or doc_data.get("udyam_number")
+        trade_name = doc_data.get("extracted_entity_name") or doc_data.get("entity_name")
+        bill_date = doc_data.get("extracted_bill_date") or doc_data.get("bill_date") or doc_data.get("extracted_registration_date") or doc_data.get("registration_date")
 
         kyc_res = self.kyc_validator.validate_applicant(
             applicant_code=applicant_code,

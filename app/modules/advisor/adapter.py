@@ -809,10 +809,10 @@ class AdvisorAdapter:
             }
 
         # 3. Check / Infer Business Type
-        if any(w in msg for w in ["clinic", "doctor", "hospital", "dental", "pharma", "क्लिनिक", "डॉक्टर", "दवा"]):
+        if any(w in msg for w in ["clinic", "doctor", "hospital", "dental", "pharma", "क्लिनिक", "डॉक्टर", "दवा", "क्लीनिक", "डेंटल", "अस्पताल"]):
             profile["business_type"] = "Clinic / Healthcare"
             profile["has_gstin"] = True
-        elif any(w in msg for w in ["ca", "accountant", "office", "law", "firm", "consulting", "वकील", "दफ्तर"]):
+        elif any(w in msg for w in ["ca", "accountant", "office", "law", "firm", "consulting", "वकील", "दफ्तर", "सीए", "फर्म", "अकाउंटिंग", "ऑफिस", "ऑफ़िस", "चार्टर्ड", "ऑडिट", "auditor", "audit", "account"]):
             profile["business_type"] = "Professional Office"
             profile["has_gstin"] = True
         elif any(w in msg for w in ["restaurant", "cafe", "hotel", "branch", "chain", "होटल", "खाना"]):
@@ -822,10 +822,10 @@ class AdvisorAdapter:
         elif any(w in msg for w in ["factory", "manufacturing", "textile", "parts", "workshop", "कारखाना"]):
             profile["business_type"] = "Small Manufacturer"
             profile["has_gstin"] = True
-        elif any(w in msg for w in ["startup", "tech", "software", "agency", "it", "स्टार्टअप"]):
+        elif any(w in msg for w in ["startup", "tech", "software", "agency", "it", "स्टार्टअप", "सॉफ्टवेयर", "आईटी", "टेक"]):
             profile["business_type"] = "Tech Startup"
             profile["num_sites"] = 1
-        elif any(w in msg for w in ["kirana", "shop", "bakery", "store", "salon", "retail", "दुकान", "किराना", "soundbox", "upi qr", "qr soundbox", "upi"]):
+        elif any(w in msg for w in ["kirana", "shop", "bakery", "store", "salon", "retail", "stationery", "दुकान", "किराना", "soundbox", "upi qr", "qr soundbox", "upi", "स्टेशनरी"]):
             profile["business_type"] = "Micro Retail / Commercial Store"
             profile["num_sites"] = 1
         elif any(w in msg for w in ["business", "company", "firm", "व्यापार", "व्यवसाय"]) and not profile.get("business_type"):
@@ -889,7 +889,8 @@ class AdvisorAdapter:
         bundle = {}
         tags = []
 
-        b_type = profile["business_type"]
+        b_type = profile.get("business_type") or "Commercial Enterprise"
+        profile["business_type"] = b_type
         emp_cnt = profile.get("employee_count") or 3
         if "Tech Startup" in b_type:
             tier = profile.get("city_tier") or 1
@@ -926,21 +927,35 @@ class AdvisorAdapter:
                 "recommended_bundle": bundle,
                 "explainability_tags": tags
             }
-        elif "Clinic" in b_type or "Professional" in b_type:
-            bundle = {"P02": 1, "P09": 1, "P16": min(emp_cnt, 10), "P20": 2}
+        elif "Clinic" in b_type or "Healthcare" in b_type:
+            bundle = {"P02": 1, "P09": 1, "P17": 1}
             if is_hindi:
                 tags = [
-                    {"product_id": "P02", "name": "बिज़ फाइबर 300", "tag": "मरीजों के डिजिटल रिकॉर्ड और बिलिंग सॉफ्टवेयर के लिए हाई-स्पीड इंटरनेट"},
+                    {"product_id": "P02", "name": "बिज़ फाइबर 300", "tag": "मरीजों के डिजिटल रिकॉर्ड और क्लिनिक सॉफ्टवेयर के लिए 300 Mbps हाई-स्पीड इंटरनेट"},
                     {"product_id": "P09", "name": "बैकअप 4G/5G फेलओवर", "tag": "फाइबर कटने पर स्वचालित बैकअप, जिससे क्लिनिक में इंटरनेट कभी बंद न हो"},
-                    {"product_id": "P16", "name": "क्लाउड ईमेल सुइट", "tag": "मरीजों की रिपोर्ट गोपनीय और सुरक्षित रखने के लिए प्रोफेशनल ईमेल"},
-                    {"product_id": "P20", "name": "एंडपॉइंट सिक्योरिटी", "tag": "कंप्यूटरों को वायरस और रैंसमवेयर से बचाने के लिए एंटीवायरस"}
+                    {"product_id": "P17", "name": "क्लाउड बैकअप 1 TB", "tag": "मरीजों के डिजिटल एक्स-रे और मेडिकल रिकॉर्ड को सुरक्षित रखने के लिए ऑटोमेटेड क्लाउड बैकअप"}
                 ]
             else:
                 tags = [
                     {"product_id": "P02", "name": "Biz Fibre 300", "tag": "High-speed broadband for patient records & cloud clinical software"},
                     {"product_id": "P09", "name": "Backup 4G/5G Failover", "tag": "Automatic cellular backup so clinic appointments never halt if fibre cuts"},
-                    {"product_id": "P16", "name": "Cloud Email Suite", "tag": "Secure professional email to protect patient confidentiality"},
-                    {"product_id": "P20", "name": "Endpoint Security", "tag": "Antivirus & ransomware defense for clinical desktops"}
+                    {"product_id": "P17", "name": "Automated Cloud Backup", "tag": "Automated 1 TB cloud backup safeguarding patient X-rays and clinical records"}
+                ]
+        elif "Professional" in b_type or "Legal" in b_type:
+            bundle = {"P02": 1, "P09": 1, "P16": min(emp_cnt, 10), "P20": 2}
+            if is_hindi:
+                tags = [
+                    {"product_id": "P02", "name": "बिज़ फाइबर 300", "tag": f"{emp_cnt} कर्मचारियों के ऑफिस के लिए 300 Mbps हाई-स्पीड इंटरनेट"},
+                    {"product_id": "P09", "name": "बैकअप 4G/5G फेलओवर", "tag": "टैक्स और जीएसटी फाइलिंग के दौरान शून्य इंटरनेट डाउनटाइम"},
+                    {"product_id": "P16", "name": "क्लाउड ईमेल सुइट", "tag": "क्लाइंट और ऑडिट फाइलों के लिए आधिकारिक प्रोफेशनल ईमेल"},
+                    {"product_id": "P20", "name": "एंडपॉइंट सिक्योरिटी", "tag": "ऑफिस सिस्टम्स के लिए एंटीवायरस व साइबर सुरक्षा"}
+                ]
+            else:
+                tags = [
+                    {"product_id": "P02", "name": "Biz Fibre 300", "tag": f"300 Mbps high-speed broadband for {emp_cnt}-person professional office"},
+                    {"product_id": "P09", "name": "Backup 4G/5G Failover", "tag": "Automatic backup to ensure zero downtime during critical tax filing"},
+                    {"product_id": "P16", "name": "Cloud Email Suite", "tag": "Secure official email for client and audit documents"},
+                    {"product_id": "P20", "name": "Endpoint Security", "tag": "Antivirus & ransomware protection for office PCs"}
                 ]
         elif "Restaurant" in b_type or "Multi-site" in b_type:
             bundle = {"P02": 1, "P09": 1, "P19": 1, "P23": 2, "P22": 1}
@@ -982,14 +997,29 @@ class AdvisorAdapter:
                 ]
 
         city_str = f" in {profile['city']}" if profile.get("city") else ""
+        b_disp = profile.get("business_type") or "व्यवसाय"
+        b_disp_en = profile.get("business_type") or "business"
+
+        calc_subtotal = 0
+        for p_id, q in bundle.items():
+            p_obj = self.loader.get_product(p_id)
+            if p_obj:
+                calc_subtotal += p_obj.get("base_price_inr", 999) * q
+        if not calc_subtotal:
+            calc_subtotal = 1499 if "P02" in bundle else (3999 if "P03" in bundle else 999)
+        calc_gst = round(calc_subtotal * 0.18, 2)
+        calc_grand = round(calc_subtotal + calc_gst, 2)
+
         if is_hindi:
             greeting = (
-                f"नमस्ते! आपके {profile['business_type']}{city_str} सेटअप के अनुसार हमने यह संपूर्ण डिजिटल बंडल तैयार किया है।\n\n"
-                f"💡 *सुझाव:* हमने आपके व्यवसाय के लिए उपयोगी डिजिटल ऐड-ऑन भी शामिल किया है। यदि आपको किसी ऐड-ऑन (जैसे साउंडबॉक्स या एंटीवायरस) की आवश्यकता नहीं है, तो आप चैट में बताकर (जैसे \"soundbox हटा दो\") या कोटेशन ड्रॉअर में 'Remove ×' बटन दबाकर उसे तुरंत हटा सकते हैं!"
+                f"नमस्ते! आपके {b_disp}{city_str} सेटअप के अनुसार हमने यह संपूर्ण डिजिटल बंडल तैयार किया है।\n\n"
+                f"💰 **मासिक किराया:** ₹{calc_subtotal:,}/माह (+ 18% GST = ₹{calc_grand:,.2f}/माह कुल), स्थापना शुल्क (~₹2,500) 100% माफ है!\n\n"
+                f"💡 *सुझाव:* हमने आपके व्यवसाय के लिए उपयोगी डिजिटल ऐड-ऑन भी शामिल किए हैं। यदि आपको किसी ऐड-ऑन (जैसे साउंडबॉक्स या एंटीवायरस) की आवश्यकता नहीं है, तो आप चैट में बताकर (जैसे \"soundbox हटा दो\") या कोटेशन ड्रॉअर में 'Remove ×' बटन दबाकर उसे तुरंत हटा सकते हैं!"
             )
         else:
             greeting = (
-                f"Welcome! Based on your {profile['business_type']}{city_str} setup, here is your customized bundle.\n\n"
+                f"Welcome! Based on your {b_disp_en}{city_str} setup, here is your customized bundle.\n\n"
+                f"💰 **Monthly Commitment:** ₹{calc_subtotal:,}/month (+ 18% GST = ₹{calc_grand:,.2f}/month total), and your ₹2,500 setup fee is 100% waived!\n\n"
                 f"💡 *Note:* I have also included recommended digital add-ons for your business. If you don't need any add-on (such as UPI Soundbox or Antivirus), you can simply tell me (e.g. \"remove soundbox\") or click the 'Remove ×' button in your quote drawer to remove it instantly!"
             )
 
