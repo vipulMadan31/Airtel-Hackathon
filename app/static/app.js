@@ -1393,8 +1393,6 @@ function initEventListeners() {
   }
 
   // Payment Modal Triggers
-  const openPayQuoteBtn = document.getElementById("openPaymentModalFromQuoteBtn");
-  if (openPayQuoteBtn) openPayQuoteBtn.addEventListener("click", () => openPaymentModal());
   const closePayModalBtn = document.getElementById("closePaymentModalBtn");
   if (closePayModalBtn) closePayModalBtn.addEventListener("click", closePaymentModal);
   const execPayBtn = document.getElementById("executePaymentBtn");
@@ -2710,14 +2708,83 @@ async function openEmailModal() {
     const res = await fetch(`/api/notifications/emails/latest?${query.toString()}`);
     if (res.ok) {
       const notif = await res.json();
+      const fromEl = document.getElementById("emailModalFrom");
+      if (fromEl) fromEl.innerText = notif.sender_email || "vipul23600@iiitd.ac.in";
       const toEl = document.getElementById("emailModalTo");
       if (toEl) toEl.innerText = notif.recipient_email;
       const statusEl = document.getElementById("emailModalStatus");
-      if (statusEl) statusEl.innerText = notif.status || "SENT";
+      if (statusEl) {
+        if (notif.status === "SENT_VIA_SMTP") {
+          statusEl.innerText = "REAL EMAIL SENT (SMTP)";
+          statusEl.className = "font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[10px]";
+        } else if (notif.status === "SMTP_CREDENTIALS_PENDING") {
+          statusEl.innerText = "SMTP CONFIGURED (Password pending in .env)";
+          statusEl.className = "font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded text-[10px]";
+        } else if (notif.status?.includes("FAILED")) {
+          statusEl.innerText = "SMTP AUTH ERROR";
+          statusEl.className = "font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded text-[10px]";
+        } else {
+          statusEl.innerText = notif.status || "SENT";
+          statusEl.className = "font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[10px]";
+        }
+      }
       const dateEl = document.getElementById("emailModalDate");
       if (dateEl) dateEl.innerText = new Date(notif.sent_at).toLocaleString();
       const bodyEl = document.getElementById("emailModalBodyContainer");
-      if (bodyEl) bodyEl.innerHTML = notif.body_html;
+      if (bodyEl) {
+        let bannerNotice = "";
+        if (notif.status === "SMTP_CREDENTIALS_PENDING") {
+          bannerNotice = `
+            <div class="p-3 bg-amber-50 border-b border-amber-200 text-xs text-amber-900 flex items-start space-x-2">
+              <span>⚠️</span>
+              <div>
+                <strong>Real Email Dispatch Configured:</strong> Sending from <code class="bg-amber-100 px-1 py-0.5 rounded font-bold font-mono">vipul23600@iiitd.ac.in</code> via Google Workspace SMTP.
+                To deliver directly over the public internet to inboxes like <em>${notif.recipient_email}</em>, add your Google App Password to <code class="bg-amber-100 px-1 py-0.5 rounded font-bold font-mono">SMTP_PASSWORD</code> in <code class="bg-amber-100 px-1 py-0.5 rounded font-bold font-mono">.env</code>.
+              </div>
+            </div>`;
+        } else if (notif.status === "SENT_VIA_SMTP") {
+          bannerNotice = `
+            <div class="p-3 bg-emerald-50 border-b border-emerald-200 text-xs text-emerald-900 flex items-center space-x-2">
+              <span>✅</span>
+              <div>
+                <strong>Live Email Dispatched!</strong> Sent directly from <code class="bg-emerald-100 px-1 py-0.5 rounded font-bold font-mono">vipul23600@iiitd.ac.in</code> to <strong>${notif.recipient_email}</strong> via Google Workspace SMTP.
+              </div>
+            </div>`;
+        }
+        bodyEl.innerHTML = bannerNotice + notif.body_html;
+      }
+
+      // Wire Live Test Email Button
+      const testEmailBtn = document.getElementById("sendLiveTestEmailBtn");
+      if (testEmailBtn) {
+        testEmailBtn.onclick = async () => {
+          const defaultRecip = notif.recipient_email || "phantomroasting@gmail.com";
+          const emailPrompt = prompt("Enter recipient email address to send real email from vipul23600@iiitd.ac.in:", defaultRecip);
+          if (!emailPrompt) return;
+          testEmailBtn.disabled = true;
+          testEmailBtn.innerText = "Sending...";
+          try {
+            const testRes = await fetch("/api/notifications/test-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ recipient_email: emailPrompt.trim() })
+            });
+            const result = await testRes.json();
+            if (result.dispatch_status === "SENT_VIA_SMTP") {
+              alert(`Success! Real email dispatched to ${emailPrompt} from vipul23600@iiitd.ac.in via Google Workspace SMTP.`);
+            } else {
+              alert(`Dispatch status: ${result.dispatch_status}\n\n${result.error_message || 'Stored in local DB'}`);
+            }
+            openEmailModal();
+          } catch (tErr) {
+            alert(`Error triggering test email: ${tErr.message}`);
+          } finally {
+            testEmailBtn.disabled = false;
+            testEmailBtn.innerText = "🚀 Send Live Email";
+          }
+        };
+      }
+
       modal.classList.remove("hidden");
     } else {
       alert("No email notification found for this order yet.");

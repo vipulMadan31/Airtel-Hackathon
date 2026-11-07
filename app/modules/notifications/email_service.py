@@ -23,7 +23,21 @@ class EmailNotificationService:
 
     def __init__(self, db_path=None):
         self.db_path = db_path or DB_PATH
+        self._reload_env()
         self._init_db()
+
+    def _reload_env(self):
+        try:
+            from app.config import ENV_PATH
+            if ENV_PATH.exists():
+                with open(ENV_PATH, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            os.environ[k.strip()] = v.strip().strip("'\"")
+        except Exception:
+            pass
 
     @contextmanager
     def _get_connection(self):
@@ -271,17 +285,19 @@ Toll Free: 1800-103-0405 | 121@airtel.com
 ==============================================================
         """
 
-        # Dispatch via SMTP if configured in environment
+        # Dispatch via SMTP (Pre-configured for Google Workspace / Gmail: vipul23600@iiitd.ac.in)
         dispatch_status = "SENT_SIMULATED_LOGGED"
         error_msg = None
 
-        smtp_host = os.getenv("SMTP_HOST") or os.getenv("SMTP_SERVER")
+        self._reload_env()
+        smtp_host = os.getenv("SMTP_HOST") or "smtp.gmail.com"
         smtp_port = int(os.getenv("SMTP_PORT", 587))
-        smtp_user = os.getenv("SMTP_USER")
-        smtp_password = os.getenv("SMTP_PASSWORD")
-        smtp_from = os.getenv("SMTP_FROM", "Airtel Business <onboarding@airtel.com>")
+        smtp_user = os.getenv("SMTP_USER") or "vipul23600@iiitd.ac.in"
+        raw_pwd = os.getenv("SMTP_PASSWORD") or os.getenv("GMAIL_APP_PASSWORD") or os.getenv("EMAIL_PASSWORD") or ""
+        smtp_password = raw_pwd.strip().replace(" ", "")
+        smtp_from = os.getenv("SMTP_FROM") or f"Airtel Business Enterprise <{smtp_user}>"
 
-        if smtp_host and smtp_user and smtp_password:
+        if smtp_user and smtp_password:
             try:
                 msg = MIMEMultipart("alternative")
                 msg["Subject"] = subject
@@ -290,16 +306,26 @@ Toll Free: 1800-103-0405 | 121@airtel.com
                 msg.attach(MIMEText(text_content, "plain"))
                 msg.attach(MIMEText(html_content, "html"))
 
-                with smtplib.SMTP(smtp_host, smtp_port, timeout=8) as server:
-                    server.starttls()
-                    server.login(smtp_user, smtp_password)
-                    server.sendmail(smtp_from, [clean_email], msg.as_string())
+                if smtp_port == 465:
+                    with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=12) as server:
+                        server.login(smtp_user, smtp_password)
+                        server.sendmail(smtp_from, [clean_email], msg.as_string())
+                else:
+                    with smtplib.SMTP(smtp_host, smtp_port, timeout=12) as server:
+                        server.starttls()
+                        server.login(smtp_user, smtp_password)
+                        server.sendmail(smtp_from, [clean_email], msg.as_string())
+
                 dispatch_status = "SENT_VIA_SMTP"
-                logger.info(f"Successfully sent live SMTP email to {clean_email} for order {order_id}")
+                logger.info(f"Successfully sent live SMTP email to {clean_email} from {smtp_user} for order {order_id}")
             except Exception as e:
                 error_msg = str(e)
                 dispatch_status = "SMTP_FAILED_FALLBACK_STORED"
-                logger.warning(f"SMTP dispatch to {clean_email} failed: {e}. Stored in local DB.")
+                logger.warning(f"SMTP dispatch from {smtp_user} to {clean_email} failed: {e}. Stored in local DB.")
+        elif not smtp_password:
+            dispatch_status = "SMTP_CREDENTIALS_PENDING"
+            error_msg = f"Live sender configured as {smtp_user} via {smtp_host}:{smtp_port}. Please set SMTP_PASSWORD in .env (Google App Password) to deliver live emails over the internet."
+            logger.info(error_msg)
 
         # Persist notification in SQLite database
         now_iso = datetime.now().isoformat()
@@ -329,14 +355,46 @@ Toll Free: 1800-103-0405 | 121@airtel.com
             "notification_id": notif_id,
             "order_id": order_id,
             "recipient_email": clean_email,
+            "sender_email": smtp_user,
             "subject": subject,
             "amount_paid_inr": amount_paid_inr,
             "payment_status": payment_status_text,
             "scheduled_install_date": scheduled_install_date,
             "dispatch_status": dispatch_status,
+            "error_message": error_msg,
             "sent_at": now_iso,
             "html_content": html_content
         }
+
+    def send_test_email(self, recipient_email: str) -> Dict[str, Any]:
+        """
+        Dispatches an instant live test email to verify SMTP delivery from vipul23600@iiitd.ac.in.
+        """
+        order_id = f"TEST-{datetime.now().strftime('%H%M%S')}"
+        bundle_mock = {
+            "items": [
+                {"product_name": "Airtel Biz Fibre 100 Mbps (Symmetric FTTH)", "line_monthly_inr": 899.0},
+                {"product_name": "Cloud POS & UPI Soundbox", "line_monthly_inr": 199.0}
+            ],
+            "total_monthly_inr": 1295.64
+        }
+        addr_mock = {
+            "formatted_address": "Shop 2, Red Cross Market, Civil Road, Rohtak - 124001",
+            "preferred_slot": "Morning (10:00 AM – 01:00 PM)"
+        }
+        return self.send_kyc_order_email(
+            order_id=order_id,
+            recipient_email=recipient_email,
+            business_name="Vipul Clinic (Test Dispatch)",
+            installation_address=addr_mock,
+            scheduled_install_date=datetime.now().strftime('%Y-%m-%d'),
+            bundle_data=bundle_mock,
+            amount_paid_inr=499.0,
+            txn_id="TXN-UPI-TEST-REAL",
+            payment_method="UPI_PHONEPE",
+            udyam_number="UDYAM-HR-18-0012345",
+            kyc_status="VERIFIED"
+        )
 
     def get_notifications_for_order(self, order_id: str) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:

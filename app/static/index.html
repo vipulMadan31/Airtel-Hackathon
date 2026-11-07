@@ -187,15 +187,6 @@
           </div>
         </div>
 
-        <!-- ₹499 Priority Booking Model -->
-        <div class="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
-          <div>
-            <span class="font-bold text-emerald-900 block" id="t-token-title">Zero Risk Booking: Pay Only ₹499 Refundable Token Today</span>
-            <p class="text-emerald-700" id="t-token-sub">Balance auto-debited via UPI AutoPay only after your line is physically activated.</p>
-          </div>
-          <button id="openPaymentModalFromQuoteBtn" type="button" class="text-emerald-800 hover:text-white hover:bg-emerald-600 font-bold bg-white px-2.5 py-1 rounded-lg border border-emerald-300 transition cursor-pointer shadow-xs" id="t-token-btn">₹499 Now</button>
-        </div>
-
         <!-- Actions -->
         <div class="mt-5 flex items-center justify-between">
           <button id="downsellBtn" class="text-xs font-bold text-slate-600 hover:text-airtel-red border border-slate-300 px-3 py-2 rounded-xl transition">
@@ -1174,13 +1165,19 @@
         <button id="closeEmailModalBtn" type="button" class="text-slate-400 hover:text-white font-black text-xl">&times;</button>
       </div>
 
-      <div class="px-5 py-2.5 bg-slate-50 border-b border-slate-200 text-xs flex justify-between items-center text-slate-600">
-        <div>
-          <span>To: </span><strong id="emailModalTo" class="font-mono text-slate-900">customer@business.in</strong>
-          <span class="mx-2">&bull;</span>
+      <div class="px-5 py-2.5 bg-slate-50 border-b border-slate-200 text-xs flex flex-wrap justify-between items-center gap-2 text-slate-600">
+        <div class="flex items-center flex-wrap gap-2">
+          <span>From: </span><strong id="emailModalFrom" class="font-mono text-slate-900 bg-white border border-slate-200 px-1.5 py-0.5 rounded">vipul23600@iiitd.ac.in</strong>
+          <span>To: </span><strong id="emailModalTo" class="font-mono text-slate-900 bg-white border border-slate-200 px-1.5 py-0.5 rounded">customer@business.in</strong>
           <span>Status: </span><span id="emailModalStatus" class="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-[10px]">SENT</span>
         </div>
-        <div class="text-[11px] text-slate-500" id="emailModalDate">Just now</div>
+        <div class="flex items-center space-x-2">
+          <div class="text-[11px] text-slate-500" id="emailModalDate">Just now</div>
+          <button id="sendLiveTestEmailBtn" type="button" class="bg-airtel-red hover:bg-airtel-dark text-white font-bold text-[10px] px-2.5 py-1 rounded-md transition shadow-2xs flex items-center space-x-1" title="Trigger real SMTP delivery via vipul23600@iiitd.ac.in">
+            <span>🚀</span>
+            <span>Send Live Email</span>
+          </button>
+        </div>
       </div>
 
       <div class="flex-1 overflow-y-auto p-4 bg-slate-100">

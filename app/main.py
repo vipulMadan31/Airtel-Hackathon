@@ -440,6 +440,16 @@ def get_order_email_notifications(order_id: str):
     notifs = svc.get_notifications_for_order(order_id)
     return {"order_id": order_id, "notifications": notifs}
 
+class TestEmailRequest(BaseModel):
+    recipient_email: str = "phantomroasting@gmail.com"
+
+@app.post("/api/notifications/test-email")
+def trigger_test_email(req: TestEmailRequest):
+    from app.modules.notifications.email_service import EmailNotificationService
+    svc = EmailNotificationService.get_instance()
+    result = svc.send_test_email(req.recipient_email)
+    return result
+
 @app.get("/api/orders/user/latest")
 def get_latest_user_order(
     user_id: Optional[str] = None,
