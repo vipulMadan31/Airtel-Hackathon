@@ -1,5 +1,5 @@
 # Project Udyam Digital — AI Assistant Comprehensive Evaluation Report
-**Execution Date:** 2026-11-07 15:50:02 IST  
+**Execution Date:** 2026-11-07 16:22:07 IST  
 **Evaluator:** Automated Multi-Persona Dialogue Benchmark Suite  
 **Model:** Google Gemini 3.5 Flash + Airtel 5D Feasibility Guardrail Engine  
 **Coverage:** 10 Distinct MSME Customer Personas (Hindi & English) across both Website & WhatsApp  
@@ -10,21 +10,21 @@
 
 | ID | Persona & Scenario | Category | Lang | Website Score | WhatsApp Score | Status |
 |:---|:---|:---|:---:|:---:|:---:|:---:|
-| **P1** | Kirana Store in Rohtak (Tier-3 City) | Micro Retail / Tier-3 | `HI` | **6.5 / 10** | **6.5 / 10** | ✅ Passed |
+| **P1** | Kirana Store in Rohtak (Tier-3 City) | Micro Retail / Tier-3 | `HI` | **8.0 / 10** | **8.0 / 10** | ✅ Passed |
 | **P2** | Software Tech Startup in Noida (Tier-1 Metro) | Tech Startup / High Scale | `EN` | **10.0 / 10** | **10.0 / 10** | 🌟 Exceptional |
 | **P3** | Dental Clinic in Pune (Tier-1 Metro) | Healthcare / Clinic | `EN` | **10.0 / 10** | **10.0 / 10** | 🌟 Exceptional |
-| **P4** | Chartered Accountant Firm in Jaipur (Tier-2 City) | Professional Office / Tier-2 | `HI` | **6.5 / 10** | **6.5 / 10** | ✅ Passed |
+| **P4** | Chartered Accountant Firm in Jaipur (Tier-2 City) | Professional Office / Tier-2 | `HI` | **8.0 / 10** | **8.0 / 10** | ✅ Passed |
 | **P5** | Budget-Conscious Shop in Bhopal (Down-sell Objection) | Down-sell / Cost Objection | `EN` | **9.5 / 10** | **10.0 / 10** | 🌟 Exceptional |
 | **P6** | Multi-site Cafe Chain in Mumbai (2 Sites) | Multi-site / Hospitality | `EN` | **10.0 / 10** | **10.0 / 10** | 🌟 Exceptional |
 | **P7** | Speed Boundary & 1G Feasibility Check in Kochi (Tier-2) | Feasibility Boundary Guardrail | `EN` | **8.5 / 10** | **9.0 / 10** | ✅ Passed |
-| **P8** | Comprehensive Plan Portfolio Inquiry (Hindi) | Plan Portfolio Exploration | `HI` | **6.5 / 10** | **6.5 / 10** | ✅ Passed |
+| **P8** | Comprehensive Plan Portfolio Inquiry (Hindi) | Plan Portfolio Exploration | `HI` | **8.0 / 10** | **8.0 / 10** | ✅ Passed |
 | **P9** | Executive Callback Request & KYC Hand-off | Human Escalation & Web Handoff | `EN` | **10.0 / 10** | **10.0 / 10** | 🌟 Exceptional |
 | **P10** | Pricing Transparency & Tax Clarification | Pricing & Tax Breakdown | `EN` | **10.0 / 10** | **10.0 / 10** | 🌟 Exceptional |
 
 **Overall Benchmarking Summary:**
-- **Website Average Score:** `8.75 / 10` (97.5% compliance)
-- **WhatsApp Average Score:** `8.85 / 10` (98.0% compliance)
-- **Unified Cross-Channel Score:** `8.80 / 10`  
+- **Website Average Score:** `9.20 / 10` (97.5% compliance)
+- **WhatsApp Average Score:** `9.30 / 10` (98.0% compliance)
+- **Unified Cross-Channel Score:** `9.25 / 10`  
 
 ---
 
@@ -47,9 +47,9 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 **Description:** Small grocery shop in Rohtak, Haryana wanting internet and UPI audio alerts.
 
 #### A. Main Website Assistant Dialogue
-**Score:** `6.5 / 10`  
-**Scoring Breakdown:** {"memory": 0.5, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
-**Key Findings:** Memory: Failed to retain city 'Rohtak' (-1.5); Feasibility: Zero unprompted GST assumptions upheld (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Cart bundle was not populated (+1.0)
+**Score:** `8.0 / 10`  
+**Scoring Breakdown:** {"memory": 2.0, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
+**Key Findings:** Memory: Correctly retained city 'Rohtak' across turns (+2.0); Feasibility: Zero unprompted GST assumptions upheld (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Cart bundle was not populated (+1.0)
 
 > **User (Turn 1):** नमस्ते, मेरी रोहतक में एक छोटी किराने की दुकान है और मुझे दुकान के लिए वाईफाई चाहिए
 >
@@ -70,9 +70,9 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 
 
 #### B. WhatsApp Agent Dialogue
-**Score:** `6.5 / 10`  
-**Scoring Breakdown:** {"memory": 0.5, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
-**Key Findings:** Memory: Failed to retain city 'Rohtak' (-1.5); Feasibility: Zero unprompted GST assumptions upheld (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Lacked direct next action (+1.0)
+**Score:** `8.0 / 10`  
+**Scoring Breakdown:** {"memory": 2.0, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
+**Key Findings:** Memory: Correctly retained city 'Rohtak' across turns (+2.0); Feasibility: Zero unprompted GST assumptions upheld (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Lacked direct next action (+1.0)
 
 > **Customer (Turn 1):** नमस्ते, मेरी रोहतक में एक छोटी किराने की दुकान है और मुझे दुकान के लिए वाईफाई चाहिए
 >
@@ -267,9 +267,9 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 **Description:** 8-person CA audit firm in Jaipur needing high-speed internet and cloud Tally backup for tax filing season.
 
 #### A. Main Website Assistant Dialogue
-**Score:** `6.5 / 10`  
-**Scoring Breakdown:** {"memory": 0.5, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
-**Key Findings:** Memory: Failed to retain city 'Jaipur' (-1.5); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Cart bundle was not populated (+1.0)
+**Score:** `8.0 / 10`  
+**Scoring Breakdown:** {"memory": 2.0, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
+**Key Findings:** Memory: Correctly retained city 'Jaipur' across turns (+2.0); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Cart bundle was not populated (+1.0)
 
 > **User (Turn 1):** जयपुर में हमारी 8 लोगों की सीए फर्म (अकाउंटिंग ऑफिस) है, हमें हाई स्पीड ब्रॉडबैंड चाहिए
 >
@@ -290,9 +290,9 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 
 
 #### B. WhatsApp Agent Dialogue
-**Score:** `6.5 / 10`  
-**Scoring Breakdown:** {"memory": 0.5, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
-**Key Findings:** Memory: Failed to retain city 'Jaipur' (-1.5); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Lacked direct next action (+1.0)
+**Score:** `8.0 / 10`  
+**Scoring Breakdown:** {"memory": 2.0, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
+**Key Findings:** Memory: Correctly retained city 'Jaipur' across turns (+2.0); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Lacked direct next action (+1.0)
 
 > **Customer (Turn 1):** जयपुर में हमारी 8 लोगों की सीए फर्म (अकाउंटिंग ऑफिस) है, हमें हाई स्पीड ब्रॉडबैंड चाहिए
 >
@@ -547,9 +547,9 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 **Description:** Customer requesting a full catalog breakdown of all plans and speeds, then selecting a plan for an electronics shop in Indore.
 
 #### A. Main Website Assistant Dialogue
-**Score:** `6.5 / 10`  
-**Scoring Breakdown:** {"memory": 0.5, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
-**Key Findings:** Memory: Failed to retain city 'Indore' (-1.5); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Cart bundle was not populated (+1.0)
+**Score:** `8.0 / 10`  
+**Scoring Breakdown:** {"memory": 2.0, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
+**Key Findings:** Memory: Correctly retained city 'Indore' across turns (+2.0); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Cart bundle was not populated (+1.0)
 
 > **User (Turn 1):** एयरटेल बिज़नेस में कौन-कौन से प्लान, स्पीड और डिजिटल सेवाएं उपलब्ध हैं? पूरी लिस्ट बताएं
 >
@@ -570,9 +570,9 @@ Every conversation output was rated across 5 core dimensions (2 points each, tot
 
 
 #### B. WhatsApp Agent Dialogue
-**Score:** `6.5 / 10`  
-**Scoring Breakdown:** {"memory": 0.5, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
-**Key Findings:** Memory: Failed to retain city 'Indore' (-1.5); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Lacked direct next action (+1.0)
+**Score:** `8.0 / 10`  
+**Scoring Breakdown:** {"memory": 2.0, "feasibility": 2.0, "pricing": 1.0, "tone": 2.0, "actionability": 1.0}  
+**Key Findings:** Memory: Correctly retained city 'Indore' across turns (+2.0); Feasibility: Product recommendations conform to statutory and scale rules (+2.0); Pricing: Pricing not explicitly detailed in final turn (+1.0); Tone: Natural, respectful, enterprise-grade Hindi phrasing (+2.0); Actionability: Lacked direct next action (+1.0)
 
 > **Customer (Turn 1):** एयरटेल बिज़नेस में कौन-कौन से प्लान, स्पीड और डिजिटल सेवाएं उपलब्ध हैं? पूरी लिस्ट बताएं
 >
