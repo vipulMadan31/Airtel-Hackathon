@@ -525,12 +525,19 @@ def generate_markdown_report(results, output_path: Path):
         f.write(report_text)
     print(f"\n✔ Full evaluation report successfully written to: {output_path}")
 
-    # Also save to artifact directory
-    artifact_path = Path(r"C:\Users\HP\.gemini\antigravity\brain\2e09aa20-c7e0-4951-be55-47b38cc56d41\ASSISTANT_COMPREHENSIVE_TEST_REPORT.md")
-    artifact_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(artifact_path, "w", encoding="utf-8") as f:
-        f.write(report_text)
-    print(f"✔ Artifact report successfully written to: {artifact_path}")
+    # Also save to artifact directory if available
+    try:
+        current_artifact_dir = os.environ.get("ANTIGRAVITY_ARTIFACT_DIR")
+        if current_artifact_dir:
+            artifact_path = Path(current_artifact_dir) / "ASSISTANT_COMPREHENSIVE_TEST_REPORT.md"
+        else:
+            artifact_path = Path(r"C:\Users\PRATEEK\.gemini\antigravity\brain\4724cf11-9dbb-4ea2-b4ec-b71531af3569\ASSISTANT_COMPREHENSIVE_TEST_REPORT.md")
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(artifact_path, "w", encoding="utf-8") as f:
+            f.write(report_text)
+        print(f"✔ Artifact report successfully written to: {artifact_path}")
+    except Exception as e:
+        print(f"ℹ Note: Skipping secondary artifact write ({e})")
 
 if __name__ == "__main__":
     results = run_evaluation()
