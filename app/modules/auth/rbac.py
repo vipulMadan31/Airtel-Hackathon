@@ -18,13 +18,13 @@ def extract_token_from_header(
     """
     Extracts session token from Authorization Bearer, X-Session-Token, query param, or OAuth2 scheme.
     """
-    if authorization and authorization.startswith("Bearer "):
+    if isinstance(authorization, str) and authorization.startswith("Bearer "):
         return authorization.replace("Bearer ", "").strip()
-    if oauth_token:
+    if isinstance(oauth_token, str):
         return oauth_token.strip()
-    if x_session_token:
+    if isinstance(x_session_token, str):
         return x_session_token.strip()
-    if token_param:
+    if isinstance(token_param, str):
         return token_param.strip()
     return None
 

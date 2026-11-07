@@ -36,3 +36,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
 
+# OCR Engine Configuration
+TESSERACT_CMD = os.getenv("TESSERACT_CMD", "")
+OCR_MIN_BLUR_VARIANCE = float(os.getenv("OCR_MIN_BLUR_VARIANCE", "100.0"))
+OCR_ENABLE_DESKEW = os.getenv("OCR_ENABLE_DESKEW", "true").lower() in ["true", "1", "yes"]
+
