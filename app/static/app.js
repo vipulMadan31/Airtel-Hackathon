@@ -52,7 +52,34 @@ document.addEventListener("DOMContentLoaded", () => {
   initNpsButtons();
   checkKycTokenHandoff();
   checkPartnerAttribution();
+  initViewRouter();
 });
+
+// --- INITIAL VIEW ROUTER ---
+function initViewRouter() {
+  const path = window.location.pathname.toLowerCase();
+  const urlParams = new URLSearchParams(window.location.search);
+  const roleParam = (urlParams.get("role") || "").toUpperCase();
+
+  if (path === "/mitra" || roleParam === "PARTNER") {
+    switchUserRole("PARTNER");
+  } else if (path === "/ops" || path === "/admin" || roleParam === "ADMIN") {
+    switchUserRole("ADMIN");
+  } else {
+    navigateToView("MERCHANT", false);
+  }
+
+  window.addEventListener("popstate", () => {
+    const curPath = window.location.pathname.toLowerCase();
+    if (curPath === "/mitra") {
+      switchUserRole("PARTNER");
+    } else if (curPath === "/ops" || curPath === "/admin") {
+      switchUserRole("ADMIN");
+    } else {
+      switchUserRole("MERCHANT");
+    }
+  });
+}
 
 // --- WHATSAPP TO WEB KYC HANDOFF ---
 async function checkKycTokenHandoff() {
@@ -306,6 +333,211 @@ function updateRoleSwitcherUI() {
   }
 }
 
+// --- VIEW ROUTER (CUSTOMER / MITRA / OPS) ---
+function navigateToView(role, pushHistory = true) {
+  const normRole = (role || 'MERCHANT').toUpperCase();
+  STATE.auth.role = normRole;
+
+  const customerView = document.getElementById("customerView");
+  const mitraView = document.getElementById("mitraView");
+  const opsView = document.getElementById("opsView");
+  const safeModeToggleWrapper = document.getElementById("safeModeToggle")?.closest("label");
+
+  if (!customerView || !mitraView || !opsView) return;
+
+  if (normRole === 'PARTNER') {
+    customerView.classList.add("hidden");
+    mitraView.classList.remove("hidden");
+    opsView.classList.add("hidden");
+    if (safeModeToggleWrapper) safeModeToggleWrapper.classList.add("hidden");
+
+    if (pushHistory && window.location.pathname !== '/mitra') {
+      try { window.history.pushState({ role: 'PARTNER' }, '', '/mitra'); } catch (e) {}
+    }
+    loadPartnerViewData();
+  } else if (normRole === 'ADMIN') {
+    customerView.classList.add("hidden");
+    mitraView.classList.add("hidden");
+    opsView.classList.remove("hidden");
+    if (safeModeToggleWrapper) safeModeToggleWrapper.classList.add("hidden");
+
+    if (pushHistory && window.location.pathname !== '/ops') {
+      try { window.history.pushState({ role: 'ADMIN' }, '', '/ops'); } catch (e) {}
+    }
+    loadOpsViewData();
+  } else {
+    // MERCHANT / Customer mode
+    customerView.classList.remove("hidden");
+    mitraView.classList.add("hidden");
+    opsView.classList.add("hidden");
+    if (safeModeToggleWrapper) safeModeToggleWrapper.classList.remove("hidden");
+
+    if (pushHistory && (window.location.pathname === '/mitra' || window.location.pathname === '/ops' || window.location.pathname === '/admin')) {
+      try { window.history.pushState({ role: 'MERCHANT' }, '', '/'); } catch (e) {}
+    }
+  }
+
+  updateRoleSwitcherUI();
+}
+
+async function loadPartnerViewData() {
+  try {
+    const token = STATE.auth.token || 'tok_partner_demo';
+    // 1. Fetch Partner Commissions & Telemetry
+    const commRes = await fetch("/api/partner/commissions", {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "X-Session-Token": token
+      }
+    });
+    if (commRes.ok) {
+      const commData = await commRes.json();
+      const vRef = document.getElementById("mitraViewActiveReferrals");
+      const vTrail = document.getElementById("mitraViewRecurringTrail");
+      const vBounty = document.getElementById("mitraViewRecoveryBounties");
+      const vPayout = document.getElementById("mitraViewPendingPayout");
+
+      if (vRef) vRef.innerText = commData.active_referrals_count;
+      if (vTrail) vTrail.innerText = `₹${commData.monthly_recurring_trail_inr.toLocaleString()}/mo`;
+      if (vBounty) vBounty.innerText = `₹${commData.stalled_recovery_bounties_inr.toLocaleString()}`;
+      if (vPayout) vPayout.innerText = `₹${commData.total_pending_payout_inr.toLocaleString()}`;
+
+      // Sync modal IDs for backward test compatibility
+      const mRef = document.getElementById("partnerActiveReferrals");
+      const mTrail = document.getElementById("partnerRecurringTrail");
+      const mBounty = document.getElementById("partnerRecoveryBounties");
+      const mPayout = document.getElementById("partnerPendingPayout");
+      if (mRef) mRef.innerText = commData.active_referrals_count;
+      if (mTrail) mTrail.innerText = `₹${commData.monthly_recurring_trail_inr.toLocaleString()}/mo`;
+      if (mBounty) mBounty.innerText = `₹${commData.stalled_recovery_bounties_inr.toLocaleString()}`;
+      if (mPayout) mPayout.innerText = `₹${commData.total_pending_payout_inr.toLocaleString()}`;
+    }
+
+    // 2. Fetch Stalled & Inbound Leads
+    const res = await fetch("/api/partner/leads", {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "X-Session-Token": token
+      }
+    });
+
+    if (res.ok) {
+      const leads = await res.json();
+      const isHi = STATE.language === 'hi';
+      const rowsHtml = leads.map(l => {
+        const isClaimed = l.is_claimed || false;
+        const scoreBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] ${l.propensity_score >= 70 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">Score: ${l.propensity_score}/100 (${l.priority})</span>`;
+
+        let actionButtons = '';
+        if (isClaimed) {
+          actionButtons = `
+            <div class="flex items-center space-x-1.5">
+              <span class="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded text-[10px] font-extrabold flex items-center space-x-1">
+                <span>✔</span>
+                <span>₹1,000 ${isHi ? 'बाउंटी लॉक' : 'Bounty Locked'}</span>
+              </span>
+              <button class="bg-slate-900 hover:bg-black text-white px-2 py-1 rounded text-[10px] font-bold" onclick="alert('Calling claimed customer ${l.business_name} (${l.phone || '+91 98765 12345'})...')">
+                ${isHi ? 'कॉल करें' : 'Call'}
+              </button>
+            </div>
+          `;
+        } else {
+          actionButtons = `
+            <div class="flex items-center space-x-1.5">
+              <button class="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded text-[10px] font-extrabold shadow-xs transition" onclick="claimLeadBounty('${l.lead_id}')">
+                ${isHi ? 'लीड क्लेम (₹1,000)' : 'Claim Lead (₹1k)'}
+              </button>
+              <button class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-2 py-1 rounded text-[10px] font-bold" onclick="alert('Partner outreach initiated for ${l.business_name}')">
+                ${isHi ? 'कॉल' : 'Call'}
+              </button>
+            </div>
+          `;
+        }
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition ${isClaimed ? 'bg-emerald-50/30' : ''}">
+            <td class="p-3 font-mono font-bold">${l.lead_id}</td>
+            <td class="p-3 font-semibold text-slate-900">
+              ${l.business_name}
+              <span class="text-slate-400 block text-[10px]">${l.city} &bull; ${l.phone || '+91 98765 12345'}</span>
+            </td>
+            <td class="p-3 text-slate-600">${l.stage_reached}</td>
+            <td class="p-3 text-red-600 font-medium">${l.drop_reason}</td>
+            <td class="p-3">${scoreBadge}</td>
+            <td class="p-3">${actionButtons}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const viewTbody = document.getElementById("mitraViewLeadsTableBody");
+      if (viewTbody) viewTbody.innerHTML = rowsHtml;
+      const modalTbody = document.getElementById("partnerLeadsTableBody");
+      if (modalTbody) modalTbody.innerHTML = rowsHtml;
+    }
+  } catch (err) {
+    console.error("Partner data load error:", err);
+  }
+}
+
+async function loadOpsViewData() {
+  try {
+    const token = STATE.auth.token || 'tok_admin_demo';
+    const res = await fetch("/api/admin/metrics", {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "X-Session-Token": token
+      }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const vTotal = document.getElementById("opsViewTotalLeads");
+      const vConv = document.getElementById("opsViewConvRate");
+      const vTta = document.getElementById("opsViewTta");
+      const vCac = document.getElementById("opsViewCac");
+
+      if (vTotal) vTotal.innerText = data.funnel_metrics.total_inbound_leads.toLocaleString();
+      if (vConv) vConv.innerText = `${data.funnel_metrics.projected_digital_conversion_rate_percent}%`;
+      if (vTta) vTta.innerText = `${data.operational_efficiency.udyam_digital_tta_days} Days`;
+      if (vCac) vCac.innerText = `₹${data.operational_efficiency.udyam_digital_cac_inr.toLocaleString()}`;
+
+      // Sync modal IDs
+      const mTotal = document.getElementById("adminTotalLeads");
+      const mConv = document.getElementById("adminConvRate");
+      const mTta = document.getElementById("adminTta");
+      const mCac = document.getElementById("adminCac");
+      if (mTotal) mTotal.innerText = data.funnel_metrics.total_inbound_leads.toLocaleString();
+      if (mConv) mConv.innerText = `${data.funnel_metrics.projected_digital_conversion_rate_percent}%`;
+      if (mTta) mTta.innerText = `${data.operational_efficiency.udyam_digital_tta_days} Days`;
+      if (mCac) mCac.innerText = `₹${data.operational_efficiency.udyam_digital_cac_inr.toLocaleString()}`;
+
+      if (data.manual_escalations_queue) {
+        const rowsHtml = data.manual_escalations_queue.map(e => `
+          <tr class="hover:bg-slate-50/80">
+            <td class="p-3 font-mono font-bold">${e.escalation_id}</td>
+            <td class="p-3 font-bold text-slate-900">${e.business_name}</td>
+            <td class="p-3 text-amber-800 font-medium">${e.issue}</td>
+            <td class="p-3 text-slate-600">${e.assigned_agent}</td>
+            <td class="p-3 font-mono font-semibold text-red-600">${e.sla_remaining_hours}h left</td>
+            <td class="p-3">
+              <button class="bg-purple-700 hover:bg-purple-800 text-white px-2.5 py-1 rounded text-[10px] font-bold" onclick="alert('Admin override verified for ${e.business_name}')">
+                Approve Override
+              </button>
+            </td>
+          </tr>
+        `).join('');
+
+        const vTbody = document.getElementById("opsViewEscalationTableBody");
+        if (vTbody) vTbody.innerHTML = rowsHtml;
+        const mTbody = document.getElementById("adminEscalationTableBody");
+        if (mTbody) mTbody.innerHTML = rowsHtml;
+      }
+    }
+  } catch (err) {
+    console.error("Ops metrics fetch error:", err);
+  }
+}
+
 async function switchUserRole(roleName) {
   const dropdown = document.getElementById("roleDropdownMenu");
   if (dropdown) dropdown.classList.add("hidden");
@@ -321,7 +553,7 @@ async function switchUserRole(roleName) {
       STATE.auth.role = data.user.role;
       STATE.auth.token = data.token;
       STATE.auth.user = data.user;
-      updateRoleSwitcherUI();
+      navigateToView(data.user.role, true);
 
       const isHi = STATE.language === 'hi';
       const toastMsg = isHi
@@ -550,6 +782,25 @@ function initEventListeners() {
       alert("Downloading official store counter QR sticker asset for Mitra Partner PTR-IND-882...");
     });
   }
+
+  // Back to Customer View Buttons
+  document.querySelectorAll(".backToCustomerBtn").forEach(btn => {
+    btn.addEventListener("click", () => switchUserRole("MERCHANT"));
+  });
+
+  // Dedicated Mitra View Copy & Download Buttons
+  document.querySelectorAll(".copyPartnerViewLinkBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      navigator.clipboard?.writeText("http://localhost:8000/?ref=PTR-IND-882");
+      alert("Partner Referral link copied to clipboard: http://localhost:8000/?ref=PTR-IND-882");
+    });
+  });
+
+  document.querySelectorAll(".downloadPartnerViewQrBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      alert("Downloading official store counter QR sticker asset for Mitra Partner PTR-IND-882...");
+    });
+  });
 
   // Voice Recognition (Web Speech API)
   initVoiceRecognition();
@@ -1606,6 +1857,7 @@ window.claimLeadBounty = async function(leadId) {
       ? `लीड ${leadId} को सफलतापूर्वक क्लेम कर लिया गया है!\n₹1,000 की रिकवरी बाउंटी लॉक कर दी गई है।\nकृपया 4 घंटे के भीतर ग्राहक से संपर्क करें।`
       : `Lead ${leadId} claimed successfully!\n₹1,000 spot recovery bounty locked for Mitra Partner PTR-IND-882.\nOutreach SLA: 4 hours.`;
     alert(alertMsg);
+    await loadPartnerViewData();
     await openPartnerModal();
   } catch (err) {
     console.error("Claim error:", err);

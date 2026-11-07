@@ -118,8 +118,11 @@
     <span class="text-[10px] bg-black/20 text-white px-2 py-0.5 rounded font-mono uppercase tracking-wider">15% Recurring Trail Tagged</span>
   </div>
 
-  <!-- MAIN CONTAINER -->
-  <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <!-- MAIN APPLICATION CONTAINER -->
+  <main class="flex-1 w-full">
+
+    <!-- VIEW 1: CUSTOMER SELF-SERVE MODE (3 Pillars: AI Advisor, Pricing, KYC, Tracker) -->
+    <div id="customerView" class="max-w-6xl mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
 
     <!-- LEFT COLUMN: CONVERSATIONAL ADVISOR (5 cols on lg) -->
     <section class="lg:col-span-5 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[640px]">
@@ -429,6 +432,286 @@
       </div>
 
     </section>
+    </div>
+    <!-- END OF VIEW 1: CUSTOMER SELF-SERVE MODE -->
+
+    <!-- VIEW 2: DEDICATED AIRTEL MITRA PARTNER PORTAL -->
+    <div id="mitraView" class="hidden max-w-6xl mx-auto px-4 py-6 w-full space-y-6">
+      <!-- Mitra Top Header Card -->
+      <div class="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-900 rounded-2xl p-5 text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-2xl shadow-inner">
+            🤝
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-amber-200">Airtel Mitra Partner Portal</span>
+              <span class="bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 text-[10px] font-bold px-2 py-0.5 rounded-full">Active Partner</span>
+            </div>
+            <h2 class="text-xl font-extrabold text-white">Vikram Telecom (PTR-IND-882)</h2>
+            <p class="text-amber-100 text-xs">Indore Central Circle • Assigned Hub PIN: 452001 • Retail Counter Tier-2 Lead Recovery Desk</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button type="button" class="backToCustomerBtn bg-white text-slate-900 hover:bg-slate-100 font-extrabold px-3.5 py-2 rounded-xl text-xs transition shadow-sm flex items-center space-x-1.5">
+            <span>🛒</span>
+            <span>Switch to Customer Mode</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Partner Commercial Earnings KPI Grid -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="font-extrabold text-slate-900 text-sm">Commercial Earnings & Recovery Summary</h3>
+          <span class="text-xs font-semibold text-slate-500">Auto-credited via UPI Mandate</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+            <span class="text-amber-700 block font-semibold text-[11px]">Active Monthly Connections</span>
+            <span class="text-2xl font-black text-amber-950" id="mitraViewActiveReferrals">28</span>
+            <span class="text-[10px] text-amber-700 block mt-0.5">15% Recurring Trail</span>
+          </div>
+          <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+            <span class="text-emerald-700 block font-semibold text-[11px]">Monthly Recurring Trail</span>
+            <span class="text-2xl font-black text-emerald-950" id="mitraViewRecurringTrail">₹42,850/mo</span>
+            <span class="text-[10px] text-emerald-700 block mt-0.5">12 Months Lifetime</span>
+          </div>
+          <div class="p-3.5 bg-blue-50 border border-blue-200 rounded-xl">
+            <span class="text-blue-700 block font-semibold text-[11px]">Lead Recovery Bounties</span>
+            <span class="text-2xl font-black text-blue-950" id="mitraViewRecoveryBounties">₹4,000</span>
+            <span class="text-[10px] text-blue-700 block mt-0.5">₹1,000 Spot Per Lead</span>
+          </div>
+          <div class="p-3.5 bg-purple-50 border border-purple-200 rounded-xl">
+            <span class="text-purple-700 block font-semibold text-[11px]">Total Pending Payout</span>
+            <span class="text-2xl font-black text-purple-950" id="mitraViewPendingPayout">₹16,450</span>
+            <span class="text-[10px] text-purple-700 block mt-0.5">Bank Mandate Linked</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Partner Acquisition QR & Physical Sticker Section -->
+      <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+          <div class="w-20 h-20 bg-white border border-amber-300 rounded-2xl p-2 flex flex-col items-center justify-center shrink-0 shadow-sm">
+            <svg class="w-16 h-16 text-amber-900" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2 2h8v8H2V2zm2 2v4h4V4H4zm10-2h8v8h-8V2zm2 2v4h4V4h-4zM2 14h8v8H2v-8zm2 2v4h4v-4H4zm14-2h4v2h-4v-2zm-4 0h2v4h-2v-4zm2 4h4v4h-4v-4zm2-2h2v2h-2v-2zm-6 2h2v2h-2v-2zm0-4h2v2h-2v-2zm4 4v2h-2v-2h2z"/>
+            </svg>
+          </div>
+          <div>
+            <span class="font-extrabold text-amber-950 block text-base">Retail Store Acquisition Sticker (QR Code)</span>
+            <p class="text-amber-800 text-xs mt-0.5">Place this sticker at your retail shop counter. Walk-in MSME customers scan it to get waived installation fees and instant quote discounts, while your store is automatically tagged for 15% recurring commissions.</p>
+            <div class="mt-2 flex items-center space-x-2">
+              <span class="font-mono text-xs font-bold text-amber-900 bg-white px-2.5 py-0.5 rounded-lg border border-amber-300">REF-PTR-IND-882</span>
+              <span class="text-[11px] text-amber-700">Tagged URL: <code class="bg-amber-100 px-1 py-0.5 rounded">http://localhost:8000/?ref=PTR-IND-882</code></span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2.5 shrink-0">
+          <button type="button" class="copyPartnerViewLinkBtn bg-amber-600 hover:bg-amber-700 text-white font-bold px-3.5 py-2.5 rounded-xl transition text-xs shadow-xs flex items-center space-x-1.5">
+            <span>📋</span>
+            <span>Copy Link</span>
+          </button>
+          <button type="button" class="downloadPartnerViewQrBtn bg-slate-900 hover:bg-black text-white font-bold px-3.5 py-2.5 rounded-xl transition text-xs shadow-xs flex items-center space-x-1.5">
+            <span>🖼️</span>
+            <span>Download Counter QR</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Unresolved Leads Queue (Calibrated Propensity Scores) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 class="font-extrabold text-slate-900 text-base">Unresolved Leads Queue</h3>
+              <span class="text-[11px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">₹1,000 Spot Bounty / 24h SLA</span>
+            </div>
+            <p class="text-slate-500 text-xs">High-propensity leads stalled at Needs Assessed or Quote Accepted in your circle (Indore 452001 & surrounding districts).</p>
+          </div>
+          <div class="flex items-center space-x-2 text-xs">
+            <span class="text-slate-400">Sort:</span>
+            <span class="bg-slate-100 font-bold text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200">Propensity Score (Desc)</span>
+          </div>
+        </div>
+
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="p-3">Lead ID</th>
+                <th class="p-3">Business Name & Location</th>
+                <th class="p-3">Last Funnel Stage</th>
+                <th class="p-3">Drop Reason</th>
+                <th class="p-3">Propensity Score</th>
+                <th class="p-3">Bounty & Actions</th>
+              </tr>
+            </thead>
+            <tbody id="mitraViewLeadsTableBody" class="divide-y divide-slate-100">
+              <!-- Dynamically populated from /api/partner/leads -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- END OF VIEW 2: DEDICATED AIRTEL MITRA PARTNER PORTAL -->
+
+    <!-- VIEW 3: DEDICATED AIRTEL ENTERPRISE OPS ADMIN CONSOLE -->
+    <div id="opsView" class="hidden max-w-6xl mx-auto px-4 py-6 w-full space-y-6">
+      <!-- Ops Top Header Card -->
+      <div class="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-950 rounded-2xl p-5 text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-12 h-12 rounded-xl bg-purple-500/20 backdrop-blur-xs flex items-center justify-center text-2xl shadow-inner">
+            🛡️
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-purple-300">Airtel Enterprise Operations Center</span>
+              <span class="bg-purple-500/30 text-purple-200 border border-purple-400/30 text-[10px] font-bold px-2 py-0.5 rounded-full">National Lead Desk</span>
+            </div>
+            <h2 class="text-xl font-extrabold text-white">Priya Sharma (Airtel Enterprise Ops Lead)</h2>
+            <p class="text-purple-200 text-xs">Pan-India MSME Funnel Telemetry • 4-Hour Partner SLA Escalations • DPDP & DoT Audit Compliance</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button type="button" class="backToCustomerBtn bg-white text-slate-900 hover:bg-slate-100 font-extrabold px-3.5 py-2 rounded-xl text-xs transition shadow-sm flex items-center space-x-1.5">
+            <span>🛒</span>
+            <span>Switch to Customer Mode</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Telemetry Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+        <div class="p-4 bg-purple-50 border border-purple-200 rounded-2xl">
+          <span class="text-purple-700 block font-semibold text-[11px]">Total Inbound Leads</span>
+          <span class="text-2xl font-black text-purple-950" id="opsViewTotalLeads">5,000</span>
+          <span class="text-[10px] text-purple-600 block mt-0.5">Top 50 Metros & Tier 2</span>
+        </div>
+        <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+          <span class="text-emerald-700 block font-semibold text-[11px]">Digital Conversion Rate</span>
+          <span class="text-2xl font-black text-emerald-950" id="opsViewConvRate">24.8%</span>
+          <span class="text-[10px] text-emerald-600 block mt-0.5">vs 7.36% Legacy Baseline</span>
+        </div>
+        <div class="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+          <span class="text-blue-700 block font-semibold text-[11px]">Avg Time to Activation (TTA)</span>
+          <span class="text-2xl font-black text-blue-950" id="opsViewTta">1.8 Days</span>
+          <span class="text-[10px] text-blue-600 block mt-0.5">vs 17.6d Legacy Funnel</span>
+        </div>
+        <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+          <span class="text-amber-700 block font-semibold text-[11px]">Blended CAC</span>
+          <span class="text-2xl font-black text-amber-950" id="opsViewCac">₹3,450</span>
+          <span class="text-[10px] text-amber-600 block mt-0.5">77% Reduction (₹15k Base)</span>
+        </div>
+      </div>
+
+      <!-- Appendix A1: National MSME Funnel Telemetry Breakdown -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-sm">National MSME Funnel Progression & Bottleneck Elimination (Appendix A1)</h3>
+            <p class="text-slate-500 text-xs">Tracking conversion through each stage: highlighting where legacy dropped 56% between Needs Assessed and Quote Accepted.</p>
+          </div>
+          <span class="text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">3.4x Funnel Efficiency</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5 text-center text-xs">
+          <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+            <span class="text-slate-400 block text-[10px] font-bold">1. INBOUND</span>
+            <span class="text-base font-extrabold text-slate-900">5,000</span>
+            <span class="text-[10px] text-slate-500 block">Baseline</span>
+          </div>
+          <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+            <span class="text-slate-400 block text-[10px] font-bold">2. ASSESSED</span>
+            <span class="text-base font-extrabold text-blue-900">1,974</span>
+            <span class="text-[10px] text-blue-700 block">AI Conversational</span>
+          </div>
+          <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+            <span class="text-amber-800 block text-[10px] font-bold">3. QUOTED</span>
+            <span class="text-base font-extrabold text-amber-950">1,620</span>
+            <span class="text-[10px] text-emerald-700 block font-bold">+88% vs Legacy (861)</span>
+          </div>
+          <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+            <span class="text-slate-400 block text-[10px] font-bold">4. FEASIBLE</span>
+            <span class="text-base font-extrabold text-indigo-900">1,580</span>
+            <span class="text-[10px] text-indigo-700 block">FTTH + 5G AirFiber</span>
+          </div>
+          <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+            <span class="text-slate-400 block text-[10px] font-bold">5. KYC VERIFIED</span>
+            <span class="text-base font-extrabold text-purple-900">1,490</span>
+            <span class="text-[10px] text-purple-700 block">&lt;60s OCR &amp; Registries</span>
+          </div>
+          <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+            <span class="text-emerald-800 block text-[10px] font-bold">6. ACTIVATED</span>
+            <span class="text-base font-extrabold text-emerald-950">1,240</span>
+            <span class="text-[10px] text-emerald-700 block font-bold">24.8% Conv Rate</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MSME Market Composition (Appendix A2) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <h3 class="font-extrabold text-slate-900 text-sm">MSME Segment Strategy & Propensity Profiles (Appendix A2)</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+          <div class="p-3 border border-slate-200 rounded-xl bg-slate-50">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-extrabold text-slate-900">Micro Retail & Services</span>
+              <span class="font-extrabold text-blue-600">55% Volume</span>
+            </div>
+            <p class="text-[11px] text-slate-600 leading-snug">Kirana, apparel, food joints. Very high price sensitivity. Target: Biz 5G AirFiber 100 (₹899) & Biz Fibre 100 with zero upfront installation fee.</p>
+          </div>
+          <div class="p-3 border border-slate-200 rounded-xl bg-slate-50">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-extrabold text-slate-900">Professional Offices</span>
+              <span class="font-extrabold text-emerald-600">25% Volume</span>
+            </div>
+            <p class="text-[11px] text-slate-600 leading-snug">CA firms, dental clinics, consulting. High cloud & security priority. Target: Biz Fibre 300 with Static IP & Cloud Storage add-ons.</p>
+          </div>
+          <div class="p-3 border border-slate-200 rounded-xl bg-slate-50">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-extrabold text-slate-900">Small Multi-Site</span>
+              <span class="font-extrabold text-amber-600">15% Volume</span>
+            </div>
+            <p class="text-[11px] text-slate-600 leading-snug">Retail chains, restaurant branches, warehousing. Central billing & CCTV sync. Target: Multi-site SD-WAN bundles with lowest churn (&lt;3%).</p>
+          </div>
+          <div class="p-3 border border-slate-200 rounded-xl bg-slate-50">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-extrabold text-slate-900">Small Manufacturers</span>
+              <span class="font-extrabold text-purple-600">5% Volume</span>
+            </div>
+            <p class="text-[11px] text-slate-600 leading-snug">Fabrication, auto parts, packaging. Dedicated 1:1 throughput and IoT telemetry. Target: Internet Leased Line (ILL 100M) at ₹8,000/mo.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Automated Trap Escalation & 4-Hour SLA Exception Queue -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-sm">Automated Exception & Escalation Queue (4-Hour SLA)</h3>
+            <p class="text-slate-500 text-xs">Leads where local Mitra SLA expired or statutory verification traps flagged document defects for manual review.</p>
+          </div>
+          <span class="text-[10px] bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded-full">2 Exceptions Active</span>
+        </div>
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="p-3">Escalation ID</th>
+                <th class="p-3">Business Name</th>
+                <th class="p-3">Statutory Trap / Exception</th>
+                <th class="p-3">Assigned Channel</th>
+                <th class="p-3">SLA Remaining</th>
+                <th class="p-3">Admin Action</th>
+              </tr>
+            </thead>
+            <tbody id="opsViewEscalationTableBody" class="divide-y divide-slate-100">
+              <!-- Dynamically populated from /api/admin/metrics -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- END OF VIEW 3: DEDICATED AIRTEL ENTERPRISE OPS ADMIN CONSOLE -->
   </main>
 
   <!-- 3-BUCKET CATALOG DRAWER (MODAL) -->

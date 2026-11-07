@@ -506,6 +506,8 @@ def get_admin_metrics(
 # 7. WhatsApp Integration Router
 app.include_router(whatsapp_router)
 
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
 @app.get("/whatsapp-simulator")
 def serve_whatsapp_simulator():
     from fastapi.responses import FileResponse
@@ -513,6 +515,23 @@ def serve_whatsapp_simulator():
     if sim_path.exists():
         return FileResponse(sim_path)
     raise HTTPException(status_code=404, detail="Simulator UI not found")
+
+@app.get("/mitra")
+def serve_mitra_portal():
+    from fastapi.responses import FileResponse
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    raise HTTPException(status_code=404, detail="Portal index not found")
+
+@app.get("/ops")
+@app.get("/admin")
+def serve_ops_portal():
+    from fastapi.responses import FileResponse
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    raise HTTPException(status_code=404, detail="Portal index not found")
 
 @app.api_route("/", methods=["POST", "HEAD"])
 async def root_webhook_fallback(request: Request):
@@ -527,7 +546,6 @@ async def root_webhook_fallback(request: Request):
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 app.mount("/specimen", StaticFiles(directory=str(KYC_DOCUMENTS_DIR)), name="specimen")
 
-STATIC_DIR = Path(__file__).resolve().parent / "static"
 if STATIC_DIR.exists():
     app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
 
