@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import asyncio
 from pathlib import Path
@@ -136,11 +137,12 @@ class WhatsAppHandler:
             }
 
         # 3c. Check Price / Cost Inquiry (e.g. "ok, what would be the price for that", "price kya hai", "how much")
-        price_keywords = [
-            "price", "cost", "how much", "charges", "charge", "rate", "tariff",
-            "rental", "monthly bill", "kitna", "kharcha", "kimat", "kya rate",
-            "what would be the price", "what is the price"
+        price_patterns = [
+            r"\bprice\b", r"\bcost\b", r"\bhow much\b", r"\bcharges\b", r"\bcharge\b", r"\brate\b", r"\btariff\b",
+            r"\brental\b", r"\bmonthly bill\b", r"\bkitna\b", r"\bkharcha\b", r"\bkimat\b", r"\bkya rate\b",
+            r"what would be the price", r"what is the price"
         ]
+        is_price_inquiry = any(re.search(p, lower_text) for p in price_patterns)
         is_plan_inquiry = any(w in lower_text for w in [
             "other plan", "other plans", "different plan", "different plans", "all plans",
             "what plans", "types of plan", "plan options", "available plans", "list plans",
@@ -148,7 +150,7 @@ class WhatsAppHandler:
             "what are your plans", "show me different plans", "plans list", "which plan", "speed options"
         ])
         is_downsell = any(w in lower_text for w in ["sasta", "cheap", "expensive", "discount", "kam karo", "kam budget"])
-        if any(w in lower_text for w in price_keywords) and not is_downsell and not is_plan_inquiry:
+        if is_price_inquiry and not is_downsell and not is_plan_inquiry:
             active_bundle = session.get("active_bundle")
             if not active_bundle or len(active_bundle) == 0:
                 active_bundle = {"P01": 1}
@@ -274,7 +276,6 @@ class WhatsAppHandler:
                 "nagpur", "bhopal", "vizag", "patna", "surat", "lucknow", "chandigarh",
                 "noida", "gurgaon", "rohtak", "delhi ncr"
             ]
-            import re
             has_city_in_msg = any(c in lower_text for c in city_keywords)
             has_emp_in_msg = bool(re.search(r'\d+\s*(people|staff|employees|workers|log|devices|pc|systems)', lower_text))
 
