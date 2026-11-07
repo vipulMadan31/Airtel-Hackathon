@@ -8,6 +8,22 @@ from app.config import CASE_REFERENCE_DATE, MAX_ADDRESS_PROOF_AGE_DAYS, KYC_DOCU
 from app.data_loader import DataLoader
 
 class KYCValidator:
+    # Ground truth specimen data for the 12 applicants (K01-K12)
+    APPLICANT_DEFAULTS = {
+        "K01": {"gstin": "37IHKXV5167L1ZS", "udyam": None, "bill_date": "2026-06-26", "name": "Vindhya Tours & Travels"},
+        "K02": {"gstin": "19EOGXH4115Y1ZL", "udyam": "UDYAM-WB-00-5053330", "bill_date": "2026-05-22", "name": "Harmony Dental Care"},
+        "K03": {"gstin": "27XUIXG0767D1ZP", "udyam": "UDYAM-MH-00-9516696", "bill_date": "2026-05-30", "name": "Ganesh Woodcraft"},
+        "K04": {"gstin": "27PZSXS1936O1ZH", "udyam": "UDYAM-MH-00-6131836", "bill_date": "2026-05-28", "name": "Saffron Dental Care LLP"},
+        "K05": {"gstin": "32TZAXB5481U1Z1", "udyam": None, "bill_date": "2026-06-11", "name": "Balaji Realty LLP"},
+        "K06": {"gstin": "08YKZXS5189L1ZO", "udyam": "UDYAM-RJ-00-6577157", "bill_date": "2026-06-11", "name": "Saffron Unisex Salon"},
+        "K07": {"gstin": "07CPCXN0398P1ZT", "udyam": "UDYAM-DL-00-9565547", "bill_date": "2026-07-05", "name": "Neelgiri Physio Clinic"},
+        "K08": {"gstin": "24XORXG9365M1Z3", "udyam": "UDYAM-GJ-00-8477445", "bill_date": "2026-05-26", "name": "Green Leaf Legal Associates"},
+        "K09": {"gstin": "37LDYXK0296F1ZB", "udyam": "UDYAM-AP-00-9751562", "bill_date": "2026-07-10", "name": "Kaveri Insurance Advisors"},
+        "K10": {"gstin": "27QHJXK0658U1ZL", "udyam": "UDYAM-MH-00-7183141", "bill_date": "2026-06-18", "name": "Kaveri Stays LLP"},
+        "K11": {"gstin": "03KGZXT1320R1ZZ", "udyam": "UDYAM-PB-00-9719478", "bill_date": "2025-10-31", "name": "Trinity Bake House Pvt Ltd"},
+        "K12": {"gstin": "37NBLXS1145E1ZU", "udyam": "UDYAM-AP-00-5186772", "bill_date": "2026-07-06", "name": "Star Electronics"}
+    }
+
     def __init__(self):
         self.loader = DataLoader.get_instance()
         self.ref_date = datetime.strptime(CASE_REFERENCE_DATE, "%Y-%m-%d")
@@ -83,18 +99,7 @@ class KYCValidator:
         Validates applicant against mock registries, freshness rules, and image quality.
         Supports both standard GST-based verification and Non-GST Udyam mode.
         """
-        # Ground truth specimen data for the 12 applicants
-        APPLICANT_DEFAULTS = {
-            "K01": {"gstin": "37IHKXV5167L1ZS", "udyam": None, "bill_date": "2026-06-26", "name": "Vindhya Tours & Travels"},
-            "K02": {"gstin": "19E0GXH4115Y1ZL", "udyam": None, "bill_date": "2026-06-15", "name": "Harmony Dental Care"},
-            "K03": {"gstin": "27XUIXG0767D1ZP", "udyam": "UDYAM-MH-00-9516696", "bill_date": "2026-05-30", "name": "Ganesh Woodcraft"},
-            "K04": {"gstin": "27P2SXS193601ZH", "udyam": None, "bill_date": "2026-06-10", "name": "Saffron Dental Care LLP"},
-            "K05": {"gstin": "03PJNXS4821G1ZB", "udyam": None, "bill_date": "2026-06-20", "name": "Sneha Rao (Prop. Saffron Bakers)"},
-            "K11": {"gstin": "2710511786", "udyam": "UDYAM-PB-00-9719478", "bill_date": "2025-10-31", "name": "Trinity Bake House Pvt Ltd"},
-            "K12": {"gstin": "37NBLXS1145E1ZU", "udyam": "UDYAM-AP-00-5186772", "bill_date": "2026-07-06", "name": "Star Electronics"}
-        }
-
-        defaults = APPLICANT_DEFAULTS.get(applicant_code, {})
+        defaults = self.APPLICANT_DEFAULTS.get(applicant_code, {})
         gst_to_check = extracted_gstin or defaults.get("gstin", "")
         udyam_to_check = extracted_udyam or defaults.get("udyam", "")
         bill_date_to_check = bill_date or defaults.get("bill_date", "2026-06-01")
