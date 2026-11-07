@@ -308,10 +308,12 @@ class PartnerPortal:
                     p_score, priority, json.dumps(cur_bundle) if cur_bundle else None,
                     now_iso, now_iso
                 ))
-                cursor = conn.execute("SELECT * FROM customer_leads WHERE lead_id = ?", (cur_lead_id,))
-                saved_lead = dict(cursor.fetchone())
-                saved_lead["bundle"] = cur_bundle
-                return saved_lead
+            conn.commit()
+            cursor = conn.execute("SELECT * FROM customer_leads WHERE lead_id = ?", (cur_lead_id,))
+            res_row = cursor.fetchone()
+            saved_lead = dict(res_row) if res_row else {}
+            saved_lead["bundle"] = cur_bundle
+            return saved_lead
         finally:
             conn.close()
 

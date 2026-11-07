@@ -36,7 +36,7 @@ from app.config import KYC_DOCUMENTS_DIR
 
 app = FastAPI(
     title="Project Udyam Digital",
-    description="Digital Acquisition & Onboarding Engine for MSMEs (Airtel SYNC Hackathon 2026)",
+    description="Digital Acquisition & Onboarding Engine for MSMEs",
     version="1.0.0"
 )
 
@@ -207,7 +207,7 @@ async def upload_kyc_document(file: UploadFile = File(...)):
 @app.post("/api/kyc/specimen-scan")
 async def scan_specimen_document(req: SpecimenScanRequest):
     """
-    Runs real OCR and blur detection on the official hackathon specimen images.
+    Runs real OCR and blur detection on submitted business document images.
     Supports GST Certificate, Address Proof, and Udyam Certificate.
     """
     if req.doc_type == "gst":

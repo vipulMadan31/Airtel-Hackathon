@@ -118,57 +118,93 @@ def verify_role_access(
 
 def get_admin_telemetry() -> Dict[str, Any]:
     """
-    Enterprise macro metrics and funnel conversion telemetry matching Airtel SYNC Case Study specs.
+    Enterprise real-time macro metrics and funnel conversion telemetry computed from live database.
     """
+    import sqlite3
+    from app.config import DB_PATH
+
+    total_leads = 0
+    stage_counts = {}
+    total_orders = 0
+    escalations = []
+
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=30.0)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout=30000;")
+
+        # 1. Total and stage breakdown from customer_leads
+        c_row = conn.execute("SELECT COUNT(*) FROM customer_leads").fetchone()
+        if c_row:
+            total_leads = c_row[0]
+
+        rows = conn.execute("SELECT stage_reached, COUNT(*) as cnt FROM customer_leads GROUP BY stage_reached").fetchall()
+        for r in rows:
+            stage_counts[r["stage_reached"]] = r["cnt"]
+
+        # 2. Orders count
+        try:
+            o_row = conn.execute("SELECT COUNT(*) FROM orders").fetchone()
+            if o_row:
+                total_orders = o_row[0]
+        except Exception:
+            total_orders = 0
+
+        # 3. Real exceptions / escalations
+        try:
+            esc_rows = conn.execute("""
+                SELECT lead_id, business_name, drop_reason, phone, last_activity_at
+                FROM customer_leads
+                WHERE stage_reached IN ('ACTION_REQUIRED', 'REJECTED', 'EXCEPTION')
+                   OR (propensity_score >= 80 AND is_claimed = 0 AND (julianday('now') - julianday(last_activity_at)) * 24 > 4)
+            """).fetchall()
+            for er in esc_rows:
+                escalations.append({
+                    "escalation_id": f"ESC-{er['lead_id'][-5:]}",
+                    "business_name": er["business_name"],
+                    "issue": er["drop_reason"] or "Operations Follow-up Required",
+                    "assigned_agent": "Central Operations Desk",
+                    "sla_remaining_hours": 0.0,
+                    "escalation_type": "MANUAL_REVIEW"
+                })
+        except Exception:
+            pass
+
+        conn.close()
+    except Exception:
+        pass
+
+    assessed = sum(stage_counts.get(s, 0) for s in ['ADVISOR_ENGAGED', 'BUNDLE_CUSTOMIZED', 'KYC_SUBMITTED', 'KYC_VERIFIED', 'TOKEN_PAID'])
+    quoted = sum(stage_counts.get(s, 0) for s in ['BUNDLE_CUSTOMIZED', 'KYC_SUBMITTED', 'KYC_VERIFIED', 'TOKEN_PAID'])
+    kyc_done = sum(stage_counts.get(s, 0) for s in ['KYC_VERIFIED', 'TOKEN_PAID'])
+    activated = stage_counts.get('TOKEN_PAID', 0) + stage_counts.get('ACTIVATED', 0)
+
+    conv_rate = round((activated / total_leads * 100), 1) if (total_leads > 0 and activated > 0) else None
+
     return {
         "funnel_metrics": {
-            "total_inbound_leads": 5000,
-            "contacted": 2840,
-            "needs_assessed": 1974,
-            "quote_accepted": 861,
-            "kyc_submitted": 512,
-            "activated": 368,
-            "conversion_rate_percent": 7.36,
-            "projected_digital_conversion_rate_percent": 24.8
+            "total_inbound_leads": total_leads if total_leads > 0 else None,
+            "contacted": assessed if assessed > 0 else None,
+            "needs_assessed": assessed if assessed > 0 else None,
+            "quote_accepted": quoted if quoted > 0 else None,
+            "kyc_submitted": kyc_done if kyc_done > 0 else None,
+            "activated": activated if activated > 0 else None,
+            "conversion_rate_percent": conv_rate,
+            "projected_digital_conversion_rate_percent": conv_rate
         },
         "operational_efficiency": {
-            "legacy_tta_days": 17.6,
-            "udyam_digital_tta_days": 1.8,
-            "legacy_cac_inr": 15000,
-            "udyam_digital_cac_inr": 3450,
-            "cost_reduction_percent": 77.0
+            "legacy_tta_days": None,
+            "udyam_digital_tta_days": None,
+            "legacy_cac_inr": None,
+            "udyam_digital_cac_inr": None,
+            "cost_reduction_percent": None
         },
         "segment_distribution": {
-            "micro_retail_55_pct": {"leads": 2750, "avg_arpu_inr": 1850, "churn_risk": "Medium (Reduced via AirFiber)"},
-            "professional_offices_25_pct": {"leads": 1250, "avg_arpu_inr": 4800, "churn_risk": "Low (High Static IP retention)"},
-            "small_multisite_15_pct": {"leads": 750, "avg_arpu_inr": 14200, "churn_risk": "Very Low (<3% on SD-WAN)"},
-            "small_manufacturers_5_pct": {"leads": 250, "avg_arpu_inr": 28500, "churn_risk": "Low (Dedicated Leased Line SLA)"}
+            "micro_retail": {"segment": "Micro Retail & Services", "target_product": "Biz 5G AirFiber 100 & Biz Fibre 100"},
+            "professional_offices": {"segment": "Professional Offices & Clinics", "target_product": "Biz Fibre 300 + Static IP"},
+            "small_multisite": {"segment": "Small Multi-Site Enterprises", "target_product": "Multi-site SD-WAN Bundles"},
+            "small_manufacturers": {"segment": "Small Manufacturers & Industrial", "target_product": "Internet Leased Line (ILL 100M)"}
         },
-        "manual_escalations_queue": [
-            {
-                "escalation_id": "ESC-2026-081",
-                "business_name": "Ganesh Woodcraft",
-                "issue": "Low OCR Laplacian Blur Variance (1.03) - Re-upload pending",
-                "assigned_agent": "Airtel Tier-2 Support (Indore)",
-                "sla_remaining_hours": 6,
-                "escalation_type": "STATUTORY_OCR_BLUR"
-            },
-            {
-                "escalation_id": "ESC-2026-082",
-                "business_name": "Vindhya Tours & Travels",
-                "issue": "GSTIN Cancelled on 2025-11-20 - Non-GST Udyam Switch Advised",
-                "assigned_agent": "Field Mitra Executive (Bhopal)",
-                "sla_remaining_hours": 12,
-                "escalation_type": "STATUTORY_REGISTRY_TRAP"
-            },
-            {
-                "escalation_id": "ESC-SLA-007",
-                "business_name": "Saffron Dental Care LLP",
-                "issue": "Mitra Partner 4-Hour SLA Expired (Unclaimed) - Fast-Track Tele-Sales Assigned",
-                "assigned_agent": "Central Outbound Queue (Pan-India HQ)",
-                "sla_remaining_hours": 0.5,
-                "escalation_type": "PARTNER_4H_SLA_BREACH"
-            }
-        ]
+        "manual_escalations_queue": escalations
     }
 

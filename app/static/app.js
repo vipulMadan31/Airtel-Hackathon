@@ -602,34 +602,71 @@ async function loadOpsViewData() {
 
     if (res.ok) {
       const data = await res.json();
+      const fm = data.funnel_metrics || {};
+      const oe = data.operational_efficiency || {};
+      const escQueue = data.manual_escalations_queue || [];
+
+      const fmtNum = (val) => (val !== null && val !== undefined) ? Number(val).toLocaleString() : "-";
+      const fmtPct = (val) => (val !== null && val !== undefined) ? `${val}%` : "-";
+      const fmtDays = (val) => (val !== null && val !== undefined) ? `${val} Days` : "-";
+      const fmtInr = (val) => (val !== null && val !== undefined) ? `₹${Number(val).toLocaleString()}` : "-";
+
       const vTotal = document.getElementById("opsViewTotalLeads");
       const vConv = document.getElementById("opsViewConvRate");
       const vTta = document.getElementById("opsViewTta");
       const vCac = document.getElementById("opsViewCac");
 
-      if (vTotal) vTotal.innerText = data.funnel_metrics.total_inbound_leads.toLocaleString();
-      if (vConv) vConv.innerText = `${data.funnel_metrics.projected_digital_conversion_rate_percent}%`;
-      if (vTta) vTta.innerText = `${data.operational_efficiency.udyam_digital_tta_days} Days`;
-      if (vCac) vCac.innerText = `₹${data.operational_efficiency.udyam_digital_cac_inr.toLocaleString()}`;
+      if (vTotal) vTotal.innerText = fmtNum(fm.total_inbound_leads);
+      if (vConv) vConv.innerText = fmtPct(fm.projected_digital_conversion_rate_percent);
+      if (vTta) vTta.innerText = fmtDays(oe.udyam_digital_tta_days);
+      if (vCac) vCac.innerText = fmtInr(oe.udyam_digital_cac_inr);
+
+      // Funnel Progression Breakdown
+      const fInbound = document.getElementById("opsFunnelInbound");
+      const fAssessed = document.getElementById("opsFunnelAssessed");
+      const fQuoted = document.getElementById("opsFunnelQuoted");
+      const fFeasible = document.getElementById("opsFunnelFeasible");
+      const fKyc = document.getElementById("opsFunnelKyc");
+      const fActivated = document.getElementById("opsFunnelActivated");
+
+      if (fInbound) fInbound.innerText = fmtNum(fm.total_inbound_leads);
+      if (fAssessed) fAssessed.innerText = fmtNum(fm.needs_assessed);
+      if (fQuoted) fQuoted.innerText = fmtNum(fm.quote_accepted);
+      if (fFeasible) fFeasible.innerText = fmtNum(fm.quote_accepted);
+      if (fKyc) fKyc.innerText = fmtNum(fm.kyc_submitted);
+      if (fActivated) fActivated.innerText = fmtNum(fm.activated);
 
       // Sync modal IDs
       const mTotal = document.getElementById("adminTotalLeads");
       const mConv = document.getElementById("adminConvRate");
       const mTta = document.getElementById("adminTta");
       const mCac = document.getElementById("adminCac");
-      if (mTotal) mTotal.innerText = data.funnel_metrics.total_inbound_leads.toLocaleString();
-      if (mConv) mConv.innerText = `${data.funnel_metrics.projected_digital_conversion_rate_percent}%`;
-      if (mTta) mTta.innerText = `${data.operational_efficiency.udyam_digital_tta_days} Days`;
-      if (mCac) mCac.innerText = `₹${data.operational_efficiency.udyam_digital_cac_inr.toLocaleString()}`;
+      if (mTotal) mTotal.innerText = fmtNum(fm.total_inbound_leads);
+      if (mConv) mConv.innerText = fmtPct(fm.projected_digital_conversion_rate_percent);
+      if (mTta) mTta.innerText = fmtDays(oe.udyam_digital_tta_days);
+      if (mCac) mCac.innerText = fmtInr(oe.udyam_digital_cac_inr);
 
-      if (data.manual_escalations_queue) {
-        const rowsHtml = data.manual_escalations_queue.map(e => `
+      // Update Exceptions Badge
+      const opsBadge = document.getElementById("opsViewExceptionsBadge");
+      if (opsBadge) {
+        opsBadge.innerText = escQueue.length > 0 ? `${escQueue.length} Active` : "-";
+      }
+
+      // Render Escalation Queue or Empty State
+      const vTbody = document.getElementById("opsViewEscalationTableBody");
+      const mTbody = document.getElementById("adminEscalationTableBody");
+
+      let rowsHtml = '';
+      if (!escQueue || escQueue.length === 0) {
+        rowsHtml = `<tr><td colspan="6" class="p-6 text-center text-slate-400 font-medium">No active compliance exceptions &bull; All customer journeys operating normally</td></tr>`;
+      } else {
+        rowsHtml = escQueue.map(e => `
           <tr class="hover:bg-slate-50/80">
             <td class="p-3 font-mono font-bold">${e.escalation_id}</td>
             <td class="p-3 font-bold text-slate-900">${e.business_name}</td>
             <td class="p-3 text-amber-800 font-medium">${e.issue}</td>
             <td class="p-3 text-slate-600">${e.assigned_agent}</td>
-            <td class="p-3 font-mono font-semibold text-red-600">${e.sla_remaining_hours}h left</td>
+            <td class="p-3 font-mono font-semibold text-red-600">${e.sla_remaining_hours > 0 ? `${e.sla_remaining_hours}h left` : 'Review Due'}</td>
             <td class="p-3">
               <button class="bg-purple-700 hover:bg-purple-800 text-white px-2.5 py-1 rounded text-[10px] font-bold" onclick="alert('Admin override verified for ${e.business_name}')">
                 Approve Override
@@ -637,12 +674,10 @@ async function loadOpsViewData() {
             </td>
           </tr>
         `).join('');
-
-        const vTbody = document.getElementById("opsViewEscalationTableBody");
-        if (vTbody) vTbody.innerHTML = rowsHtml;
-        const mTbody = document.getElementById("adminEscalationTableBody");
-        if (mTbody) mTbody.innerHTML = rowsHtml;
       }
+
+      if (vTbody) vTbody.innerHTML = rowsHtml;
+      if (mTbody) mTbody.innerHTML = rowsHtml;
     }
   } catch (err) {
     console.error("Ops metrics fetch error:", err);
@@ -1709,7 +1744,7 @@ function renderKycDecision(data) {
     resultBox.className = "rounded-xl p-3.5 text-xs space-y-1.5 bg-red-50 border border-red-300 text-red-900";
     resultBox.innerHTML = `
       <div class="flex items-center space-x-2">
-        <span class="font-extrabold text-sm">${isHi ? '✖ केवाईसी अस्वीकृत (नियम उल्लंघन पकड़ा गया)' : '&times; KYC REJECTED (Statutory Trap Caught)'}</span>
+        <span class="font-extrabold text-sm">${isHi ? '✖ केवाईसी अस्वीकृत (सत्यापन त्रुटि पाई गई)' : '&times; KYC REJECTED (Verification Review Required)'}</span>
       </div>
       <ul class="list-disc pl-4 space-y-0.5">
         ${data.reasons.map(r => `<li>${r}</li>`).join('')}

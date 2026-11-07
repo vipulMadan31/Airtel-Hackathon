@@ -89,7 +89,7 @@
   <!-- MAIN APPLICATION CONTAINER -->
   <main class="flex-1 w-full">
 
-    <!-- VIEW 1: CUSTOMER SELF-SERVE MODE (3 Pillars: AI Advisor, Pricing, KYC, Tracker) -->
+    <!-- VIEW 1: CUSTOMER SELF-SERVE MODE (AI Advisor, Pricing, KYC, Tracker) -->
     <div id="customerView" class="max-w-6xl mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
 
     <!-- LEFT COLUMN: CONVERSATIONAL ADVISOR (5 cols on lg) -->
@@ -137,7 +137,7 @@
       <div id="quoteCard" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
         <div class="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
-            <span class="text-xs font-bold uppercase tracking-wider text-airtel-red" id="t-quote-badge">Pillar 2: Transparent Pricing</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-airtel-red" id="t-quote-badge">Transparent Solution Pricing</span>
             <h2 class="text-lg font-extrabold text-slate-900" id="t-quote-heading">Your Customized Udyam Bundle</h2>
           </div>
           <button id="browseAllPlansBtn" class="text-xs font-bold text-airtel-red hover:underline flex items-center space-x-1">
@@ -212,7 +212,7 @@
       <div id="kycCard" class="hidden bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
         <div class="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
-            <span class="text-xs font-bold uppercase tracking-wider text-emerald-600" id="t-kyc-badge">Pillar 3: Smart KYC</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-600" id="t-kyc-badge">Regulatory Verification & Smart KYC</span>
             <h2 class="text-lg font-extrabold text-slate-900" id="t-kyc-heading">Instant Verification & DPDP Consent</h2>
           </div>
           <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full" id="t-rule3-badge">Rule 3 Aligned</span>
@@ -244,7 +244,7 @@
                   <input type="radio" name="kycTrackRadio" id="trackNonGstRadio" value="nongst" class="text-amber-600 focus:ring-0">
                   <span class="font-extrabold text-xs text-slate-900" id="t-track-nongst-title">2. Micro Merchant (Non-GST Mode)</span>
                 </label>
-                <span class="text-[9px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">55% MSME Track</span>
+                <span class="text-[9px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">Simplified MSME</span>
               </div>
               <p class="text-[11px] text-slate-600 mt-2" id="t-track-nongst-desc">Unorganized micro-retail, Kirana, Sole Proprietor without GSTIN. Verified via Udyam / Utility Bill.</p>
             </div>
@@ -269,17 +269,17 @@
             <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
             <span><strong>Non-GST Safe Mode Active:</strong> Onboarding verified via Ministry of MSME Udyam Registration. Active GSTIN is optional.</span>
           </div>
-          <span class="bg-amber-200 text-amber-900 font-extrabold px-2 py-0.5 rounded text-[10px]">55% MSME Track</span>
+          <span class="bg-amber-200 text-amber-900 font-extrabold px-2 py-0.5 rounded text-[10px]">Simplified MSME Verification</span>
         </div>
 
-        <!-- REAL DOCUMENT UPLOAD / SPECIMEN SWITCHER -->
+        <!-- REAL DOCUMENT UPLOAD PIPELINE -->
         <div class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-4">
           <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-            <span class="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Document Upload & Automated OCR</span>
-            <span class="text-[11px] text-slate-500">Live OpenCV & Windows Media OCR</span>
+            <span class="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Document Upload & Automated Verification</span>
+            <span class="text-[11px] text-slate-500">Instant AI Document Verification</span>
           </div>
 
-          <!-- Upload Option A: Real File Upload -->
+          <!-- Upload Real Business Documents -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
               <label class="block text-xs font-bold text-slate-800" id="t-upload-gst-label">1. Upload GST Certificate (PNG/JPG):</label>
@@ -288,19 +288,6 @@
             <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
               <label class="block text-xs font-bold text-slate-800" id="t-upload-address-label">2. Upload Address Proof (Electricity Bill):</label>
               <input type="file" id="addressFileInput" accept="image/*,.pdf" class="text-xs text-slate-600 w-full file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-white hover:file:bg-black cursor-pointer">
-            </div>
-          </div>
-
-          <!-- Upload Option B: 1-Click Hackathon Specimen Loader -->
-          <div class="pt-2 border-t border-slate-200">
-            <span class="block text-xs font-bold text-slate-700 mb-1.5" id="t-or-choose-specimen">Or test with official hackathon specimen applicant:</span>
-            <div class="flex flex-wrap items-center gap-1.5">
-              <button class="specimen-chip bg-white hover:bg-slate-200 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-lg text-xs font-semibold transition" data-code="K12">K12 (Golden Path Pass)</button>
-              <button class="specimen-chip bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 px-2.5 py-1 rounded-lg text-xs font-bold transition" data-code="K03">K03 (Non-GST Udyam Valid)</button>
-              <button class="specimen-chip bg-white hover:bg-slate-200 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-lg text-xs font-semibold transition" data-code="K01">K01 (Cancelled GST Trap)</button>
-              <button class="specimen-chip bg-white hover:bg-slate-200 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-lg text-xs font-semibold transition" data-code="K04">K04 (Blurry Document Trap)</button>
-              <button class="specimen-chip bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 px-2.5 py-1 rounded-lg text-xs font-bold transition" data-code="K05">K05 (Non-GST Missing Udyam Trap)</button>
-              <button class="specimen-chip bg-white hover:bg-slate-200 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-lg text-xs font-semibold transition" data-code="K11">K11 (Expired Bill >90d Trap)</button>
             </div>
           </div>
 
@@ -437,7 +424,7 @@
       <div id="trackerCard" class="hidden bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
         <div class="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
-            <span class="text-xs font-bold uppercase tracking-wider text-airtel-red" id="t-tracker-badge">Pillar 4: Self-Serve Tracker</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-airtel-red" id="t-tracker-badge">Real-Time Order & Dispatch Tracker</span>
             <h2 class="text-lg font-extrabold text-slate-900" id="t-tracker-heading">Order Status & Installation Timeline</h2>
           </div>
           <span id="trackerOrderIdBadge" class="font-mono text-xs font-bold bg-slate-100 px-2.5 py-1 rounded-lg"></span>
@@ -625,72 +612,72 @@
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
         <div class="p-4 bg-purple-50 border border-purple-200 rounded-2xl">
           <span class="text-purple-700 block font-semibold text-[11px]">Total Inbound Leads</span>
-          <span class="text-2xl font-black text-purple-950" id="opsViewTotalLeads">5,000</span>
-          <span class="text-[10px] text-purple-600 block mt-0.5">Top 50 Metros & Tier 2</span>
+          <span class="text-2xl font-black text-purple-950" id="opsViewTotalLeads">-</span>
+          <span class="text-[10px] text-purple-600 block mt-0.5">Live Database Leads</span>
         </div>
         <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
           <span class="text-emerald-700 block font-semibold text-[11px]">Digital Conversion Rate</span>
-          <span class="text-2xl font-black text-emerald-950" id="opsViewConvRate">24.8%</span>
-          <span class="text-[10px] text-emerald-600 block mt-0.5">vs 7.36% Legacy Baseline</span>
+          <span class="text-2xl font-black text-emerald-950" id="opsViewConvRate">-</span>
+          <span class="text-[10px] text-emerald-600 block mt-0.5">Fulfilled Orders</span>
         </div>
         <div class="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
           <span class="text-blue-700 block font-semibold text-[11px]">Avg Time to Activation (TTA)</span>
-          <span class="text-2xl font-black text-blue-950" id="opsViewTta">1.8 Days</span>
-          <span class="text-[10px] text-blue-600 block mt-0.5">vs 17.6d Legacy Funnel</span>
+          <span class="text-2xl font-black text-blue-950" id="opsViewTta">-</span>
+          <span class="text-[10px] text-blue-600 block mt-0.5">Self-Serve Target &lt;48h</span>
         </div>
         <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
           <span class="text-amber-700 block font-semibold text-[11px]">Blended CAC</span>
-          <span class="text-2xl font-black text-amber-950" id="opsViewCac">₹3,450</span>
-          <span class="text-[10px] text-amber-600 block mt-0.5">77% Reduction (₹15k Base)</span>
+          <span class="text-2xl font-black text-amber-950" id="opsViewCac">-</span>
+          <span class="text-[10px] text-amber-600 block mt-0.5">Blended Channel Cost</span>
         </div>
       </div>
 
-      <!-- Appendix A1: National MSME Funnel Telemetry Breakdown -->
+      <!-- Funnel Telemetry Breakdown -->
       <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="font-extrabold text-slate-900 text-sm">National MSME Funnel Progression & Bottleneck Elimination (Appendix A1)</h3>
-            <p class="text-slate-500 text-xs">Tracking conversion through each stage: highlighting where legacy dropped 56% between Needs Assessed and Quote Accepted.</p>
+            <h3 class="font-extrabold text-slate-900 text-sm">National MSME Funnel Progression & Conversion Pipeline</h3>
+            <p class="text-slate-500 text-xs">Tracking live customer progression across onboarding stages from initial inquiry to physical activation.</p>
           </div>
-          <span class="text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">3.4x Funnel Efficiency</span>
+          <span class="text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Real-Time Funnel</span>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5 text-center text-xs">
           <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
             <span class="text-slate-400 block text-[10px] font-bold">1. INBOUND</span>
-            <span class="text-base font-extrabold text-slate-900">5,000</span>
+            <span class="text-base font-extrabold text-slate-900" id="opsFunnelInbound">-</span>
             <span class="text-[10px] text-slate-500 block">Baseline</span>
           </div>
           <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
             <span class="text-slate-400 block text-[10px] font-bold">2. ASSESSED</span>
-            <span class="text-base font-extrabold text-blue-900">1,974</span>
+            <span class="text-base font-extrabold text-blue-900" id="opsFunnelAssessed">-</span>
             <span class="text-[10px] text-blue-700 block">AI Conversational</span>
           </div>
           <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-xl">
             <span class="text-amber-800 block text-[10px] font-bold">3. QUOTED</span>
-            <span class="text-base font-extrabold text-amber-950">1,620</span>
-            <span class="text-[10px] text-emerald-700 block font-bold">+88% vs Legacy (861)</span>
+            <span class="text-base font-extrabold text-amber-950" id="opsFunnelQuoted">-</span>
+            <span class="text-[10px] text-amber-700 block font-bold">Bundle Configured</span>
           </div>
           <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
             <span class="text-slate-400 block text-[10px] font-bold">4. FEASIBLE</span>
-            <span class="text-base font-extrabold text-indigo-900">1,580</span>
+            <span class="text-base font-extrabold text-indigo-900" id="opsFunnelFeasible">-</span>
             <span class="text-[10px] text-indigo-700 block">FTTH + 5G AirFiber</span>
           </div>
           <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
             <span class="text-slate-400 block text-[10px] font-bold">5. KYC VERIFIED</span>
-            <span class="text-base font-extrabold text-purple-900">1,490</span>
-            <span class="text-[10px] text-purple-700 block">&lt;60s OCR &amp; Registries</span>
+            <span class="text-base font-extrabold text-purple-900" id="opsFunnelKyc">-</span>
+            <span class="text-[10px] text-purple-700 block">Instant Verification</span>
           </div>
           <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
             <span class="text-emerald-800 block text-[10px] font-bold">6. ACTIVATED</span>
-            <span class="text-base font-extrabold text-emerald-950">1,240</span>
-            <span class="text-[10px] text-emerald-700 block font-bold">24.8% Conv Rate</span>
+            <span class="text-base font-extrabold text-emerald-950" id="opsFunnelActivated">-</span>
+            <span class="text-[10px] text-emerald-700 block font-bold" id="opsFunnelActivatedSub">Live Line Active</span>
           </div>
         </div>
       </div>
 
-      <!-- MSME Market Composition (Appendix A2) -->
+      <!-- MSME Market Composition -->
       <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
-        <h3 class="font-extrabold text-slate-900 text-sm">MSME Segment Strategy & Propensity Profiles (Appendix A2)</h3>
+        <h3 class="font-extrabold text-slate-900 text-sm">MSME Segment Strategy & Propensity Profiles</h3>
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
           <div class="p-3 border border-slate-200 rounded-xl bg-slate-50">
             <div class="flex justify-between items-center mb-1">
@@ -723,14 +710,14 @@
         </div>
       </div>
 
-      <!-- Automated Trap Escalation & 4-Hour SLA Exception Queue -->
+      <!-- Automated Exception Queue -->
       <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="font-extrabold text-slate-900 text-sm">Automated Exception & Escalation Queue (4-Hour SLA)</h3>
-            <p class="text-slate-500 text-xs">Leads where local Mitra SLA expired or statutory verification traps flagged document defects for manual review.</p>
+            <p class="text-slate-500 text-xs">Customer journeys requiring manual review, document re-verification, or channel escalation.</p>
           </div>
-          <span class="text-[10px] bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded-full">2 Exceptions Active</span>
+          <span id="opsViewExceptionsBadge" class="text-[10px] bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded-full">-</span>
         </div>
         <div class="border border-slate-200 rounded-xl overflow-hidden">
           <table class="w-full text-left border-collapse text-xs">
@@ -738,7 +725,7 @@
               <tr>
                 <th class="p-3">Escalation ID</th>
                 <th class="p-3">Business Name</th>
-                <th class="p-3">Statutory Trap / Exception</th>
+                <th class="p-3">Exception / Review Reason</th>
                 <th class="p-3">Assigned Channel</th>
                 <th class="p-3">SLA Remaining</th>
                 <th class="p-3">Admin Action</th>
@@ -908,29 +895,29 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div class="p-3 bg-purple-50 border border-purple-200 rounded-xl">
             <span class="text-purple-700 block font-semibold text-[11px]">Total Inbound Leads</span>
-            <span class="text-xl font-black text-purple-950" id="adminTotalLeads">5,000</span>
-            <span class="text-[10px] text-purple-600 block mt-0.5">Top 50 Metros & Tier 2</span>
+            <span class="text-xl font-black text-purple-950" id="adminTotalLeads">-</span>
+            <span class="text-[10px] text-purple-600 block mt-0.5">Live Database Leads</span>
           </div>
           <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
             <span class="text-emerald-700 block font-semibold text-[11px]">Digital Conversion Rate</span>
-            <span class="text-xl font-black text-emerald-950" id="adminConvRate">24.8%</span>
-            <span class="text-[10px] text-emerald-600 block mt-0.5">vs 7.36% Legacy Baseline</span>
+            <span class="text-xl font-black text-emerald-950" id="adminConvRate">-</span>
+            <span class="text-[10px] text-emerald-600 block mt-0.5">Fulfilled Orders</span>
           </div>
           <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl">
             <span class="text-blue-700 block font-semibold text-[11px]">Avg Time to Activation</span>
-            <span class="text-xl font-black text-blue-950" id="adminTta">1.8 Days</span>
-            <span class="text-[10px] text-blue-600 block mt-0.5">vs 17.6d Legacy Funnel</span>
+            <span class="text-xl font-black text-blue-950" id="adminTta">-</span>
+            <span class="text-[10px] text-blue-600 block mt-0.5">Self-Serve Target &lt;48h</span>
           </div>
           <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl">
             <span class="text-amber-700 block font-semibold text-[11px]">Blended CAC</span>
-            <span class="text-xl font-black text-amber-950" id="adminCac">₹3,450</span>
-            <span class="text-[10px] text-amber-600 block mt-0.5">77% Reduction (₹15k Base)</span>
+            <span class="text-xl font-black text-amber-950" id="adminCac">-</span>
+            <span class="text-[10px] text-amber-600 block mt-0.5">Blended Channel Cost</span>
           </div>
         </div>
 
-        <!-- MSME Segment Composition (Appendix A2) -->
+        <!-- MSME Segment Composition -->
         <div>
-          <h4 class="font-extrabold text-slate-900 text-sm mb-2">MSME Market Composition & Propensity (Appendix A2)</h4>
+          <h4 class="font-extrabold text-slate-900 text-sm mb-2">MSME Market Composition & Propensity Profiles</h4>
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
             <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50">
               <div class="flex justify-between items-center mb-1">
@@ -963,11 +950,11 @@
           </div>
         </div>
 
-        <!-- Manual KYC & Trap Escalation Queue -->
+        <!-- Manual KYC & Escalation Queue -->
         <div>
           <div class="flex items-center justify-between mb-2">
-            <h4 class="font-extrabold text-slate-900 text-sm">Automated Trap Escalation & Exception Queue</h4>
-            <span class="text-[10px] bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded-full">2 Exceptions Active</span>
+            <h4 class="font-extrabold text-slate-900 text-sm">Automated Exception & Escalation Queue</h4>
+            <span class="text-[10px] bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded-full">-</span>
           </div>
           <div class="border border-slate-200 rounded-xl overflow-hidden">
             <table class="w-full text-left border-collapse">
@@ -975,7 +962,7 @@
                 <tr>
                   <th class="p-2.5">Escalation ID</th>
                   <th class="p-2.5">Business Name</th>
-                  <th class="p-2.5">Statutory Trap / Issue</th>
+                  <th class="p-2.5">Exception / Review Reason</th>
                   <th class="p-2.5">Assigned Agent</th>
                   <th class="p-2.5">SLA</th>
                   <th class="p-2.5">Admin Action</th>
