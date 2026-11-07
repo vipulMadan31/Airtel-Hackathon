@@ -292,7 +292,31 @@ class AdvisorAdapter:
             if emp_fallback:
                 profile["employee_count"] = int(emp_fallback.group(1))
 
-        # 0c. Multi-Site / Multi-Shop Heterogeneous Extraction (e.g. 2 shops: one has 10, other has 100)
+        # 0c. Extract GST status if mentioned or in response to previous prompt
+        gst_no_keywords = [
+            "no gst", "without gst", "bina gst", "gst nahi", "gst nai", "dont have gst",
+            "don't have gst", "no gstin", "non-gst", "nongst", "unregistered",
+            "sole proprietor", "udyam only", "जीएसटी नहीं", "बिना जीएसटी", "जीएसटी नहीं है", "जीएसटी ना"
+        ]
+        gst_yes_keywords = [
+            "yes gst", "have gst", "with gst", "gst hai", "gstin hai", "gst yes",
+            "yes we have gst", "yes i have gst", "active gst", "registered firm",
+            "pvt ltd", "private limited", "partnership", "gstin", "हाँ जीएसटी है",
+            "जीएसटी है", "जीएसटी नंबर है", "जीएसटी रजिस्ट्रेशन है"
+        ]
+        if any(w in msg for w in gst_no_keywords):
+            profile["has_gstin"] = False
+        elif any(w in msg for w in gst_yes_keywords):
+            profile["has_gstin"] = True
+        elif profile.get("has_gstin") is None and history and len(history) >= 1:
+            last_agent_text = (history[-1].get("text") or "").lower()
+            if "gst" in last_agent_text:
+                if re.search(r'\b(yes|haan|ha|haa|yep|yeah|sure|correct|हाँ|जी हां|है)\b', msg):
+                    profile["has_gstin"] = True
+                elif re.search(r'\b(no|nahi|nai|na|not|nope|नहीं|ना)\b', msg):
+                    profile["has_gstin"] = False
+
+        # 0d. Multi-Site / Multi-Shop Heterogeneous Extraction (e.g. 2 shops: one has 10, other has 100)
         pA = re.search(
             r'(?:one|first|1st|ek|shop\s*1|site\s*1|branch\s*1)[^\d]*(\d+)[^\d]*(?:other|second|2nd|another|dusre|shop\s*2|site\s*2|branch\s*2)[^\d]*(\d+)',
             msg,
@@ -313,6 +337,11 @@ class AdvisorAdapter:
             msg,
             re.IGNORECASE
         )
+        if pD:
+            profile["num_sites"] = 2
+            if not profile.get("business_type"):
+                profile["business_type"] = "Multi-Site Retail / Commercial Outlets"
+
         multisite_counts = None
         if pA:
             multisite_counts = (int(pA.group(1)), int(pA.group(2)))
@@ -320,8 +349,11 @@ class AdvisorAdapter:
             multisite_counts = (int(pB.group(1)), int(pB.group(2)))
         elif pC:
             multisite_counts = (int(pC.group(1)), int(pC.group(2)))
-        elif pD:
-            multisite_counts = (5, 5)
+        elif profile.get("site_scales") and len(profile["site_scales"]) == 2:
+            multisite_counts = tuple(profile["site_scales"])
+        elif profile.get("num_sites", 1) >= 2 and profile.get("employee_count") and (profile.get("has_gstin") is not None or (history and len(history) >= 2)):
+            tot = int(profile["employee_count"])
+            multisite_counts = (tot // 2 or 1, (tot + 1) // 2 or 1)
 
         if multisite_counts:
             s1_emp, s2_emp = multisite_counts
@@ -329,7 +361,8 @@ class AdvisorAdapter:
             profile["site_scales"] = [s1_emp, s2_emp]
             profile["employee_count"] = s1_emp + s2_emp
             profile["business_type"] = "Multi-Site Retail / Commercial Outlets"
-            profile["has_gstin"] = True
+            if profile.get("has_gstin") is None:
+                profile["has_gstin"] = True
 
             city_tier = int(profile.get("city_tier") or 2)
 
@@ -811,23 +844,27 @@ class AdvisorAdapter:
         # 3. Check / Infer Business Type
         if any(w in msg for w in ["clinic", "doctor", "hospital", "dental", "pharma", "क्लिनिक", "डॉक्टर", "दवा", "क्लीनिक", "डेंटल", "अस्पताल"]):
             profile["business_type"] = "Clinic / Healthcare"
-            profile["has_gstin"] = True
+            if profile.get("employee_count") or (history and len(history) >= 2):
+                if profile.get("has_gstin") is None:
+                    profile["has_gstin"] = True
         elif any(w in msg for w in ["ca", "accountant", "office", "law", "firm", "consulting", "वकील", "दफ्तर", "सीए", "फर्म", "अकाउंटिंग", "ऑफिस", "ऑफ़िस", "चार्टर्ड", "ऑडिट", "auditor", "audit", "account"]):
             profile["business_type"] = "Professional Office"
-            profile["has_gstin"] = True
+            if profile.get("has_gstin") is None:
+                profile["has_gstin"] = True
         elif any(w in msg for w in ["restaurant", "cafe", "hotel", "branch", "chain", "होटल", "खाना"]):
             profile["business_type"] = "Restaurant / Multi-site"
-            profile["has_gstin"] = True
-            profile["num_sites"] = 2
+            profile["num_sites"] = profile.get("num_sites") or 2
         elif any(w in msg for w in ["factory", "manufacturing", "textile", "parts", "workshop", "कारखाना"]):
             profile["business_type"] = "Small Manufacturer"
-            profile["has_gstin"] = True
+            if profile.get("employee_count") or (history and len(history) >= 2):
+                if profile.get("has_gstin") is None:
+                    profile["has_gstin"] = True
         elif any(w in msg for w in ["startup", "tech", "software", "agency", "it", "स्टार्टअप", "सॉफ्टवेयर", "आईटी", "टेक"]):
             profile["business_type"] = "Tech Startup"
             profile["num_sites"] = 1
         elif any(w in msg for w in ["kirana", "shop", "bakery", "store", "salon", "retail", "stationery", "दुकान", "किराना", "soundbox", "upi qr", "qr soundbox", "upi", "स्टेशनरी"]):
             profile["business_type"] = "Micro Retail / Commercial Store"
-            profile["num_sites"] = 1
+            profile["num_sites"] = profile.get("num_sites") or 1
         elif any(w in msg for w in ["business", "company", "firm", "व्यापार", "व्यवसाय"]) and not profile.get("business_type"):
             profile["business_type"] = "Commercial Enterprise"
 
@@ -837,8 +874,18 @@ class AdvisorAdapter:
         has_city = bool(profile.get("city"))
         has_emp = bool(profile.get("employee_count"))
         has_btype = bool(profile.get("business_type"))
+        has_gst = (profile.get("has_gstin") is not None)
 
-        if not has_city or not has_emp:
+        already_clarified_gst = bool(history and any("gst" in (t.get("text") or "").lower() for t in history))
+
+        needs_clarification = (
+            not has_city or
+            not has_emp or
+            not has_btype or
+            (not has_gst and not already_clarified_gst)
+        )
+
+        if needs_clarification:
             questions = []
             q_num = 1
             if not has_city:
@@ -848,22 +895,41 @@ class AdvisorAdapter:
                     f"{q_num}. Which city or locality is your business located in?"
                 )
                 q_num += 1
-            if not has_emp:
-                questions.append(
-                    f"{q_num}. दुकान/ऑफिस में कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?"
-                    if is_hindi else
-                    f"{q_num}. Approximately how many staff members or devices (phones, billing computers, swipe machines) will connect to the internet?"
-                )
-                q_num += 1
+
             if not has_btype:
                 questions.append(
-                    f"{q_num}. आपका किस प्रकार का व्यवसाय है (जैसे दुकान, क्लिनिक, ऑफिस, या स्टार्टअप) और क्या आपको UPI साउंडबॉक्स या CCTV की आवश्यकता है?"
+                    f"{q_num}. आपका किस प्रकार का व्यवसाय है (जैसे दुकान, क्लिनिक, ऑफिस, या स्टार्टअप)?"
                     if is_hindi else
-                    f"{q_num}. What type of business do you run (e.g., retail store, clinic, office, or startup) and do you also need add-ons like a UPI QR Soundbox or CCTV?"
+                    f"{q_num}. What type of business do you run (e.g., retail store, clinic, office, or startup)?"
                 )
                 q_num += 1
 
-            if has_city:
+            if not has_gst and not already_clarified_gst:
+                questions.append(
+                    f"{q_num}. क्या आपके व्यवसाय के पास सक्रिय जीएसटी (GSTIN) पंजीकरण है, या आप बिना जीएसटी (उद्यम / प्रोप्राइटरशिप) मोड में काम करते हैं?"
+                    if is_hindi else
+                    f"{q_num}. Do you have an active registered GST (GSTIN) for your business, or do you operate under sole-proprietorship (Non-GST / Udyam mode)?"
+                )
+                q_num += 1
+
+            if not has_emp:
+                sites_txt = f"आपकी {profile.get('num_sites', 2)} दुकानों में" if profile.get("num_sites", 1) >= 2 else "दुकान/ऑफिस में"
+                sites_txt_en = f"across your {profile.get('num_sites', 2)} shops" if profile.get("num_sites", 1) >= 2 else "at your business"
+                questions.append(
+                    f"{q_num}. {sites_txt} कुल कितने कर्मचारी या उपकरण (फोन, बिलिंग कंप्यूटर, कार्ड मशीन) इंटरनेट से जुड़ेंगे?"
+                    if is_hindi else
+                    f"{q_num}. Approximately how many staff members, devices, or billing systems will connect to the internet {sites_txt_en}?"
+                )
+                q_num += 1
+
+            if profile.get("num_sites", 1) >= 2:
+                city_str = f" in {profile['city']}" if has_city else ""
+                ack_prefix = (
+                    f"नमस्ते! {city_str} में आपकी {profile.get('num_sites', 2)} दुकानों के लिए सही और सबसे किफायती प्लान चुनने हेतु, कृपया ये विवरण स्पष्ट करें:\n\n"
+                    if is_hindi else
+                    f"Great to hear about your {profile.get('num_sites', 2)} locations{city_str}! To help me recommend the ideal plan and verify network feasibility across your shops, could you please clarify:\n\n"
+                )
+            elif has_city:
                 ack_prefix = (
                     f"नमस्ते! {profile['city']} में Airtel Business का हाई-स्पीड नेटवर्क उपलब्ध है। आपके व्यवसाय के लिए सही प्लान चुनने के लिए कृपया बताएं:\n\n"
                     if is_hindi else
@@ -873,7 +939,7 @@ class AdvisorAdapter:
                 ack_prefix = (
                     f"नमस्ते! आपके व्यवसाय के लिए सबसे सही और किफायती प्लान चुनने के लिए, क्या आप ये विवरण साझा कर सकते हैं?\n\n"
                     if is_hindi else
-                    f"Welcome! We'd love to help set up business wifi for your business. To help me recommend the ideal plan and verify network feasibility at your address, could you please share:\n\n"
+                    f"Welcome to Airtel Business! To help me recommend the ideal plan and verify feasibility for your business, could you please share:\n\n"
                 )
 
             clarify_msg = ack_prefix + "\n".join(questions)
@@ -884,6 +950,9 @@ class AdvisorAdapter:
                 "recommended_bundle": None,
                 "explainability_tags": []
             }
+
+        if profile.get("has_gstin") is None:
+            profile["has_gstin"] = True
 
         # 6. Build Recommendation with Explainability Tags
         bundle = {}
@@ -1131,13 +1200,28 @@ FEASIBILITY & STATUTORY RULES:
 
 CRITICAL INSTRUCTIONS FOR INTENT ROUTING:
 
-A. MULTI-TURN CONVERSATION MEMORY (NEVER FORGET PREVIOUS FACTS):
+A. MULTI-TURN CONVERSATION MEMORY & MANDATORY CONSULTATIVE DISCOVERY:
    - Review the conversation turns!
    - If the user previously mentioned their city (e.g. 'Noida' or 'Rohtak'), business type, or headcount (e.g. '20' or '25'), YOU MUST RETAIN THEM IN "profile"!
    - NEVER ask for information that was ALREADY stated in earlier turns or in CURRENT CUSTOMER PROFILE CONTEXT!
    - Specifically, if City is already known (e.g. 'Rohtak'), DO NOT ask 'Which city or locality is your business located in?'. Acknowledge the known city and ask ONLY for the remaining missing fields!
    - Catch user typos and informal phrasing gracefully (e.g. '20 employess' = 20 employees; 'need upi qr soundbox' = commercial retail merchant needing UPI Soundbox P19).
-   - When City, Business Type, and Headcount/Scale are ALL KNOWN:
+   - MANDATORY CONSULTATIVE DISCOVERY BEFORE RECOMMENDATION:
+     To make a tailored and compliant recommendation, the assistant MUST clarify necessary parameters first:
+     1) GST Status: "Do you have an active registered GST (GSTIN) or operate under sole proprietorship (Non-GST / Udyam mode)?"
+     2) Headcount / Scale: "Approximately how many staff members, devices, or billing systems will connect?"
+     (Plus city/location and nature of business if not yet known).
+
+     CRITICAL RULE: If the user provides only partial information (e.g., "I run 2 shops in rohtak and need a wifi" or "I need wifi for my clinic in rohtak") where Headcount/Employees OR GST status is MISSING:
+     DO NOT JUMP INTO A BUNDLE RECOMMENDATION!
+     Set intent="clarification", recommended_bundle=null!
+     Acknowledge known facts (e.g. Rohtak, 2 shops) warmly, and ask the missing clarifying questions clearly:
+     1. Do you have an active registered GST (GSTIN) for your business, or do you operate under sole-proprietorship (Non-GST / Udyam mode)?
+     2. Approximately how many staff members, devices, or billing systems will connect across your location(s)?
+
+     ONLY ONCE the user has provided Headcount/Scale AND GST status (or answered the clarification questions across conversation turns), THEN set intent="recommendation" and output the compliant bundle!
+
+   - When City, Business Type, Headcount/Scale, AND GST Status are ALL KNOWN:
      YOU HAVE COMPLETE INFORMATION! DO NOT ASK ANY MORE QUESTIONS!
      Immediately set intent="recommendation"!
 
@@ -1169,17 +1253,23 @@ E. EXECUTIVE / CALL REQUESTS (intent: "inquiry"):
      Set intent="inquiry", recommended_bundle=null.
      Reply politely: "Thanks for your time! An Airtel Business executive will reach out to you shortly on this number to assist you further. 🙏" (or in Hindi if chatting in Hindi).
 
-F. MULTI-SITE / MULTI-SHOP HETEROGENEOUS INQUIRIES (intent: "recommendation"):
-   - When user specifies multiple shops or branches with varying scales (e.g. "i have 2 shops one has 10 employees and other has 100"):
-     - IMMEDIATELY set intent="recommendation"! Do NOT hold back or ask redundant clarifying questions!
-     - Determine appropriate plans for each location:
+F. MULTI-SITE / MULTI-SHOP INQUIRIES:
+   - When a user specifies multiple locations or shops (e.g. "I run 2 shops in rohtak and need a wifi"):
+     - If employee count per location (or total headcount) AND GST status are NOT specified:
+       DO NOT immediately recommend!
+       Set intent="clarification", recommended_bundle=null!
+       Ask the user:
+       1. Do you have a registered GST (GSTIN) for your business, or do you operate under Non-GST mode?
+       2. Approximately how many employees or devices will connect across the shops?
+     - Once the user specifies headcount (e.g. "i have 2 shops one has 10 employees and other has 100" or "we have 10 staff and yes we have GST"):
+       Set intent="recommendation" and determine appropriate plans for each location:
        * Location 1 (e.g. 10 staff): Biz Fibre 300 (P02 @ ₹1,499/mo)
        * Location 2 (e.g. 100 staff): Biz Fibre 1G (P03 @ ₹3,999/mo)
-     - Include recommended digital add-ons: Cloud POS & UPI Soundbox (P19 @ ₹599/mo) for payment voice alerts and Endpoint Security (P20 @ ₹99/mo) for PCs.
-     - Put BOTH base plans and add-ons in recommended_bundle:
+       Include recommended digital add-ons: Cloud POS & UPI Soundbox (P19 @ ₹599/mo) for payment voice alerts and Endpoint Security (P20 @ ₹99/mo) for PCs.
+       Put BOTH base plans and add-ons in recommended_bundle:
        {{"P02": 1, "P03": 1, "P19": 1, "P20": 2}} (or {{"P02": 2, "P19": 1, "P20": 2}} if both sites take P02).
-     - In the message, clearly break down Shop 1 vs Shop 2, line rentals, and add-ons. Explicitly inform the user: "I have suggested Cloud POS & UPI Soundbox and Endpoint Security add-ons. If you do not need any of these add-ons, simply ask me to remove it (e.g. 'remove soundbox') or click 'Remove ×' in your quote drawer!"
-     - Qualify both locations for 100% waived setup fees (₹5,000 saved).
+       In the message, clearly break down Shop 1 vs Shop 2, line rentals, and add-ons. Explicitly inform the user: "I have suggested Cloud POS & UPI Soundbox and Endpoint Security add-ons. If you do not need any of these add-ons, simply ask me to remove it (e.g. 'remove soundbox') or click 'Remove ×' in your quote drawer!"
+       Qualify both locations for 100% waived setup fees (₹5,000 saved).
 
 G. ADD-ON PROACTIVE SUGGESTIONS & REMOVALS:
    - Proactively suggest relevant add-ons when recommending plans (e.g. UPI Soundbox P19 for shops/retail, Endpoint Security P20 for PCs, Cloud Backup P17 for databases, Professional Cloud Email P16 for staff). Proactively tell the user that they can freely remove any add-on anytime!

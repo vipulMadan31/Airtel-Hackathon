@@ -18,9 +18,9 @@ def run_test():
     assert r1.get("recommended_bundle") in [None, {}], "Bundle should be empty on clarification"
     print("✔ [1/3] Progressive Clarification: PASSED")
 
-    # 2. Specific Query: should recommend compliant bundle with tags
-    print("\n[Query 2] User asks: 'We are a CA accounting firm with 8 auditors in Jaipur'")
-    r2 = requests.post(f"{base}/api/advisor/chat", json={"message": "We are a CA accounting firm with 8 auditors in Jaipur", "language": "en"}).json()
+    # 2. Specific Query: should recommend compliant bundle with tags once parameters are provided
+    print("\n[Query 2] User asks: 'We are a CA accounting firm with 8 auditors in Jaipur, we have active GST'")
+    r2 = requests.post(f"{base}/api/advisor/chat", json={"message": "We are a CA accounting firm with 8 auditors in Jaipur, we have active GST", "language": "en"}).json()
     print("Intent:", r2.get("intent"))
     print("Message:\n", r2.get("message"))
     print("Bundle:", r2.get("recommended_bundle"))

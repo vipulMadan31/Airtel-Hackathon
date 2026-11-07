@@ -52,14 +52,25 @@ async def test_clinic_flow():
                 document.getElementById('chatInput').value = 'Hi, I live in rohtak and need wifi';
                 document.getElementById('sendBtn').click();
             """)
-            await asyncio.sleep(5)
+            await asyncio.sleep(1)
+            for _ in range(15):
+                typing = await run_eval("document.getElementById('chatTypingIndicator') !== null")
+                if not typing:
+                    break
+                await asyncio.sleep(1)
 
-            # Turn 2: "I run a clinic and have 10 staff members"
+            # Turn 2: Clarify clinic, 10 staff members, and GST
             await run_eval("""
-                document.getElementById('chatInput').value = 'I run a clinic and have 10 staff members';
+                document.getElementById('chatInput').value = 'I run a clinic, have 10 staff members, and yes we have GST';
                 document.getElementById('sendBtn').click();
             """)
-            await asyncio.sleep(7)
+            await asyncio.sleep(1)
+            for _ in range(15):
+                typing = await run_eval("document.getElementById('chatTypingIndicator') !== null")
+                sub = await run_eval("document.getElementById('monthlySubtotal').innerText")
+                if not typing and sub and sub != '₹0.00':
+                    break
+                await asyncio.sleep(1)
 
             pin = await run_eval("document.getElementById('pincodeInput').value")
             subtotal = await run_eval("document.getElementById('monthlySubtotal').innerText")
