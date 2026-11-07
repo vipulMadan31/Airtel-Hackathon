@@ -125,6 +125,7 @@ class CatalogEngine:
         if is_fibre_feasible:
             return {
                 "pincode": pin,
+                "city": city,
                 "is_fibre_feasible": True,
                 "technology": "Optical Wireline Fibre (FTTH)",
                 "recommended_base_id": "P01",
@@ -136,6 +137,7 @@ class CatalogEngine:
         else:
             return {
                 "pincode": pin,
+                "city": city,
                 "is_fibre_feasible": False,
                 "airfiber_feasible": True,
                 "technology": "Airtel 5G AirFiber (Fixed Wireless Access)",

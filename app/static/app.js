@@ -1245,6 +1245,15 @@ async function handleChatSubmit() {
     // Always merge profile facts so known context (e.g. city, startup, headcount) is NEVER lost across turns
     if (data.profile) {
       STATE.profile = Object.assign({}, STATE.profile, data.profile);
+
+      // Conversational Pincode & Network Feasibility Synchronization
+      if (data.profile.pincode) {
+        const pinInput = document.getElementById("pincodeInput");
+        if (pinInput && pinInput.value !== data.profile.pincode) {
+          pinInput.value = data.profile.pincode;
+          handlePincodeCheck();
+        }
+      }
     }
     if (data.recommended_bundle && Object.keys(data.recommended_bundle).length > 0) {
       STATE.selectedBundle = data.recommended_bundle;

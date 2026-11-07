@@ -5,6 +5,103 @@ from app.config import GEMINI_API_KEY, OPENAI_API_KEY
 from app.data_loader import DataLoader
 from app.modules.catalog.engine import CatalogEngine
 
+CITY_BENCHMARK_PINCODES: Dict[str, str] = {
+    "Delhi": "110001",
+    "Delhi NCR": "110001",
+    "New Delhi": "110001",
+    "Mumbai": "400001",
+    "Bangalore": "560001",
+    "Bengaluru": "560001",
+    "Chennai": "600001",
+    "Hyderabad": "500001",
+    "Pune": "411001",
+    "Kolkata": "700001",
+    "Ahmedabad": "380001",
+    "Noida": "201301",
+    "Gurgaon": "122001",
+    "Gurugram": "122001",
+    "Indore": "452001",
+    "Bhopal": "462001",
+    "Jaipur": "302001",
+    "Ludhiana": "141001",
+    "Kochi": "682001",
+    "Nagpur": "440001",
+    "Visakhapatnam": "530001",
+    "Patna": "800001",
+    "Surat": "395001",
+    "Lucknow": "226001",
+    "Chandigarh": "160001",
+    "Rohtak": "124001",
+    "Faridabad": "121001",
+    "Ghaziabad": "201001",
+    "Kanpur": "208001",
+    "Varanasi": "221001",
+    "Agra": "282001",
+    "Amritsar": "143001",
+    "Dehradun": "248001",
+    "Mysore": "570001",
+    "Coimbatore": "641001",
+    "Vadodara": "390001",
+    "Rajkot": "360001",
+    "Meerut": "250001",
+    "Jalandhar": "144001",
+    "Raipur": "492001",
+    "Jabalpur": "482001",
+    "Gwalior": "474001",
+    "Nashik": "422001",
+    "Aurangabad": "431001",
+    "Madurai": "625001",
+    "Mangalore": "575001",
+    "Thiruvananthapuram": "695001",
+    "Kozhikode": "673001"
+}
+
+PINCODE_PREFIX_MAP: Dict[str, tuple] = {
+    "110": ("Delhi", 1),
+    "121": ("Faridabad", 2),
+    "122": ("Gurgaon", 1),
+    "124": ("Rohtak", 3),
+    "141": ("Ludhiana", 2),
+    "143": ("Amritsar", 2),
+    "144": ("Jalandhar", 2),
+    "160": ("Chandigarh", 2),
+    "2010": ("Ghaziabad", 2),
+    "2013": ("Noida", 1),
+    "208": ("Kanpur", 2),
+    "221": ("Varanasi", 2),
+    "226": ("Lucknow", 2),
+    "248": ("Dehradun", 2),
+    "250": ("Meerut", 2),
+    "282": ("Agra", 2),
+    "302": ("Jaipur", 2),
+    "380": ("Ahmedabad", 1),
+    "390": ("Vadodara", 2),
+    "395": ("Surat", 2),
+    "400": ("Mumbai", 1),
+    "411": ("Pune", 1),
+    "422": ("Nashik", 2),
+    "431": ("Aurangabad", 2),
+    "440": ("Nagpur", 2),
+    "452": ("Indore", 2),
+    "462": ("Bhopal", 2),
+    "474": ("Gwalior", 2),
+    "482": ("Jabalpur", 2),
+    "492": ("Raipur", 2),
+    "500": ("Hyderabad", 1),
+    "530": ("Visakhapatnam", 2),
+    "560": ("Bengaluru", 1),
+    "570": ("Mysore", 2),
+    "575": ("Mangalore", 2),
+    "600": ("Chennai", 1),
+    "625": ("Madurai", 2),
+    "641": ("Coimbatore", 2),
+    "673": ("Kozhikode", 2),
+    "682": ("Kochi", 2),
+    "695": ("Thiruvananthapuram", 2),
+    "700": ("Kolkata", 1),
+    "800": ("Patna", 2),
+}
+
 class AdvisorAdapter:
     """
     Dual-mode Advisor Adapter:
@@ -59,12 +156,26 @@ class AdvisorAdapter:
         profile.setdefault("num_sites", 1)
         profile.setdefault("city", None)
         profile.setdefault("city_tier", None)
+        profile.setdefault("pincode", None)
         profile.setdefault("has_gstin", None)
         profile.setdefault("monthly_budget", 3000)
 
         is_hindi = (language == "hi")
 
-        # 0. Extract Location / City from user message if mentioned
+        # 0a. Check explicit 6-digit postal pincode in user message
+        pin_match = re.search(r'\b([1-9][0-9]{5})\b', msg)
+        if pin_match:
+            explicit_pin = pin_match.group(1)
+            profile["pincode"] = explicit_pin
+            # Infer city and tier from pincode prefix if not already known
+            if not profile.get("city"):
+                for pfx, (cname, ctier) in PINCODE_PREFIX_MAP.items():
+                    if explicit_pin.startswith(pfx):
+                        profile["city"] = cname
+                        profile["city_tier"] = ctier
+                        break
+
+        # 0b. Extract Location / City from user message if mentioned
         city_tier_map = {
             "delhi": ("Delhi", 1), "mumbai": ("Mumbai", 1), "bangalore": ("Bangalore", 1),
             "bengaluru": ("Bengaluru", 1), "chennai": ("Chennai", 1), "hyderabad": ("Hyderabad", 1),
@@ -81,13 +192,31 @@ class AdvisorAdapter:
             "rajkot": ("Rajkot", 2), "meerut": ("Meerut", 2), "jalandhar": ("Jalandhar", 2),
             "raipur": ("Raipur", 2), "jabalpur": ("Jabalpur", 2), "gwalior": ("Gwalior", 2),
             "nashik": ("Nashik", 2), "aurangabad": ("Aurangabad", 2), "madurai": ("Madurai", 2),
-            "mangalore": ("Mangalore", 2), "trivandrum": ("Thiruvananthapuram", 2), "calicut": ("Kozhikode", 2)
+            "mangalore": ("Mangalore", 2), "trivandrum": ("Thiruvananthapuram", 2), "calicut": ("Kozhikode", 2),
+            # Devanagari Hindi mappings
+            "इंदौर": ("Indore", 2), "रोहतक": ("Rohtak", 3), "पुणे": ("Pune", 1),
+            "जयपुर": ("Jaipur", 2), "भोपाल": ("Bhopal", 2), "दिल्ली": ("Delhi", 1),
+            "मुंबई": ("Mumbai", 1), "नोएडा": ("Noida", 1), "बेंगलुरु": ("Bengaluru", 1),
+            "बैंगलोर": ("Bengaluru", 1), "चेन्नई": ("Chennai", 1), "कोलकाता": ("Kolkata", 1),
+            "हैदराबाद": ("Hyderabad", 1), "अहमदाबाद": ("Ahmedabad", 1), "लखनऊ": ("Lucknow", 2),
+            "कानपुर": ("Kanpur", 2), "लुधियाना": ("Ludhiana", 2), "कोच्चि": ("Kochi", 2),
+            "चंडीगढ़": ("Chandigarh", 2), "गुड़गांव": ("Gurgaon", 1), "गुरुग्राम": ("Gurugram", 1),
+            "नागपुर": ("Nagpur", 2), "पटना": ("Patna", 2), "सूरत": ("Surat", 2),
+            "वाराणसी": ("Varanasi", 2), "आगरा": ("Agra", 2), "अमृतसर": ("Amritsar", 2),
+            "देहरादून": ("Dehradun", 2), "गाजियाबाद": ("Ghaziabad", 2), "फरीदाबाद": ("Faridabad", 2)
         }
         for k, (cname, ctier) in city_tier_map.items():
             if k in msg:
                 profile["city"] = cname
                 profile["city_tier"] = ctier
+                # If explicit pincode was not entered, sync with benchmark city pincode
+                if not profile.get("pincode") and cname in CITY_BENCHMARK_PINCODES:
+                    profile["pincode"] = CITY_BENCHMARK_PINCODES[cname]
                 break
+
+        # Fallback sync: if city is known but pincode is still missing
+        if profile.get("city") and not profile.get("pincode"):
+            profile["pincode"] = CITY_BENCHMARK_PINCODES.get(profile["city"], "452001")
 
         # Extract Employee / device / scale count if mentioned
         emp_match = re.search(r'(\d+)\s*(people|staff|employees|workers|log|devices|pc|systems|chairs|beds|doctors|seats|users|counters|कर्मचारी|लोग)', msg)
@@ -649,6 +778,8 @@ Return ONLY a valid JSON object matching this schema:
                         }
                         c_lower = str(merged_profile["city"]).lower().strip()
                         merged_profile["city_tier"] = city_tier_map.get(c_lower, 2)
+                    if merged_profile.get("city") and not merged_profile.get("pincode"):
+                        merged_profile["pincode"] = CITY_BENCHMARK_PINCODES.get(merged_profile["city"], "452001")
                     llm_profile = merged_profile
 
                     raw_bundle = data.get("recommended_bundle") or {}
