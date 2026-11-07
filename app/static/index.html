@@ -21,13 +21,13 @@
       }
     }
   </script>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=3.2">
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
 
   <!-- TOP HEADER -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="max-w-6xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center space-x-3">
         <div class="w-9 h-9 rounded-lg bg-airtel-red flex items-center justify-center text-white font-black text-xl shadow-md">
           a
@@ -38,14 +38,24 @@
         </div>
       </div>
 
-      <!-- Controls: Safe Mode, Language, WhatsApp, Role-specific Buttons, Role Switcher -->
-      <div class="flex items-center space-x-2 sm:space-x-3">
-        <!-- Non-GST Safe Mode Toggle -->
-        <label class="flex items-center space-x-2 text-xs font-semibold cursor-pointer bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-full border border-slate-200 transition">
-          <input type="checkbox" id="safeModeToggle" class="rounded text-airtel-red focus:ring-0">
-          <span id="t-safe-mode">Non-GST Safe Mode</span>
-        </label>
+      <!-- PROMINENT VIEW TABS: CUSTOMER SELF-SERVE | AIRTEL MITRA PARTNER | OPS ADMIN -->
+      <nav class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold shadow-inner" id="mainRoleNavTabs">
+        <button id="navTabMerchant" type="button" class="px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-white text-slate-900 shadow-sm border border-slate-200/80">
+          <span>🛒</span>
+          <span id="t-nav-customer">Customer Self-Serve</span>
+        </button>
+        <button id="navTabPartner" type="button" class="px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 text-slate-600 hover:text-amber-900 hover:bg-white/60">
+          <span>🤝</span>
+          <span id="t-nav-partner">Airtel Mitra Partner</span>
+        </button>
+        <button id="navTabAdmin" type="button" class="px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 text-slate-600 hover:text-purple-900 hover:bg-white/60">
+          <span>🛡️</span>
+          <span id="t-nav-admin">Enterprise Ops Admin</span>
+        </button>
+      </nav>
 
+      <!-- Controls: Safe Mode, Language, WhatsApp, Role Switcher -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
         <!-- Language Switcher -->
         <div class="flex rounded-full bg-slate-100 p-0.5 border border-slate-200 text-xs font-bold">
           <button id="langEn" class="px-2.5 py-1 rounded-full bg-white shadow-sm text-slate-900">EN</button>
@@ -250,6 +260,39 @@
           <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full" id="t-rule3-badge">Rule 3 Aligned</span>
         </div>
 
+        <!-- UI-ONLY BUSINESS REGISTRATION TRACK SELECTOR (Non-GST Safe Mode vs Registered GSTIN) -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-slate-700" id="t-select-track-heading">Select Verification Track (UI-Only Option):</span>
+            <span class="text-[10px] text-slate-500 font-medium">DoT Statutory Alignment</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="kycTrackSelector">
+            <!-- Card 1: Registered Commercial Business (GSTIN Track) -->
+            <div id="trackGstinCard" class="cursor-pointer border-2 border-airtel-red bg-red-50/30 rounded-xl p-3.5 transition-all shadow-xs flex flex-col justify-between">
+              <div class="flex items-start justify-between">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" name="kycTrackRadio" id="trackGstinRadio" value="gstin" checked class="text-airtel-red focus:ring-0">
+                  <span class="font-extrabold text-xs text-slate-900" id="t-track-gstin-title">1. Registered Business (GSTIN)</span>
+                </label>
+                <span class="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">STP 48h</span>
+              </div>
+              <p class="text-[11px] text-slate-600 mt-2" id="t-track-gstin-desc">Pvt Ltd, LLP, Partnership, or GSTIN firms. Instant GSTN registry lookup.</p>
+            </div>
+
+            <!-- Card 2: Micro Merchant / Sole Proprietor Safe Mode (Non-GST Track) -->
+            <div id="trackNonGstCard" class="cursor-pointer border-2 border-slate-200 bg-white hover:border-amber-400 rounded-xl p-3.5 transition-all shadow-xs flex flex-col justify-between">
+              <div class="flex items-start justify-between">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" name="kycTrackRadio" id="trackNonGstRadio" value="nongst" class="text-amber-600 focus:ring-0">
+                  <span class="font-extrabold text-xs text-slate-900" id="t-track-nongst-title">2. Micro Merchant (Non-GST Mode)</span>
+                </label>
+                <span class="text-[9px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">55% MSME Track</span>
+              </div>
+              <p class="text-[11px] text-slate-600 mt-2" id="t-track-nongst-desc">Unorganized micro-retail, Kirana, Sole Proprietor without GSTIN. Verified via Udyam / Utility Bill.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- DPDP Rule 3 Statutory Notice Modal/Box -->
         <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 text-xs text-blue-900 space-y-1.5">
           <span class="font-bold block text-blue-950 uppercase tracking-wider text-[11px]" id="t-dpdp-title">DPDP ACT 2023 & RULES 2025 NOTICE</span>
@@ -370,13 +413,64 @@
           <!-- Populated by JS -->
         </div>
 
+        <!-- PREMISES PHYSICAL INSTALLATION ADDRESS SECTION (Revealed upon KYC Clearance) -->
+        <div id="installationAddressSection" class="hidden border-2 border-emerald-300 bg-emerald-50/40 rounded-xl p-4 space-y-3.5 transition-all">
+          <div class="flex items-center justify-between border-b border-emerald-200 pb-2">
+            <div>
+              <span class="text-[10px] font-black uppercase tracking-wider text-emerald-800" id="t-addr-tag">Physical Work-Order Booking</span>
+              <h4 class="font-extrabold text-xs text-slate-900" id="t-addr-heading">Full Premises Installation Address & On-Site Contact</h4>
+            </div>
+            <span class="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">Optical Line Pulling</span>
+          </div>
+          
+          <p class="text-[11px] text-slate-600" id="t-addr-expl">Provide the on-premise installation address where Airtel optical fiber technicians will lay the drop cable and install your Wi-Fi router.</p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1" id="t-addr-unit-lbl">Shop / Unit / Floor No.: <span class="text-red-500">*</span></label>
+              <input type="text" id="installUnitNo" placeholder="e.g. Shop No. 14, Ground Floor" value="Shop No. 14, Ground Floor" class="w-full border border-slate-300 rounded-lg p-2 font-medium bg-white focus:outline-none focus:border-airtel-red">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1" id="t-addr-bldg-lbl">Building / Market / Commercial Complex: <span class="text-red-500">*</span></label>
+              <input type="text" id="installBuilding" placeholder="e.g. Aggarwal Plaza / Main Market" value="Aggarwal Commercial Complex" class="w-full border border-slate-300 rounded-lg p-2 font-medium bg-white focus:outline-none focus:border-airtel-red">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1" id="t-addr-street-lbl">Street / Sector / Road: <span class="text-red-500">*</span></label>
+              <input type="text" id="installStreet" placeholder="e.g. Civil Road, Sector 14" value="Civil Road, Near Subhash Chowk" class="w-full border border-slate-300 rounded-lg p-2 font-medium bg-white focus:outline-none focus:border-airtel-red">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1" id="t-addr-lm-lbl">Prominent Landmark (for Field Tech): <span class="text-red-500">*</span></label>
+              <input type="text" id="installLandmark" placeholder="e.g. Opposite State Bank ATM" value="Opposite State Bank ATM" class="w-full border border-slate-300 rounded-lg p-2 font-medium bg-white focus:outline-none focus:border-airtel-red">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1" id="t-addr-city-lbl">Installation City & Postal Pincode:</label>
+              <div class="flex space-x-2">
+                <input type="text" id="installCity" placeholder="City" value="Rohtak" class="w-1/2 border border-slate-300 rounded-lg p-2 font-bold text-slate-900 bg-slate-100" readonly>
+                <input type="text" id="installPincode" placeholder="Pincode" value="124001" class="w-1/2 border border-slate-300 rounded-lg p-2 font-mono font-bold text-slate-900 bg-slate-100" readonly>
+              </div>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1" id="t-addr-contact-lbl">On-Site Contact Person & Phone: <span class="text-red-500">*</span></label>
+              <input type="text" id="installContact" placeholder="e.g. Rajesh Kumar (+91 98765 12345)" value="Rajesh Kumar (+91 98765 12345)" class="w-full border border-slate-300 rounded-lg p-2 font-medium bg-white focus:outline-none focus:border-airtel-red">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block font-bold text-slate-700 mb-1" id="t-addr-slot-lbl">Preferred Field Technician Time Slot:</label>
+              <select id="installSlotSelect" class="w-full border border-slate-300 rounded-lg p-2 font-medium bg-white focus:outline-none focus:border-airtel-red text-xs">
+                <option value="MORNING">Morning (10:00 AM – 01:00 PM) — Recommended for Business Hours</option>
+                <option value="AFTERNOON">Afternoon (02:00 PM – 05:00 PM)</option>
+                <option value="EVENING">Evening (05:00 PM – 08:00 PM)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <!-- Navigation Buttons -->
         <div class="pt-2 flex justify-between items-center border-t border-slate-100">
           <button id="backToQuoteBtn" class="text-xs text-slate-500 hover:text-slate-900 font-bold">
             <span id="t-back-quote">← Back to Quote</span>
           </button>
           <button id="confirmOrderBtn" class="bg-airtel-red hover:bg-airtel-dark text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md transition disabled:opacity-50" disabled>
-            <span id="t-confirm-order-btn">Confirm & Schedule Installation</span>
+            <span id="t-confirm-order-btn">Book Installation & Pay ₹499 Token →</span>
           </button>
         </div>
       </div>
@@ -1096,7 +1190,7 @@
     </div>
   </div>
 
-  <script src="/locales.js"></script>
-  <script src="/app.js"></script>
+  <script src="/locales.js?v=3.2"></script>
+  <script src="/app.js?v=3.2"></script>
 </body>
 </html>

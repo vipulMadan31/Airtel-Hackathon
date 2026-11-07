@@ -158,6 +158,9 @@ function applyLanguage(lang) {
   // Update all text elements
   setText("t-brand-sub", dict.brand_sub);
   setText("t-app-title", dict.app_title);
+  setText("t-nav-customer", dict.nav_customer);
+  setText("t-nav-partner", dict.nav_partner);
+  setText("t-nav-admin", dict.nav_admin);
   setText("t-safe-mode", dict.safe_mode);
   setText("t-partner-btn", dict.partner_btn);
   setText("t-advisor-title", dict.advisor_title);
@@ -342,6 +345,24 @@ function navigateToView(role, pushHistory = true) {
   const mitraView = document.getElementById("mitraView");
   const opsView = document.getElementById("opsView");
   const safeModeToggleWrapper = document.getElementById("safeModeToggle")?.closest("label");
+
+  // Highlight Top Navigation Bar Tabs
+  const tabMerchant = document.getElementById("navTabMerchant");
+  const tabPartner = document.getElementById("navTabPartner");
+  const tabAdmin = document.getElementById("navTabAdmin");
+
+  if (tabMerchant && tabPartner && tabAdmin) {
+    [tabMerchant, tabPartner, tabAdmin].forEach(t => {
+      t.className = "px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 text-slate-600 hover:text-slate-900 hover:bg-white/60";
+    });
+    if (normRole === 'PARTNER') {
+      tabPartner.className = "px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-amber-600 text-white shadow-sm border border-amber-700 font-extrabold";
+    } else if (normRole === 'ADMIN') {
+      tabAdmin.className = "px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-purple-900 text-white shadow-sm border border-purple-950 font-extrabold";
+    } else {
+      tabMerchant.className = "px-3.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 bg-white text-slate-900 shadow-sm border border-slate-200/80 font-extrabold";
+    }
+  }
 
   if (!customerView || !mitraView || !opsView) return;
 
@@ -598,6 +619,47 @@ async function switchUserRole(roleName) {
   }
 }
 
+// --- UI-ONLY BUSINESS REGISTRATION TRACK SELECTOR (Non-GST Safe Mode vs Registered GSTIN) ---
+function initKycTrackSelector() {
+  const gstinCard = document.getElementById("trackGstinCard");
+  const nonGstCard = document.getElementById("trackNonGstCard");
+  const gstinRadio = document.getElementById("trackGstinRadio");
+  const nonGstRadio = document.getElementById("trackNonGstRadio");
+
+  if (!gstinCard || !nonGstCard) return;
+
+  window.switchKycTrack = function(track) {
+    if (track === "nongst") {
+      if (nonGstRadio) nonGstRadio.checked = true;
+      if (gstinRadio) gstinRadio.checked = false;
+      nonGstCard.className = "cursor-pointer border-2 border-amber-500 bg-amber-50/50 rounded-xl p-3.5 transition-all shadow-sm flex flex-col justify-between";
+      gstinCard.className = "cursor-pointer border-2 border-slate-200 bg-white hover:border-slate-300 rounded-xl p-3.5 transition-all shadow-xs flex flex-col justify-between";
+
+      STATE.safeModeNonGst = true;
+      STATE.profile.has_gstin = false;
+      const toggle = document.getElementById("safeModeToggle");
+      if (toggle) toggle.checked = true;
+      updateSafeModeUI();
+    } else {
+      if (gstinRadio) gstinRadio.checked = true;
+      if (nonGstRadio) nonGstRadio.checked = false;
+      gstinCard.className = "cursor-pointer border-2 border-airtel-red bg-red-50/30 rounded-xl p-3.5 transition-all shadow-sm flex flex-col justify-between";
+      nonGstCard.className = "cursor-pointer border-2 border-slate-200 bg-white hover:border-slate-300 rounded-xl p-3.5 transition-all shadow-xs flex flex-col justify-between";
+
+      STATE.safeModeNonGst = false;
+      STATE.profile.has_gstin = true;
+      const toggle = document.getElementById("safeModeToggle");
+      if (toggle) toggle.checked = false;
+      updateSafeModeUI();
+    }
+  };
+
+  gstinCard.addEventListener("click", () => window.switchKycTrack("gstin"));
+  nonGstCard.addEventListener("click", () => window.switchKycTrack("nongst"));
+  if (gstinRadio) gstinRadio.addEventListener("change", () => window.switchKycTrack("gstin"));
+  if (nonGstRadio) nonGstRadio.addEventListener("change", () => window.switchKycTrack("nongst"));
+}
+
 // --- NON-GST SAFE MODE DYNAMIC UI MANAGER ---
 function updateSafeModeUI() {
   const banner = document.getElementById("nonGstModeBanner");
@@ -715,6 +777,17 @@ function initEventListeners() {
     });
   }
 
+  // Top Navigation Bar Tab Handlers
+  const navMerchant = document.getElementById("navTabMerchant");
+  if (navMerchant) navMerchant.addEventListener("click", () => switchUserRole("MERCHANT"));
+  const navPartner = document.getElementById("navTabPartner");
+  if (navPartner) navPartner.addEventListener("click", () => switchUserRole("PARTNER"));
+  const navAdmin = document.getElementById("navTabAdmin");
+  if (navAdmin) navAdmin.addEventListener("click", () => switchUserRole("ADMIN"));
+
+  // UI-Only KYC Track Selector
+  initKycTrackSelector();
+
   // Role Persona Switch Handlers
   const switchMerchantBtn = document.getElementById("switchRoleMerchant");
   if (switchMerchantBtn) switchMerchantBtn.addEventListener("click", () => switchUserRole("MERCHANT"));
@@ -727,6 +800,11 @@ function initEventListeners() {
   document.getElementById("proceedKycBtn").addEventListener("click", () => {
     document.getElementById("quoteCard").classList.add("hidden");
     document.getElementById("kycCard").classList.remove("hidden");
+    // Pre-populate installation address city and pincode from profile if present
+    const cityInput = document.getElementById("installCity");
+    const pinInput = document.getElementById("installPincode");
+    if (cityInput && STATE.profile.city) cityInput.value = STATE.profile.city;
+    if (pinInput && STATE.profile.pincode) pinInput.value = STATE.profile.pincode;
   });
 
   document.getElementById("backToQuoteBtn").addEventListener("click", () => {
@@ -1192,8 +1270,37 @@ function renderKycDecision(data) {
       <p><strong>${isHi ? 'पंजीकृत पता:' : 'Principal Address:'}</strong> ${regAddress}</p>
       <p><strong>${isHi ? 'वैधता जांच:' : 'Freshness Check:'}</strong> ${isHi ? `बिल की तिथि (${date}) 2026-07-15 से 90 दिनों के भीतर वैध है।` : `Bill date (${date}) is valid within 90 days of 2026-07-15.`}</p>
     `;
+
+    // Reveal Premises Physical Installation Address Section
+    const addrSec = document.getElementById("installationAddressSection");
+    if (addrSec) {
+      addrSec.classList.remove("hidden");
+      // Auto-populate city, pincode, contact
+      const cityEl = document.getElementById("installCity");
+      const pinEl = document.getElementById("installPincode");
+      const contactEl = document.getElementById("installContact");
+      if (cityEl && STATE.profile.city) cityEl.value = STATE.profile.city;
+      if (pinEl && STATE.profile.pincode) pinEl.value = STATE.profile.pincode;
+      if (contactEl && !contactEl.value) contactEl.value = `${entityName} (+91 98765 12345)`;
+    }
+
     confirmBtn.disabled = false;
   } else if (data.status === "REJECTED") {
+    const addrSec = document.getElementById("installationAddressSection");
+    if (addrSec) addrSec.classList.add("hidden");
+
+    let fallbackAction = "";
+    if (!STATE.safeModeNonGst) {
+      fallbackAction = `
+        <div class="mt-2 pt-2 border-t border-red-200 flex flex-wrap items-center gap-2">
+          <span class="font-bold text-[11px] text-red-800">Alternative Safe Resolution:</span>
+          <button type="button" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded-lg text-xs font-bold transition shadow-xs" onclick="window.switchKycTrack('nongst')">
+            Switch to Micro Merchant Non-GST Mode (Udyam Track) &rarr;
+          </button>
+        </div>
+      `;
+    }
+
     resultBox.className = "rounded-xl p-3.5 text-xs space-y-1.5 bg-red-50 border border-red-300 text-red-900";
     resultBox.innerHTML = `
       <div class="flex items-center space-x-2">
@@ -1202,17 +1309,24 @@ function renderKycDecision(data) {
       <ul class="list-disc pl-4 space-y-0.5">
         ${data.reasons.map(r => `<li>${r}</li>`).join('')}
       </ul>
+      ${fallbackAction}
     `;
     confirmBtn.disabled = true;
   } else {
+    const addrSec = document.getElementById("installationAddressSection");
+    if (addrSec) addrSec.classList.add("hidden");
+
     resultBox.className = "rounded-xl p-3.5 text-xs space-y-1.5 bg-amber-50 border border-amber-300 text-amber-900";
     resultBox.innerHTML = `
       <div class="flex items-center space-x-2">
-        <span class="font-extrabold text-sm">&#9888; ${isHi ? 'अतिरिक्त कार्रवाई आवश्यक' : data.status}</span>
+        <span class="font-extrabold text-sm">&#9888; ${isHi ? 'अतिरिक्त कार्रवाई आवश्यक' : (data.status === 'BLURRY' ? 'Action Required: Document Too Blurry' : data.status)}</span>
       </div>
       <ul class="list-disc pl-4 space-y-0.5">
         ${data.reasons.map(r => `<li>${r}</li>`).join('')}
       </ul>
+      <p class="text-[11px] text-amber-800 font-semibold pt-1">
+        ${isHi ? 'कृपया एक साफ, उच्च-रिज़ॉल्यूशन दस्तावेज़ अपलोड करें।' : 'Please re-upload a clear, flat document scan (Laplacian variance >= 120.0).'}
+      </p>
     `;
     confirmBtn.disabled = true;
   }
@@ -1538,17 +1652,40 @@ async function handleConfirmOrder() {
   confirmBtn.disabled = true;
   confirmBtn.innerText = STATE.language === 'hi' ? "ऑर्डर दर्ज हो रहा है..." : "Creating Order...";
 
+  // Collect Full Physical Installation Premises Address
+  const unitNo = document.getElementById("installUnitNo")?.value.trim() || "";
+  const building = document.getElementById("installBuilding")?.value.trim() || "";
+  const street = document.getElementById("installStreet")?.value.trim() || "";
+  const landmark = document.getElementById("installLandmark")?.value.trim() || "";
+  const city = document.getElementById("installCity")?.value.trim() || STATE.profile.city || "Rohtak";
+  const pincode = document.getElementById("installPincode")?.value.trim() || STATE.profile.pincode || "124001";
+  const contact = document.getElementById("installContact")?.value.trim() || "+91 98765 12345";
+  const slot = document.getElementById("installSlotSelect")?.value || "MORNING";
+
+  const installationAddress = {
+    unit_no: unitNo,
+    building: building,
+    street: street,
+    landmark: landmark,
+    city: city,
+    pincode: pincode,
+    on_site_contact: contact,
+    preferred_slot: slot,
+    formatted_address: `${unitNo}, ${building}, ${street}, Landmark: ${landmark}, ${city} - ${pincode}`
+  };
+
   try {
     const res = await fetch("/api/orders/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         business_name: document.getElementById("extractedNameInput").value || "Star Electronics",
-        contact_phone: "+91 98765 12345",
+        contact_phone: contact.split(" ")[0] || "+91 98765 12345",
         bundle_data: STATE.activeQuote,
         kyc_status: "VERIFIED",
         language: STATE.language,
-        partner_id: STATE.attribution.partner_id || (STATE.auth.role === 'PARTNER' ? STATE.auth.user.user_id : null)
+        partner_id: STATE.attribution.partner_id || (STATE.auth.role === 'PARTNER' ? STATE.auth.user.user_id : null),
+        installation_address: installationAddress
       })
     });
     const order = await res.json();
@@ -1581,6 +1718,25 @@ function renderTracker(order) {
   const isTokenPaid = !!(order.token_paid || (order.receipt && order.receipt.payment_status === "SUCCESS"));
   const txnText = order.payment_txn_id || (order.receipt ? order.receipt.txn_id : "TXN-UPI-AUTO");
 
+  let addrHtml = "";
+  if (order.installation_address) {
+    const addr = order.installation_address;
+    addrHtml = `
+      <div class="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">Booked Installation Premises:</span>
+          <span class="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">Optical Line Route Confirmed</span>
+        </div>
+        <p class="font-bold text-slate-900">${addr.formatted_address || `${addr.unit_no}, ${addr.building}, ${addr.street}, ${addr.city}`}</p>
+        <div class="flex items-center space-x-3 text-[11px] text-slate-600 pt-0.5">
+          <span><strong>Contact:</strong> ${addr.on_site_contact || order.contact_phone}</span>
+          <span>&bull;</span>
+          <span><strong>Slot:</strong> ${addr.preferred_slot || 'Morning (10:00 AM – 01:00 PM)'}</span>
+        </div>
+      </div>
+    `;
+  }
+
   timeline.innerHTML = `
     <div class="flex items-center space-x-3 text-xs">
       <span class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold">✔</span>
@@ -1597,7 +1753,9 @@ function renderTracker(order) {
       </div>
     </div>
     <div class="flex items-center space-x-3 text-xs">
-      <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold animate-pulse">&bull;</span>
+      <span class="w-6 h-6 rounded-full ${isTokenPaid ? 'bg-emerald-500 text-white' : 'bg-blue-600 text-white animate-pulse'} flex items-center justify-center font-bold">
+        ${isTokenPaid ? '✔' : '&bull;'}
+      </span>
       <div>
         <strong class="text-slate-900 block">${dict.step3_title}</strong>
         <span class="text-slate-500">${STATE.language === 'hi' ? 'इंजीनियर आगमन:' : 'Engineer arrival:'} ${order.scheduled_install_date}</span>
@@ -1610,6 +1768,7 @@ function renderTracker(order) {
         <span class="text-slate-500">${dict.step4_sub}</span>
       </div>
     </div>
+    ${addrHtml}
   `;
 }
 
@@ -1684,6 +1843,21 @@ async function handlePaymentExecute() {
       STATE.activeOrder.payment_txn_id = receipt.txn_id;
       STATE.activeOrder.receipt = receipt;
       renderTracker(STATE.activeOrder);
+    }
+
+    // Simultaneous Funnel & Propensity Updation
+    try {
+      await fetch("/api/funnel/update-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_id: STATE.activeOrder?.order_id || "LEAD-ONLINE",
+          stage: "TOKEN_PAID",
+          propensity_boost: 30
+        })
+      });
+    } catch (funnelErr) {
+      console.warn("Funnel progression sync note:", funnelErr);
     }
 
     closePaymentModal();

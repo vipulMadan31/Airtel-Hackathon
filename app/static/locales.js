@@ -3,6 +3,9 @@ const LOCALES = {
   en: {
     brand_sub: "Airtel Business",
     app_title: "Project Udyam Digital",
+    nav_customer: "Customer Self-Serve",
+    nav_partner: "Airtel Mitra Partner",
+    nav_admin: "Enterprise Ops Admin",
     safe_mode: "Non-GST Safe Mode",
     partner_btn: "Partner Portal",
     advisor_title: "AI Business Advisor",
@@ -108,6 +111,9 @@ const LOCALES = {
   hi: {
     brand_sub: "एयरटेल बिज़नेस",
     app_title: "प्रोजेक्ट उद्यम डिजिटल",
+    nav_customer: "ग्राहक स्वयं-सेवा",
+    nav_partner: "एयरटेल मित्र पार्टनर",
+    nav_admin: "एंटरप्राइज ऑप्स एडमिन",
     safe_mode: "गैर-जीएसटी सेफ मोड",
     partner_btn: "पार्टनर पोर्टल",
     advisor_title: "एआई बिज़नेस एडवाइज़र",

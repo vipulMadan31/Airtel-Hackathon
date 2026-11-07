@@ -109,6 +109,7 @@ class CreateOrderRequest(BaseModel):
     kyc_status: str = "VERIFIED"
     language: str = "en"
     partner_id: Optional[str] = None
+    installation_address: Optional[Dict[str, Any]] = None
 
 class RescheduleRequest(BaseModel):
     new_date: str
@@ -355,7 +356,8 @@ def create_order(req: CreateOrderRequest):
         bundle_data=req.bundle_data,
         kyc_status=req.kyc_status,
         language=req.language,
-        partner_id=req.partner_id
+        partner_id=req.partner_id,
+        installation_address=req.installation_address
     )
 
 @app.get("/api/orders/{order_id}")
@@ -391,13 +393,41 @@ def create_payment_intent(req: PaymentIntentRequest):
 
 @app.post("/api/payment/confirm")
 def confirm_payment(req: PaymentConfirmRequest):
-    return payment_gw.confirm_payment(
+    receipt = payment_gw.confirm_payment(
         order_id=req.order_id or "",
         txn_id=req.txn_id,
         payment_method=req.payment_method,
         mandate_active=req.mandate_active,
         amount_inr=req.amount_inr
     )
+    # Simultaneous Funnel & Propensity Updation
+    if req.order_id:
+        order = order_sm.get_order(req.order_id)
+        if order and order.get("partner_attribution_id"):
+            partner_portal.commissions["active_referrals_count"] = partner_portal.commissions.get("active_referrals_count", 28) + 1
+            partner_portal.commissions["monthly_recurring_trail_inr"] = round(
+                partner_portal.commissions.get("monthly_recurring_trail_inr", 42850.0) + (order.get("monthly_total", 0.0) * 0.15), 2
+            )
+            partner_portal.commissions["total_pending_payout_inr"] = round(
+                partner_portal.commissions.get("total_pending_payout_inr", 16450.0) + 1000.0, 2
+            )
+    return receipt
+
+class FunnelProgressionRequest(BaseModel):
+    lead_id: Optional[str] = "L00003"
+    stage: str
+    propensity_boost: Optional[int] = 25
+
+@app.post("/api/funnel/update-lead")
+def update_funnel_lead(req: FunnelProgressionRequest):
+    return {
+        "status": "success",
+        "lead_id": req.lead_id,
+        "updated_stage": req.stage,
+        "new_propensity_score": 100 if req.stage in ["TOKEN_PAID", "ORDER_CONFIRMED"] else 85,
+        "fast_track_stp": True,
+        "updated_at": datetime.now().isoformat()
+    }
 
 @app.get("/api/payment/receipt/{order_id}")
 def get_order_receipt(order_id: str):

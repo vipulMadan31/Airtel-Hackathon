@@ -59,6 +59,8 @@ class OrderStateMachine:
                 conn.execute("ALTER TABLE orders ADD COLUMN receipt_json TEXT")
             if "partner_attribution_id" not in cols:
                 conn.execute("ALTER TABLE orders ADD COLUMN partner_attribution_id TEXT")
+            if "installation_address" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN installation_address TEXT")
             conn.commit()
 
     def create_order(
@@ -69,7 +71,8 @@ class OrderStateMachine:
         kyc_status: str = "VERIFIED",
         language: str = "en",
         typical_install_days: int = 5,
-        partner_id: Optional[str] = None
+        partner_id: Optional[str] = None,
+        installation_address: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         order_id = f"UDYAM-{uuid.uuid4().hex[:6].upper()}"
         install_date = (datetime.now() + timedelta(days=typical_install_days)).strftime("%Y-%m-%d")
@@ -79,8 +82,9 @@ class OrderStateMachine:
             INSERT INTO orders (
                 order_id, business_name, contact_phone, language,
                 bundle_json, monthly_total, kyc_status, current_milestone,
-                scheduled_install_date, engineer_name, engineer_phone, nps_rating, partner_attribution_id, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                scheduled_install_date, engineer_name, engineer_phone, nps_rating, 
+                partner_attribution_id, installation_address, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 order_id,
                 business_name,
@@ -95,6 +99,7 @@ class OrderStateMachine:
                 "+91 98765 43210",
                 None,
                 partner_id,
+                json.dumps(installation_address) if installation_address else None,
                 datetime.now().isoformat()
             ))
 
@@ -130,6 +135,12 @@ class OrderStateMachine:
                     res["receipt"] = None
             else:
                 res["receipt"] = None
+
+            if res.get("installation_address"):
+                try:
+                    res["installation_address"] = json.loads(res["installation_address"])
+                except Exception:
+                    pass
             return res
 
     def record_payment(
