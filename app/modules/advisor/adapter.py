@@ -94,6 +94,168 @@ class AdvisorAdapter:
         if emp_match:
             profile["employee_count"] = int(emp_match.group(1))
 
+        # 0b. Village / Rural / Outskirts Infrastructure Feasibility Check (Biz Fibre vs Biz 5G AirFiber)
+        rural_keywords = ["गांव", "देहात", "गाँव", "gram", "village", "rural", "kasba", "dehat", "panchayat", "basti", "outskirts", "dumra dehat", "dumra"]
+        no_wire_keywords = [
+            "no fiber", "no cable", "no wire", "wire nahi", "cable nahi", "taar nahi", "tar nahi", 
+            "bina taar", "bina wire", "khamba nahi", "pole nahi", "airfiber", "wireless", "bina tar", "bina wire wala",
+            "तार नहीं", "बिना तार", "केबल नहीं", "खंभा नहीं", "एयरफाइबर", "वायरलेस", "तार नहीं आई", "तार नहीं है", "केबल नहीं है",
+            "5g airfiber", "air fiber", "पहला", "1st", "option 1"
+        ]
+        has_wire_keywords = [
+            "fiber hai", "wire hai", "cable hai", "taar hai", "tar hai", "line aayi", "cable aayi",
+            "तार है", "केबल है", "फाइबर है", "तार आई", "लाइन है", "दूसरा", "2nd", "option 2",
+            "केबल आई", "तार पहुंची", "केबल पहुंची", "फाइबर वाला", "केबल वाला", "तार वाला", "फाइबर लगा", "केबल लगा"
+        ]
+
+        is_rural_mention = any(w in msg for w in rural_keywords) or profile.get("is_rural")
+        if is_rural_mention:
+            profile["is_rural"] = True
+            if any(w in msg for w in no_wire_keywords):
+                profile["prefers_airfiber"] = True
+                resp_msg = (
+                    "चूंकि आपके गांव में ऑप्टिकल फाइबर केबल नहीं है, आपके लिए सबसे उत्तम समाधान 'Biz 5G AirFiber 100' (₹899/माह) है। यह 100 Mbps का हाई-स्पीड वायरलेस वाई-फाई है जिसमें तार खींचने या खंभे की कोई जरूरत नहीं है—बस प्लग इन करें और तुरंत चालू! साथ ही दुकान पर डिजिटल पेमेंट्स व आवाज अलर्ट के लिए 'Cloud POS & UPI Soundbox' (₹599/माह) शामिल है। ₹2,500 का इंस्टॉलेशन शुल्क पूरी तरह माफ है।"
+                    if is_hindi else
+                    "Since physical optical fibre cables have not reached your village, the ideal solution is 'Biz 5G AirFiber 100' (@ ₹899/mo). It provides 100 Mbps high-speed wireless plug-and-play Wi-Fi with zero civil drilling or wire-pulling. We have included Cloud POS & UPI Soundbox (@ ₹599/mo) for instant payment voice alerts. The ₹2,500 setup fee is 100% waived."
+                )
+                tag_text = (
+                    "ग्रामीण व देहात क्षेत्र के लिए बिना तार वाला 100 Mbps वायरलेस 5G AirFiber"
+                    if is_hindi else
+                    "Zero-wire 100 Mbps plug-and-play 5G AirFiber for rural and village locations"
+                )
+                return {
+                    "intent": "recommendation",
+                    "message": resp_msg,
+                    "profile": profile,
+                    "recommended_bundle": {"P04": 1, "P19": 1},
+                    "explainability_tags": [
+                        {"product_id": "P04", "name": "Biz 5G AirFiber 100", "tag": tag_text},
+                        {"product_id": "P19", "name": "Cloud POS & UPI Soundbox", "tag": "दुकान पर यूपीआई पेमेंट साउंडबॉक्स व बिलिंग" if is_hindi else "UPI QR voice alert soundbox for shop"}
+                    ]
+                }
+            elif any(w in msg for w in has_wire_keywords) or profile.get("fiber_confirmed"):
+                profile["fiber_confirmed"] = True
+                resp_msg = (
+                    "बहुत बढ़िया! चूंकि आपकी बाजार/दुकान तक एयरटेल फाइबर की केबल उपलब्ध है, आपकी दुकान के लिए 'Biz Fibre 100' (₹999/माह) सबसे उपयुक्त है। यह 100 Mbps का अल्ट्रा-फास्ट ऑप्टिकल फाइबर ब्रॉडबैंड है जो फोन, वाई-फाई और निर्बाध बिलिंग सुनिश्चित करेगा। साथ ही दुकान पर तुरंत ऑडियो पेमेंट अलर्ट के लिए 'Cloud POS & UPI Soundbox' (₹599/माह) शामिल है। ₹2,500 का इंस्टॉलेशन शुल्क पूरी तरह माफ है।"
+                    if is_hindi else
+                    "Great! Since optical fiber cable is available at your market, the best solution for your shop is 'Biz Fibre 100' (@ ₹999/mo). This 100 Mbps optical fibre connection guarantees uninterrupted Wi-Fi, billing, and UPI transactions across your devices. We have included Cloud POS & UPI Soundbox (@ ₹599/mo) for instant payment voice alerts. The ₹2,500 setup fee is 100% waived."
+                )
+                tag_text = (
+                    "दुकान पर वाई-फाई और यूपीआई बिलिंग के लिए 100 Mbps ऑप्टिकल फाइबर ब्रॉडबैंड"
+                    if is_hindi else
+                    "100 Mbps optical fibre for shop Wi-Fi and UPI billing"
+                )
+                return {
+                    "intent": "recommendation",
+                    "message": resp_msg,
+                    "profile": profile,
+                    "recommended_bundle": {"P01": 1, "P19": 1},
+                    "explainability_tags": [
+                        {"product_id": "P01", "name": "Biz Fibre 100", "tag": tag_text},
+                        {"product_id": "P19", "name": "Cloud POS & UPI Soundbox", "tag": "दुकान पर यूपीआई पेमेंट साउंडबॉक्स व बिलिंग" if is_hindi else "UPI QR voice alert soundbox for shop"}
+                    ]
+                }
+            elif not any(w in msg for w in has_wire_keywords) and not profile.get("fiber_confirmed"):
+                resp_msg = (
+                    "नमस्ते! गांव/देहात क्षेत्र में आपकी दुकान के लिए Airtel Business में दो बेहतरीन विकल्प हैं:\n\n"
+                    "1️⃣ **Biz 5G AirFiber 100 (₹899/माह):** बिना किसी तार (केबल) वाला प्लग-एंड-प्ले वायरलेस 5G वाई-फाई (तुरंत चालू, बिना तार खींचे)।\n"
+                    "2️⃣ **Biz Fibre 100 (₹999/माह):** अगर आपके बाजार/गली तक एयरटेल की ऑप्टिकल फाइबर केबल की तार आई हुई है।\n\n"
+                    "क्या आपकी दुकान तक एयरटेल फाइबर की तार/केबल पहुंची हुई है, या आप बिना तार वाला 5G AirFiber लगवाना चाहेंगे?"
+                    if is_hindi else
+                    "Welcome! For shops in village and rural locations, Airtel Business offers two great solutions:\n\n"
+                    "1️⃣ **Biz 5G AirFiber 100 (₹899/mo):** Wireless plug-and-play 100 Mbps Wi-Fi (zero wire-pulling or poles, instant setup).\n"
+                    "2️⃣ **Biz Fibre 100 (₹999/mo):** Optical wireline broadband, if physical fiber cables are available in your market.\n\n"
+                    "Does your market have physical Airtel optical fiber cable installed, or would you prefer the wireless plug-and-play 5G AirFiber?"
+                )
+                return {
+                    "intent": "clarification",
+                    "message": resp_msg,
+                    "profile": profile,
+                    "recommended_bundle": None,
+                    "explainability_tags": []
+                }
+
+        # 0b. Village / Rural / Outskirts Infrastructure Feasibility Check (Biz Fibre vs Biz 5G AirFiber)
+        rural_keywords = ["गांव", "देहात", "गाँव", "gram", "village", "rural", "kasba", "dehat", "panchayat", "basti", "outskirts", "dumra dehat", "dumra"]
+        no_wire_keywords = [
+            "no fiber", "no cable", "no wire", "wire nahi", "cable nahi", "taar nahi", "tar nahi", 
+            "bina taar", "bina wire", "khamba nahi", "pole nahi", "airfiber", "wireless", "bina tar", "bina wire wala",
+            "तार नहीं", "बिना तार", "केबल नहीं", "खंभा नहीं", "एयरफाइबर", "वायरलेस", "तार नहीं आई", "तार नहीं है", "केबल नहीं है",
+            "5g airfiber", "air fiber", "पहला", "1st", "option 1"
+        ]
+        has_wire_keywords = [
+            "fiber hai", "wire hai", "cable hai", "taar hai", "tar hai", "line aayi", "cable aayi",
+            "तार है", "केबल है", "फाइबर है", "तार आई", "लाइन है", "दूसरा", "2nd", "option 2",
+            "केबल आई", "तार पहुंची", "केबल पहुंची", "फाइबर वाला", "केबल वाला", "तार वाला", "फाइबर लगा", "केबल लगा"
+        ]
+
+        is_rural_mention = any(w in msg for w in rural_keywords) or profile.get("is_rural")
+        if is_rural_mention:
+            profile["is_rural"] = True
+            if any(w in msg for w in no_wire_keywords):
+                profile["prefers_airfiber"] = True
+                resp_msg = (
+                    "चूंकि आपके गांव में ऑप्टिकल फाइबर केबल नहीं है, आपके लिए सबसे उत्तम समाधान 'Biz 5G AirFiber 100' (₹899/माह) है। यह 100 Mbps का हाई-स्पीड वायरलेस वाई-फाई है जिसमें तार खींचने या खंभे की कोई जरूरत नहीं है—बस प्लग इन करें और तुरंत चालू! साथ ही दुकान पर डिजिटल पेमेंट्स व आवाज अलर्ट के लिए 'Cloud POS & UPI Soundbox' (₹599/माह) शामिल है। ₹2,500 का इंस्टॉलेशन शुल्क पूरी तरह माफ है।"
+                    if is_hindi else
+                    "Since physical optical fibre cables have not reached your village, the ideal solution is 'Biz 5G AirFiber 100' (@ ₹899/mo). It provides 100 Mbps high-speed wireless plug-and-play Wi-Fi with zero civil drilling or wire-pulling. We have included Cloud POS & UPI Soundbox (@ ₹599/mo) for instant payment voice alerts. The ₹2,500 setup fee is 100% waived."
+                )
+                tag_text = (
+                    "ग्रामीण व देहात क्षेत्र के लिए बिना तार वाला 100 Mbps वायरलेस 5G AirFiber"
+                    if is_hindi else
+                    "Zero-wire 100 Mbps plug-and-play 5G AirFiber for rural and village locations"
+                )
+                return {
+                    "intent": "recommendation",
+                    "message": resp_msg,
+                    "profile": profile,
+                    "recommended_bundle": {"P04": 1, "P19": 1},
+                    "explainability_tags": [
+                        {"product_id": "P04", "name": "Biz 5G AirFiber 100", "tag": tag_text},
+                        {"product_id": "P19", "name": "Cloud POS & UPI Soundbox", "tag": "दुकान पर यूपीआई पेमेंट साउंडबॉक्स व बिलिंग" if is_hindi else "UPI QR voice alert soundbox for shop"}
+                    ]
+                }
+            elif any(w in msg for w in has_wire_keywords) or profile.get("fiber_confirmed"):
+                profile["fiber_confirmed"] = True
+                resp_msg = (
+                    "बहुत बढ़िया! चूंकि आपकी बाजार/दुकान तक एयरटेल फाइबर की केबल उपलब्ध है, आपकी दुकान के लिए 'Biz Fibre 100' (₹999/माह) सबसे उपयुक्त है। यह 100 Mbps का अल्ट्रा-फास्ट ऑप्टिकल फाइबर ब्रॉडबैंड है जो फोन, वाई-फाई और निर्बाध बिलिंग सुनिश्चित करेगा। साथ ही दुकान पर तुरंत ऑडियो पेमेंट अलर्ट के लिए 'Cloud POS & UPI Soundbox' (₹599/माह) शामिल है। ₹2,500 का इंस्टॉलेशन शुल्क पूरी तरह माफ है।"
+                    if is_hindi else
+                    "Great! Since optical fiber cable is available at your market, the best solution for your shop is 'Biz Fibre 100' (@ ₹999/mo). This 100 Mbps optical fibre connection guarantees uninterrupted Wi-Fi, billing, and UPI transactions across your devices. We have included Cloud POS & UPI Soundbox (@ ₹599/mo) for instant payment voice alerts. The ₹2,500 setup fee is 100% waived."
+                )
+                tag_text = (
+                    "दुकान पर वाई-फाई और यूपीआई बिलिंग के लिए 100 Mbps ऑप्टिकल फाइबर ब्रॉडबैंड"
+                    if is_hindi else
+                    "100 Mbps optical fibre for shop Wi-Fi and UPI billing"
+                )
+                return {
+                    "intent": "recommendation",
+                    "message": resp_msg,
+                    "profile": profile,
+                    "recommended_bundle": {"P01": 1, "P19": 1},
+                    "explainability_tags": [
+                        {"product_id": "P01", "name": "Biz Fibre 100", "tag": tag_text},
+                        {"product_id": "P19", "name": "Cloud POS & UPI Soundbox", "tag": "दुकान पर यूपीआई पेमेंट साउंडबॉक्स व बिलिंग" if is_hindi else "UPI QR voice alert soundbox for shop"}
+                    ]
+                }
+            elif not any(w in msg for w in has_wire_keywords) and not profile.get("fiber_confirmed"):
+                resp_msg = (
+                    "नमस्ते! गांव/देहात क्षेत्र में आपकी दुकान के लिए Airtel Business में दो बेहतरीन विकल्प हैं:\n\n"
+                    "1️⃣ **Biz 5G AirFiber 100 (₹899/माह):** बिना किसी तार (केबल) वाला प्लग-एंड-प्ले वायरलेस 5G वाई-फाई (तुरंत चालू, बिना तार खींचे)।\n"
+                    "2️⃣ **Biz Fibre 100 (₹999/माह):** अगर आपके बाजार/गली तक एयरटेल की ऑप्टिकल फाइबर केबल की तार आई हुई है।\n\n"
+                    "क्या आपकी दुकान तक एयरटेल फाइबर की तार/केबल पहुंची हुई है, या आप बिना तार वाला 5G AirFiber लगवाना चाहेंगे?"
+                    if is_hindi else
+                    "Welcome! For shops in village and rural locations, Airtel Business offers two great solutions:\n\n"
+                    "1️⃣ **Biz 5G AirFiber 100 (₹899/mo):** Wireless plug-and-play 100 Mbps Wi-Fi (zero wire-pulling or poles, instant setup).\n"
+                    "2️⃣ **Biz Fibre 100 (₹999/mo):** Optical wireline broadband, if physical fiber cables are available in your market.\n\n"
+                    "Does your market have physical Airtel optical fiber cable installed, or would you prefer the wireless plug-and-play 5G AirFiber?"
+                )
+                return {
+                    "intent": "clarification",
+                    "message": resp_msg,
+                    "profile": profile,
+                    "recommended_bundle": None,
+                    "explainability_tags": []
+                }
+
         # 1. Feasibility & Boundary Inquiries (50 Mbps, 1G in Tier 2, Leased Line without GST, Faster Wifi)
         # 1a. 50 Mbps / Sub-100 Mbps speed inquiry
         if any(w in msg for w in ["50 mbps", "50mbps", "50 mb", "50mb", "30 mbps", "20 mbps", "slower plan", "kam speed"]):
@@ -538,6 +700,21 @@ FEASIBILITY & STATUTORY RULES:
 - P03 (Biz Fibre 1G) is TIER-1 ONLY. In Tier-2/3, maximum broadband speed is 300 Mbps (P02 @ ₹1,499).
 - Broadband fibre (P01, P02, P04) is accessible WITHOUT GSTIN.
 - STRICT GUARDRAIL: NEVER tell the customer "Since you do not have a GSTIN" or assume their GST status! Do NOT preach about GST unprompted!
+- VILLAGE / RURAL / REMOTE INFRASTRUCTURE FEASIBILITY (CRITICAL):
+  - In villages, rural areas, dehat, kasba, gram panchayats, or small towns (e.g. 'गांव', 'देहात', 'गाँव', 'village', 'rural', 'dumra dehat'):
+    Physical optical wireline fibre (FTTH) may NOT be available or laid yet!
+  - If the customer mentions a village or rural location and has NOT explicitly confirmed whether physical fiber cable is present:
+    DO NOT ASSUME BIZ FIBRE 100!
+    Instead, set intent="clarification", recommended_bundle=null, and ask:
+    "गांव/देहात क्षेत्र में आपकी दुकान के लिए Airtel Business में दो विकल्प उपलब्ध हैं:
+    1) Biz 5G AirFiber 100 (₹899/माह): बिना तार वाला प्लग-एंड-प्ले वायरलेस वाई-फाई (तुरंत चालू, बिना तार खींचे)।
+    2) Biz Fibre 100 (₹999/माह): अगर आपके बाजार/दुकान तक एयरटेल की ऑप्टिकल फाइबर केबल की तार पहुंची हुई है।
+    क्या आपकी दुकान तक एयरटेल फाइबर की तार/केबल पहुंची हुई है, या आप बिना तार वाला 5G AirFiber लगवाना चाहेंगे?"
+    (or in English if chatting in English).
+  - If the customer mentions that there is NO wire / cable ("bina taar", "no wire", "no cable", "taar nahi hai") or asks for wireless or confirms AirFiber:
+    Set intent="recommendation". Recommend Biz 5G AirFiber 100 (P04 @ ₹899) + Cloud POS & UPI Soundbox (P19 @ ₹599).
+    Set recommended_bundle={"P04": 1, "P19": 1}.
+    Explain that Biz 5G AirFiber needs zero civil drilling or wire-pulling, works over 5G mobile towers, and is ideal for village shops!
 
 CRITICAL INSTRUCTIONS FOR INTENT ROUTING:
 
