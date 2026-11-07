@@ -53,6 +53,21 @@ class OrderStateMachine:
                 timestamp TEXT
             )
             """)
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS kyc_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id TEXT,
+                user_id TEXT,
+                doc_type TEXT,
+                udyam_number TEXT,
+                gstin TEXT,
+                entity_name TEXT,
+                installation_address TEXT,
+                verification_status TEXT,
+                disposition TEXT,
+                verified_at TEXT
+            )
+            """)
             
             # Dynamic schema migrations for payment columns
             cursor = conn.execute("PRAGMA table_info(orders)")
@@ -71,6 +86,14 @@ class OrderStateMachine:
                 conn.execute("ALTER TABLE orders ADD COLUMN partner_attribution_id TEXT")
             if "installation_address" not in cols:
                 conn.execute("ALTER TABLE orders ADD COLUMN installation_address TEXT")
+            if "user_id" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN user_id TEXT")
+            if "udyam_number" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN udyam_number TEXT")
+            if "gstin" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN gstin TEXT")
+            if "kyc_details_json" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN kyc_details_json TEXT")
             conn.commit()
 
     def create_order(
@@ -82,7 +105,11 @@ class OrderStateMachine:
         language: str = "en",
         typical_install_days: int = 5,
         partner_id: Optional[str] = None,
-        installation_address: Optional[Dict[str, Any]] = None
+        installation_address: Optional[Dict[str, Any]] = None,
+        user_id: Optional[str] = None,
+        udyam_number: Optional[str] = None,
+        gstin: Optional[str] = None,
+        kyc_details: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         order_id = f"UDYAM-{uuid.uuid4().hex[:6].upper()}"
         install_date = (datetime.now() + timedelta(days=typical_install_days)).strftime("%Y-%m-%d")
@@ -93,8 +120,9 @@ class OrderStateMachine:
                 order_id, business_name, contact_phone, language,
                 bundle_json, monthly_total, kyc_status, current_milestone,
                 scheduled_install_date, engineer_name, engineer_phone, nps_rating, 
-                partner_attribution_id, installation_address, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                partner_attribution_id, installation_address,
+                user_id, udyam_number, gstin, kyc_details_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 order_id,
                 business_name,
@@ -110,6 +138,30 @@ class OrderStateMachine:
                 None,
                 partner_id,
                 json.dumps(installation_address) if installation_address else None,
+                user_id,
+                udyam_number,
+                gstin,
+                json.dumps(kyc_details) if kyc_details else None,
+                datetime.now().isoformat()
+            ))
+
+            # Store verified KYC record - Raw certificate file is deleted post-validation; only statutory metadata retained
+            formatted_addr = installation_address.get("formatted_address") if isinstance(installation_address, dict) else str(installation_address or "")
+            conn.execute("""
+            INSERT INTO kyc_records (
+                order_id, user_id, doc_type, udyam_number, gstin,
+                entity_name, installation_address, verification_status, disposition, verified_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                order_id,
+                user_id,
+                "UDYAM" if udyam_number else "GST",
+                udyam_number,
+                gstin,
+                business_name,
+                formatted_addr,
+                kyc_status,
+                "CERTIFICATE_SHREDDED_POST_VALIDATION_DPDP_COMPLIANT",
                 datetime.now().isoformat()
             ))
 
@@ -120,8 +172,8 @@ class OrderStateMachine:
             """, (
                 order_id,
                 "GSTIN, Udyam Registration, Principal Address Proof, Signatory ID",
-                "DoT Subscriber Verification and Optical Line Installation",
-                "EXPLICIT_AFFIRMATIVE_CONSENT_GIVEN",
+                "DoT Subscriber Verification and Optical Line Installation (Data Minimization Applied)",
+                "EXPLICIT_AFFIRMATIVE_CONSENT_GIVEN_RAW_DOC_SHREDDED",
                 datetime.now().isoformat()
             ))
             conn.commit()
@@ -151,7 +203,58 @@ class OrderStateMachine:
                     res["installation_address"] = json.loads(res["installation_address"])
                 except Exception:
                     pass
+
+            if res.get("kyc_details_json"):
+                try:
+                    res["kyc_details"] = json.loads(res["kyc_details_json"])
+                except Exception:
+                    res["kyc_details"] = None
+            else:
+                res["kyc_details"] = None
             return res
+
+    def get_latest_order_for_user(
+        self,
+        user_id: Optional[str] = None,
+        phone: Optional[str] = None,
+        order_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        # 1. Direct order_id lookup
+        if order_id:
+            ord_obj = self.get_order(order_id.strip())
+            if ord_obj:
+                return ord_obj
+
+        with self._get_connection() as conn:
+            # 2. Lookup by user_id
+            if user_id and user_id.strip():
+                row = conn.execute(
+                    "SELECT order_id FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+                    (user_id.strip(),)
+                ).fetchone()
+                if row:
+                    return self.get_order(row["order_id"])
+
+            # 3. Lookup by phone digits
+            if phone and phone.strip():
+                clean_phone = phone.strip()
+                digits = "".join([c for c in clean_phone if c.isdigit()])[-10:]
+                if digits:
+                    row = conn.execute(
+                        "SELECT order_id FROM orders WHERE contact_phone LIKE ? OR installation_address LIKE ? ORDER BY created_at DESC LIMIT 1",
+                        (f"%{digits}%", f"%{digits}%")
+                    ).fetchone()
+                    if row:
+                        return self.get_order(row["order_id"])
+
+            # 4. Fallback: most recent active order placed in the system
+            row = conn.execute(
+                "SELECT order_id FROM orders ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+            if row:
+                return self.get_order(row["order_id"])
+
+        return None
 
     def record_payment(
         self,

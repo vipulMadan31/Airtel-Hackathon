@@ -112,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
   try { checkKycTokenHandoff(); } catch (e) {}
   try { checkPartnerAttribution(); } catch (e) {}
   try { initViewRouter(); } catch (e) {}
+  try { restoreActiveOrderIfAny(); } catch (e) { console.error("restoreActiveOrder error:", e); }
 });
 
 // --- INITIAL VIEW ROUTER ---
@@ -121,10 +122,14 @@ function initViewRouter() {
   const roleParam = (urlParams.get("role") || "").toUpperCase();
 
   const isAuthed = !!(STATE.auth && STATE.auth.token && STATE.auth.user);
+  let hasActiveOrder = false;
+  try {
+    hasActiveOrder = !!(localStorage.getItem("udyam_active_order_id") || localStorage.getItem("udyam_active_order_data"));
+  } catch (e) {}
 
-  // When visiting http://127.0.0.1:8000 or /login without an active authenticated session,
+  // When visiting without an active authenticated session or active order,
   // directly present the Login Page / Authentication Modal
-  if (!isAuthed || path === "/login") {
+  if ((!isAuthed && !hasActiveOrder) || path === "/login") {
     let targetTab = "MERCHANT";
     if (path === "/mitra" || roleParam === "PARTNER") targetTab = "PARTNER";
     if (path === "/ops" || path === "/admin" || roleParam === "ADMIN") targetTab = "ADMIN";
@@ -1095,6 +1100,9 @@ function saveAuthSession(data) {
   } catch (e) {}
   updateAuthUI();
   updateRoleSwitcherUI();
+  if (STATE.auth.role === 'MERCHANT') {
+    try { restoreActiveOrderIfAny(); } catch (e) {}
+  }
 }
 
 window.handleLogout = async function() {
@@ -1109,6 +1117,8 @@ window.handleLogout = async function() {
 
   try {
     localStorage.removeItem("udyam_auth");
+    localStorage.removeItem("udyam_active_order_id");
+    localStorage.removeItem("udyam_active_order_data");
   } catch (e) {}
 
   STATE.auth = {
@@ -1116,6 +1126,14 @@ window.handleLogout = async function() {
     token: null,
     user: null
   };
+  STATE.activeOrder = null;
+
+  const trackerCard = document.getElementById("trackerCard");
+  const quoteCard = document.getElementById("quoteCard");
+  const kycCard = document.getElementById("kycCard");
+  if (trackerCard) trackerCard.classList.add("hidden");
+  if (kycCard) kycCard.classList.add("hidden");
+  if (quoteCard) quoteCard.classList.remove("hidden");
 
   updateAuthUI();
   openAuthModal("MERCHANT", "login", false);
@@ -1579,6 +1597,7 @@ async function handleFileUpload(e, docType) {
   const file = e.target.files[0];
   if (!file) return;
 
+  const localPreviewUrl = URL.createObjectURL(file);
   const formData = new FormData();
   formData.append("file", file);
 
@@ -1590,6 +1609,7 @@ async function handleFileUpload(e, docType) {
       body: formData
     });
     const data = await res.json();
+    data.local_preview_url = localPreviewUrl;
     populateExtractedDocData(data);
   } catch (err) {
     alert("Upload or OCR failed. Please check network connection.");
@@ -1632,7 +1652,12 @@ function populateExtractedDocData(data, code = "CUSTOM") {
   container.classList.remove("hidden");
 
   // Preview Image
-  document.getElementById("docPreviewImg").src = data.image_url;
+  const previewImg = document.getElementById("docPreviewImg");
+  if (data.local_preview_url) {
+    previewImg.src = data.local_preview_url;
+  } else if (data.image_url) {
+    previewImg.src = data.image_url;
+  }
   document.getElementById("docPreviewName").innerText = data.file_name || "Document Preview";
   document.getElementById("docTypeDetected").innerText = `Detected: ${data.document_type.replace('_', ' ')}`;
   document.getElementById("docRawSnippet").innerText = data.raw_text ? `OCR Text: ${data.raw_text}` : "No clear text extracted";
@@ -2206,22 +2231,38 @@ async function handleConfirmOrder() {
     formatted_address: `${unitNo}, ${building}, ${street}, Landmark: ${landmark}, ${city} - ${pincode}`
   };
 
+  const phoneMatch = contact.match(/(\+?\d[\d\s-]{8,})/);
+  const cleanPhone = phoneMatch ? phoneMatch[0].replace(/[\s-]/g, '') : (STATE.auth?.user?.phone || "+919876512345");
+  const extractedUdyam = document.getElementById("extractedUdyamInput")?.value?.trim() || null;
+  const extractedGstin = document.getElementById("extractedGstinInput")?.value?.trim() || null;
+
   try {
     const res = await fetch("/api/orders/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         business_name: document.getElementById("extractedNameInput").value || "Star Electronics",
-        contact_phone: contact.split(" ")[0] || "+91 98765 12345",
+        contact_phone: cleanPhone,
         bundle_data: STATE.activeQuote,
         kyc_status: "VERIFIED",
         language: STATE.language,
         partner_id: STATE.attribution.partner_id || (STATE.auth.role === 'PARTNER' ? STATE.auth.user.user_id : null),
-        installation_address: installationAddress
+        installation_address: installationAddress,
+        user_id: STATE.auth?.user?.user_id || null,
+        udyam_number: extractedUdyam,
+        gstin: extractedGstin,
+        kyc_details: STATE.kycDecision || STATE.lastExtractedDoc || null
       })
     });
     const order = await res.json();
     STATE.activeOrder = order;
+
+    try {
+      localStorage.setItem("udyam_active_order_id", order.order_id);
+      localStorage.setItem("udyam_active_order_data", JSON.stringify(order));
+    } catch (e) {
+      console.warn("Storage write note:", e);
+    }
 
     if (window.syncCustomerLeadActivity) {
       window.syncCustomerLeadActivity("ADDRESS_ENTERED", {
@@ -2232,8 +2273,13 @@ async function handleConfirmOrder() {
       });
     }
 
-    document.getElementById("kycCard").classList.add("hidden");
-    document.getElementById("trackerCard").classList.remove("hidden");
+    const quoteCard = document.getElementById("quoteCard");
+    const kycCard = document.getElementById("kycCard");
+    const trackerCard = document.getElementById("trackerCard");
+
+    if (quoteCard) quoteCard.classList.add("hidden");
+    if (kycCard) kycCard.classList.add("hidden");
+    if (trackerCard) trackerCard.classList.remove("hidden");
 
     renderTracker(order);
 
@@ -2319,6 +2365,87 @@ function renderTracker(order) {
   `;
 }
 
+// --- ACTIVE ORDER PERSISTENCE & RESTORATION ---
+async function restoreActiveOrderIfAny() {
+  // If viewing Mitra Partner or Ops Admin portals, do not override partner/admin views
+  if (STATE.auth && (STATE.auth.role === 'PARTNER' || STATE.auth.role === 'ADMIN')) {
+    return;
+  }
+
+  let savedOrderId = null;
+  let savedOrderData = null;
+
+  try {
+    savedOrderId = localStorage.getItem("udyam_active_order_id");
+    const rawData = localStorage.getItem("udyam_active_order_data");
+    if (rawData) {
+      savedOrderData = JSON.parse(rawData);
+    }
+  } catch (e) {
+    console.warn("Storage read note:", e);
+  }
+
+  // 1. Instant local restore (zero flicker)
+  if (savedOrderData && savedOrderData.order_id) {
+    STATE.activeOrder = savedOrderData;
+    showOrderTrackerView(savedOrderData);
+  }
+
+  // 2. Authoritative sync with backend SQLite database
+  const userId = STATE.auth?.user?.user_id || "";
+  const phone = STATE.auth?.user?.phone || "";
+
+  const queryParams = new URLSearchParams();
+  if (savedOrderId) queryParams.set("order_id", savedOrderId);
+  if (userId) queryParams.set("user_id", userId);
+  if (phone) queryParams.set("phone", phone);
+
+  try {
+    const res = await fetch(`/api/orders/user/latest?${queryParams.toString()}`);
+    if (res.ok) {
+      const order = await res.json();
+      if (order && order.order_id) {
+        STATE.activeOrder = order;
+        try {
+          localStorage.setItem("udyam_active_order_id", order.order_id);
+          localStorage.setItem("udyam_active_order_data", JSON.stringify(order));
+        } catch (e) {}
+        showOrderTrackerView(order);
+      }
+    }
+  } catch (err) {
+    console.warn("Could not sync latest order from server:", err);
+  }
+}
+
+function showOrderTrackerView(order) {
+  const quoteCard = document.getElementById("quoteCard");
+  const kycCard = document.getElementById("kycCard");
+  const trackerCard = document.getElementById("trackerCard");
+
+  if (quoteCard) quoteCard.classList.add("hidden");
+  if (kycCard) kycCard.classList.add("hidden");
+  if (trackerCard) {
+    trackerCard.classList.remove("hidden");
+    renderTracker(order);
+  }
+}
+
+window.clearActiveOrderAndStartNew = function() {
+  STATE.activeOrder = null;
+  try {
+    localStorage.removeItem("udyam_active_order_id");
+    localStorage.removeItem("udyam_active_order_data");
+  } catch (e) {}
+  const trackerCard = document.getElementById("trackerCard");
+  const quoteCard = document.getElementById("quoteCard");
+  const kycCard = document.getElementById("kycCard");
+  if (trackerCard) trackerCard.classList.add("hidden");
+  if (kycCard) kycCard.classList.add("hidden");
+  if (quoteCard) quoteCard.classList.remove("hidden");
+  recalculateQuote();
+};
+
 // --- SIMULATED PAYMENT GATEWAY & UPI AUTOPAY ---
 async function openPaymentModal(orderId = null) {
   const modal = document.getElementById("paymentModal");
@@ -2389,6 +2516,10 @@ async function handlePaymentExecute() {
       STATE.activeOrder.token_paid = true;
       STATE.activeOrder.payment_txn_id = receipt.txn_id;
       STATE.activeOrder.receipt = receipt;
+      try {
+        localStorage.setItem("udyam_active_order_data", JSON.stringify(STATE.activeOrder));
+        localStorage.setItem("udyam_active_order_id", STATE.activeOrder.order_id);
+      } catch (e) {}
       renderTracker(STATE.activeOrder);
     }
 

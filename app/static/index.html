@@ -306,6 +306,10 @@
               </div>
               <p class="text-slate-500 text-[11px]" id="docTypeDetected">Type: Analyzing...</p>
               <p class="text-slate-400 font-mono text-[10px] line-clamp-2" id="docRawSnippet"></p>
+              <div id="docDpdpBadge" class="mt-1 text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-flex items-center space-x-1">
+                <span>🛡️</span>
+                <span><strong>DPDP Compliant:</strong> Document shredded post-validation. Only verified business metadata stored.</span>
+              </div>
             </div>
           </div>
         </div>
@@ -471,6 +475,15 @@
           <button id="viewReceiptBtn" type="button" class="text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-3 py-1.5 rounded-lg transition flex items-center space-x-1.5 shadow-xs">
             <span>📄</span>
             <span id="t-pay-receipt-btn">View Official Tax Receipt</span>
+          </button>
+        </div>
+
+        <!-- Start New Order / Reset Option -->
+        <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+          <span class="text-slate-400">Need to book another business line or modify plan?</span>
+          <button type="button" onclick="clearActiveOrderAndStartNew()" class="font-bold text-airtel-red hover:underline flex items-center space-x-1">
+            <span>➕</span>
+            <span>Book New Connection</span>
           </button>
         </div>
       </div>

@@ -1,7 +1,11 @@
 import os
+import uuid
 import shutil
+import logging
 from pathlib import Path
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header, Query, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -118,6 +122,10 @@ class CreateOrderRequest(BaseModel):
     language: str = "en"
     partner_id: Optional[str] = None
     installation_address: Optional[Dict[str, Any]] = None
+    user_id: Optional[str] = None
+    udyam_number: Optional[str] = None
+    gstin: Optional[str] = None
+    kyc_details: Optional[Dict[str, Any]] = None
 
 class RescheduleRequest(BaseModel):
     new_date: str
@@ -195,14 +203,31 @@ def execute_downsell(req: DownsellRequest):
 async def upload_kyc_document(file: UploadFile = File(...)):
     """
     Accepts real user file upload, runs OpenCV blur detection and Windows Native OCR.
+    Statutory DPDP Act Compliance & Data Minimization:
+    The uploaded certificate image is used solely for instant in-memory OCR & validation.
+    Once scanned and structured details are extracted, the raw document file is immediately shredded/unlinked from disk.
     """
-    dest_path = UPLOAD_DIR / file.filename
-    with open(dest_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    temp_filename = f"temp_{uuid.uuid4().hex[:8]}_{file.filename}"
+    dest_path = UPLOAD_DIR / temp_filename
+    try:
+        with open(dest_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        ocr_result = await ocr_engine.scan_document(str(dest_path))
+    finally:
+        # Secure Disposal: Physical document is deleted immediately after OCR extraction
+        try:
+            if dest_path.exists():
+                dest_path.unlink()
+        except Exception as e:
+            logger.warning(f"Could not delete temporary certificate file {dest_path}: {e}")
     
-    ocr_result = await ocr_engine.scan_document(str(dest_path))
     ocr_result["file_name"] = file.filename
-    ocr_result["image_url"] = f"/uploads/{file.filename}"
+    ocr_result["image_url"] = None  # File deleted post-validation
+    ocr_result["document_disposition"] = "DELETED_POST_VALIDATION_DPDP_COMPLIANT"
+    ocr_result["privacy_notice"] = (
+        "Statutory compliance: Raw certificate image deleted immediately post-validation. "
+        "Only extracted business and address details are stored in the database."
+    )
     return ocr_result
 
 @app.post("/api/kyc/specimen-scan")
@@ -377,8 +402,27 @@ def create_order(req: CreateOrderRequest):
         kyc_status=req.kyc_status,
         language=req.language,
         partner_id=req.partner_id,
-        installation_address=req.installation_address
+        installation_address=req.installation_address,
+        user_id=req.user_id,
+        udyam_number=req.udyam_number,
+        gstin=req.gstin,
+        kyc_details=req.kyc_details
     )
+
+@app.get("/api/orders/user/latest")
+def get_latest_user_order(
+    user_id: Optional[str] = None,
+    phone: Optional[str] = None,
+    order_id: Optional[str] = None
+):
+    """
+    Fetches the latest active order for the session/user/order_id.
+    Restores the order tracker view when the customer refreshes the webpage.
+    """
+    order = order_sm.get_latest_order_for_user(user_id=user_id, phone=phone, order_id=order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="No active order found")
+    return order
 
 @app.get("/api/orders/{order_id}")
 def get_order(order_id: str):

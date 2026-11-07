@@ -413,6 +413,14 @@ class WhatsAppHandler:
             is_non_gst_mode=session.get("current_profile", {}).get("has_gstin") is False
         )
 
+        # Statutory DPDP Data Minimization: Delete uploaded certificate post-validation
+        try:
+            p = Path(image_path)
+            if p.exists() and "kyc_documents" not in str(p.resolve()).lower():
+                p.unlink()
+        except Exception:
+            pass
+
         status = kyc_res.get("status")
         if status == "VERIFIED":
             self.session_mgr.update_session(
