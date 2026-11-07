@@ -41,18 +41,26 @@ const STATE = {
 
 window.STATE = STATE;
 
+// Helper: Fail-proof event attachment
+function safeOn(id, event, handler) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(event, handler);
+}
+
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
-  initEventListeners();
-  applyLanguage('en');
-  addAiChatMessage(
-    "Namaste! Welcome to Airtel Business. Tell me about your business (type, employees, locations) and I will craft the ideal digital bundle."
-  );
-  recalculateQuote();
-  initNpsButtons();
-  checkKycTokenHandoff();
-  checkPartnerAttribution();
-  initViewRouter();
+  try { initEventListeners(); } catch (e) { console.error("initEventListeners error:", e); }
+  try { applyLanguage('en'); } catch (e) { console.error("applyLanguage error:", e); }
+  try {
+    addAiChatMessage(
+      "Namaste! Welcome to Airtel Business. Tell me about your business (type, employees, locations) and I will craft the ideal digital bundle."
+    );
+  } catch (e) {}
+  try { recalculateQuote(); } catch (e) {}
+  try { initNpsButtons(); } catch (e) {}
+  try { checkKycTokenHandoff(); } catch (e) {}
+  try { checkPartnerAttribution(); } catch (e) {}
+  try { initViewRouter(); } catch (e) {}
 });
 
 // --- INITIAL VIEW ROUTER ---
@@ -696,11 +704,11 @@ function updateSafeModeUI() {
 // --- EVENT LISTENERS ---
 function initEventListeners() {
   // Language Switcher
-  document.getElementById("langEn").addEventListener("click", () => applyLanguage('en'));
-  document.getElementById("langHi").addEventListener("click", () => applyLanguage('hi'));
+  safeOn("langEn", "click", () => applyLanguage('en'));
+  safeOn("langHi", "click", () => applyLanguage('hi'));
 
   // Safe Mode Toggle
-  document.getElementById("safeModeToggle").addEventListener("change", (e) => {
+  safeOn("safeModeToggle", "change", (e) => {
     STATE.safeModeNonGst = e.target.checked;
     STATE.profile.has_gstin = !e.target.checked;
     if (STATE.safeModeNonGst) {
@@ -714,22 +722,19 @@ function initEventListeners() {
 
   // Chat Send
   const chatInputEl = document.getElementById("chatInput");
-  document.getElementById("sendBtn").addEventListener("click", handleChatSubmit);
+  safeOn("sendBtn", "click", handleChatSubmit);
   
   if (chatInputEl) {
     chatInputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         if (e.shiftKey) {
-          // Shift+Enter allows newline naturally
           return;
         }
-        // Enter without Shift submits message
         e.preventDefault();
         handleChatSubmit();
       }
     });
 
-    // Auto-grow textarea smoothly as user types multiline
     chatInputEl.addEventListener("input", () => {
       chatInputEl.style.height = "auto";
       chatInputEl.style.height = Math.min(chatInputEl.scrollHeight, 120) + "px";
@@ -740,27 +745,26 @@ function initEventListeners() {
   document.querySelectorAll(".chip-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const msg = STATE.language === 'hi' ? btn.getAttribute("data-msg-hi") : btn.getAttribute("data-msg-en");
-      document.getElementById("chatInput").value = msg;
+      const inEl = document.getElementById("chatInput");
+      if (inEl) inEl.value = msg;
       handleChatSubmit();
     });
   });
 
   // Downsell Button
-  document.getElementById("downsellBtn").addEventListener("click", handleDownsell);
+  safeOn("downsellBtn", "click", handleDownsell);
 
   // 3-Bucket Catalog Modal
-  document.getElementById("browseAllPlansBtn").addEventListener("click", openCatalogModal);
-  document.getElementById("closeCatalogModalBtn").addEventListener("click", closeCatalogModal);
+  safeOn("browseAllPlansBtn", "click", openCatalogModal);
+  safeOn("closeCatalogModalBtn", "click", closeCatalogModal);
 
   // Partner Modal
-  document.getElementById("partnerPortalBtn").addEventListener("click", openPartnerModal);
-  document.getElementById("closePartnerModalBtn").addEventListener("click", closePartnerModal);
+  safeOn("partnerPortalBtn", "click", openPartnerModal);
+  safeOn("closePartnerModalBtn", "click", closePartnerModal);
 
   // Admin Modal
-  const adminPortalBtn = document.getElementById("adminPortalBtn");
-  if (adminPortalBtn) adminPortalBtn.addEventListener("click", openAdminModal);
-  const closeAdminModalBtn = document.getElementById("closeAdminModalBtn");
-  if (closeAdminModalBtn) closeAdminModalBtn.addEventListener("click", closeAdminModal);
+  safeOn("adminPortalBtn", "click", openAdminModal);
+  safeOn("closeAdminModalBtn", "click", closeAdminModal);
 
   // Role Switcher Dropdown Toggle
   const roleDropdownBtn = document.getElementById("roleDropdownBtn");
@@ -778,43 +782,40 @@ function initEventListeners() {
   }
 
   // Top Navigation Bar Tab Handlers
-  const navMerchant = document.getElementById("navTabMerchant");
-  if (navMerchant) navMerchant.addEventListener("click", () => switchUserRole("MERCHANT"));
-  const navPartner = document.getElementById("navTabPartner");
-  if (navPartner) navPartner.addEventListener("click", () => switchUserRole("PARTNER"));
-  const navAdmin = document.getElementById("navTabAdmin");
-  if (navAdmin) navAdmin.addEventListener("click", () => switchUserRole("ADMIN"));
+  safeOn("navTabMerchant", "click", () => switchUserRole("MERCHANT"));
+  safeOn("navTabPartner", "click", () => switchUserRole("PARTNER"));
+  safeOn("navTabAdmin", "click", () => switchUserRole("ADMIN"));
 
   // UI-Only KYC Track Selector
-  initKycTrackSelector();
+  try { initKycTrackSelector(); } catch (e) { console.warn("Track selector init note:", e); }
 
   // Role Persona Switch Handlers
-  const switchMerchantBtn = document.getElementById("switchRoleMerchant");
-  if (switchMerchantBtn) switchMerchantBtn.addEventListener("click", () => switchUserRole("MERCHANT"));
-  const switchPartnerBtn = document.getElementById("switchRolePartner");
-  if (switchPartnerBtn) switchPartnerBtn.addEventListener("click", () => switchUserRole("PARTNER"));
-  const switchAdminBtn = document.getElementById("switchRoleAdmin");
-  if (switchAdminBtn) switchAdminBtn.addEventListener("click", () => switchUserRole("ADMIN"));
+  safeOn("switchRoleMerchant", "click", () => switchUserRole("MERCHANT"));
+  safeOn("switchRolePartner", "click", () => switchUserRole("PARTNER"));
+  safeOn("switchRoleAdmin", "click", () => switchUserRole("ADMIN"));
 
   // Step Transitions
-  document.getElementById("proceedKycBtn").addEventListener("click", () => {
-    document.getElementById("quoteCard").classList.add("hidden");
-    document.getElementById("kycCard").classList.remove("hidden");
-    // Pre-populate installation address city and pincode from profile if present
+  safeOn("proceedKycBtn", "click", () => {
+    const qCard = document.getElementById("quoteCard");
+    const kCard = document.getElementById("kycCard");
+    if (qCard) qCard.classList.add("hidden");
+    if (kCard) kCard.classList.remove("hidden");
     const cityInput = document.getElementById("installCity");
     const pinInput = document.getElementById("installPincode");
     if (cityInput && STATE.profile.city) cityInput.value = STATE.profile.city;
     if (pinInput && STATE.profile.pincode) pinInput.value = STATE.profile.pincode;
   });
 
-  document.getElementById("backToQuoteBtn").addEventListener("click", () => {
-    document.getElementById("kycCard").classList.add("hidden");
-    document.getElementById("quoteCard").classList.remove("hidden");
+  safeOn("backToQuoteBtn", "click", () => {
+    const kCard = document.getElementById("kycCard");
+    const qCard = document.getElementById("quoteCard");
+    if (kCard) kCard.classList.add("hidden");
+    if (qCard) qCard.classList.remove("hidden");
   });
 
   // DOCUMENT UPLOADS: Real File Handlers
-  document.getElementById("gstFileInput").addEventListener("change", (e) => handleFileUpload(e, "gst"));
-  document.getElementById("addressFileInput").addEventListener("change", (e) => handleFileUpload(e, "address"));
+  safeOn("gstFileInput", "change", (e) => handleFileUpload(e, "gst"));
+  safeOn("addressFileInput", "change", (e) => handleFileUpload(e, "address"));
 
   // Specimen Quick Loaders
   document.querySelectorAll(".specimen-chip").forEach(btn => {
@@ -825,17 +826,16 @@ function initEventListeners() {
   });
 
   // Verify Extracted Data Button
-  document.getElementById("verifyExtractedBtn").addEventListener("click", handleVerifyExtracted);
+  safeOn("verifyExtractedBtn", "click", handleVerifyExtracted);
 
   // Confirm Order
-  document.getElementById("confirmOrderBtn").addEventListener("click", handleConfirmOrder);
+  safeOn("confirmOrderBtn", "click", handleConfirmOrder);
 
   // Reschedule
-  document.getElementById("rescheduleBtn").addEventListener("click", handleReschedule);
+  safeOn("rescheduleBtn", "click", handleReschedule);
 
   // Pincode Feasibility Check
-  const checkPinBtn = document.getElementById("checkPincodeBtn");
-  if (checkPinBtn) checkPinBtn.addEventListener("click", handlePincodeCheck);
+  safeOn("checkPincodeBtn", "click", handlePincodeCheck);
   const pinInput = document.getElementById("pincodeInput");
   if (pinInput) {
     pinInput.addEventListener("keypress", (e) => {
