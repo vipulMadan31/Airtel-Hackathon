@@ -1,5 +1,10 @@
+import sqlite3
+import json
+import uuid
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from app.config import DB_PATH
 from app.data_loader import DataLoader
 
 PARTNER_REGISTRY: Dict[str, Dict[str, Any]] = {
@@ -60,7 +65,8 @@ PARTNER_REGISTRY: Dict[str, Dict[str, Any]] = {
 }
 
 class PartnerPortal:
-    def __init__(self):
+    def __init__(self, db_path: Optional[Path] = None):
+        self.db_path = db_path or DB_PATH
         self.loader = DataLoader.get_instance()
         self.claimed_leads: Dict[str, Dict[str, Any]] = {
             "L00001": {
@@ -70,6 +76,263 @@ class PartnerPortal:
                 "status": "IN_PROGRESS"
             }
         }
+        self.commissions: Dict[str, Any] = {
+            "active_referrals_count": 28,
+            "monthly_recurring_trail_inr": 42850.0,
+            "total_pending_payout_inr": 16450.0
+        }
+        self._init_db()
+
+    def _get_connection(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _init_db(self):
+        with self._get_connection() as conn:
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS customer_leads (
+                lead_id TEXT PRIMARY KEY,
+                user_id TEXT,
+                business_name TEXT,
+                email TEXT,
+                phone TEXT,
+                city TEXT,
+                pincode TEXT,
+                business_type TEXT,
+                employee_count INTEGER DEFAULT 1,
+                num_sites INTEGER DEFAULT 1,
+                monthly_spend_inr REAL DEFAULT 0.0,
+                has_gstin TEXT DEFAULT 'N',
+                stage_reached TEXT,
+                drop_reason TEXT,
+                propensity_score INTEGER DEFAULT 35,
+                priority TEXT DEFAULT 'STANDARD',
+                bundle_json TEXT,
+                is_claimed INTEGER DEFAULT 0,
+                claimed_by TEXT,
+                claimed_at TEXT,
+                recovery_bounty_inr REAL DEFAULT 1000.0,
+                created_at TEXT,
+                last_activity_at TEXT
+            )
+            """)
+            conn.commit()
+
+            cursor = conn.execute("SELECT COUNT(*) FROM customer_leads")
+            if cursor.fetchone()[0] == 0:
+                now_str = datetime.now().isoformat()
+                conn.execute("""
+                    INSERT INTO customer_leads (
+                        lead_id, user_id, business_name, email, phone,
+                        city, pincode, business_type, employee_count, num_sites,
+                        monthly_spend_inr, has_gstin, stage_reached, drop_reason,
+                        propensity_score, priority, bundle_json, is_claimed,
+                        claimed_by, claimed_at, recovery_bounty_inr, created_at, last_activity_at
+                    ) VALUES (
+                        'LD-USR-CUST-1001', 'USR-CUST-1001', 'Airtel MSME Customer', 'customer@business.in',
+                        '+91 98110 12345', 'Rohtak', '124001', 'Clinic / Healthcare', 10, 1,
+                        2397.0, 'Y', 'BUNDLE_CUSTOMIZED', 'Customized Clinic Bundle (₹2397/mo) • Pending Smart KYC',
+                        75, 'HIGH', NULL, 0, NULL, NULL, 1000.0, ?, ?
+                    )
+                """, (now_str, now_str))
+                conn.commit()
+
+    def compute_customer_propensity(
+        self,
+        stage: str,
+        has_gstin: str = "N",
+        monthly_spend: float = 0.0,
+        employee_count: int = 1,
+        num_sites: int = 1,
+        pincode: Optional[str] = None,
+        is_kyc_verified: bool = False,
+        is_token_paid: bool = False
+    ) -> int:
+        """
+        Calculates a real-time propensity score (0-100) dynamically 
+        based on active customer signals, verified credentials, and funnel progression.
+        """
+        score = 30  # Baseline on customer signup/login
+
+        stage_weights = {
+            "LOGGED_IN": 0,
+            "ADVISOR_ENGAGED": 15,
+            "PINCODE_CHECKED": 20,
+            "BUNDLE_CUSTOMIZED": 30,
+            "KYC_PENDING": 35,
+            "KYC_SUBMITTED": 45,
+            "KYC_VERIFIED": 50,
+            "ADDRESS_ENTERED": 55,
+            "TOKEN_PAID": 65,
+            "ORDER_CONFIRMED": 65
+        }
+        score += stage_weights.get(stage.upper(), 10)
+
+        # Signal 1: Formal business identity (GSTIN / Verified Udyam)
+        if str(has_gstin).upper() in ["Y", "YES", "TRUE"] or is_kyc_verified:
+            score += 15
+
+        # Signal 2: High telecom commitment (Basket value)
+        if monthly_spend >= 5000:
+            score += 15
+        elif monthly_spend >= 2000:
+            score += 10
+        elif monthly_spend > 0:
+            score += 5
+
+        # Signal 3: Scale signals (Multi-site or 5+ staff)
+        if num_sites > 1 or employee_count >= 5:
+            score += 10
+
+        # Signal 4: Known FTTH serviceable pincode
+        if pincode and len(str(pincode).strip()) == 6:
+            score += 5
+
+        # Signal 5: Priority token deposit paid -> Fast-Track guaranteed
+        if is_token_paid or stage.upper() in ["TOKEN_PAID", "ORDER_CONFIRMED"]:
+            score = max(score, 95)
+
+        return min(max(score, 10), 100)
+
+    def _determine_drop_reason(self, stage: str, spend: float) -> str:
+        s = stage.upper()
+        if s == "LOGGED_IN":
+            return "Active Session • Browsing Storefront Plans"
+        elif s == "ADVISOR_ENGAGED":
+            return "Chatting with AI Advisor • Exploring Recommendations"
+        elif s == "PINCODE_CHECKED":
+            return "Checked Fibre Feasibility • In Storefront Flow"
+        elif s == "BUNDLE_CUSTOMIZED":
+            spend_label = f"₹{int(spend)}/mo" if spend > 0 else "Plans"
+            return f"Customized Bundle ({spend_label}) • Awaiting Smart KYC"
+        elif s == "KYC_PENDING":
+            return "Selected KYC Track • Pending Document Upload"
+        elif s == "KYC_SUBMITTED":
+            return "KYC Submitted • Under System Review"
+        elif s == "KYC_VERIFIED":
+            return "Smart KYC 100% Verified • Awaiting Address Confirmation"
+        elif s == "ADDRESS_ENTERED":
+            return "Installation Address Confirmed • Awaiting ₹499 Booking Deposit"
+        elif s in ["TOKEN_PAID", "ORDER_CONFIRMED"]:
+            return "Priority ₹499 Paid • Physical Installation Dispatched"
+        return "Active Digital Customer Session"
+
+    def record_customer_activity(
+        self,
+        user_id: Optional[str] = None,
+        business_name: Optional[str] = None,
+        email: Optional[str] = None,
+        phone: Optional[str] = None,
+        action: str = "LOGGED_IN",
+        stage: Optional[str] = None,
+        city: Optional[str] = None,
+        pincode: Optional[str] = None,
+        business_type: Optional[str] = None,
+        employee_count: Optional[int] = None,
+        num_sites: Optional[int] = None,
+        monthly_spend_inr: Optional[float] = None,
+        has_gstin: Optional[str] = None,
+        bundle: Optional[Dict[str, Any]] = None,
+        lead_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Stores and updates real-time propensity score for any customer action.
+        Persisted to SQLite database so Mitra Partners always see real data.
+        """
+        with self._get_connection() as conn:
+            row = None
+            if lead_id:
+                cursor = conn.execute("SELECT * FROM customer_leads WHERE lead_id = ?", (lead_id,))
+                row = cursor.fetchone()
+            elif user_id:
+                cursor = conn.execute("SELECT * FROM customer_leads WHERE user_id = ?", (user_id,))
+                row = cursor.fetchone()
+            elif email:
+                cursor = conn.execute("SELECT * FROM customer_leads WHERE email = ?", (email,))
+                row = cursor.fetchone()
+
+            now_iso = datetime.now().isoformat()
+            existing = dict(row) if row else {}
+
+            cur_user_id = user_id or existing.get("user_id") or f"USR-CUST-{uuid.uuid4().hex[:5].upper()}"
+            cur_lead_id = lead_id or existing.get("lead_id") or f"LD-{cur_user_id}"
+            cur_bname = business_name or existing.get("business_name") or "MSME Digital Customer"
+            cur_email = email or existing.get("email") or "customer@business.in"
+            cur_phone = phone or existing.get("phone") or "+91 98110 12345"
+            cur_city = city or existing.get("city") or "Rohtak"
+            cur_pincode = pincode or existing.get("pincode") or "124001"
+            cur_btype = business_type or existing.get("business_type") or "Retail & Commercial Services"
+            cur_emp = employee_count if employee_count is not None else existing.get("employee_count", 1)
+            cur_sites = num_sites if num_sites is not None else existing.get("num_sites", 1)
+            cur_spend = monthly_spend_inr if monthly_spend_inr is not None else existing.get("monthly_spend_inr", 0.0)
+            cur_gstin = has_gstin or existing.get("has_gstin", "N")
+            cur_bundle = bundle if bundle is not None else (json.loads(existing["bundle_json"]) if existing.get("bundle_json") else {})
+
+            cur_stage = stage or action or existing.get("stage_reached") or "LOGGED_IN"
+            cur_drop_reason = self._determine_drop_reason(cur_stage, cur_spend)
+
+            p_score = self.compute_customer_propensity(
+                stage=cur_stage,
+                has_gstin=cur_gstin,
+                monthly_spend=cur_spend,
+                employee_count=cur_emp,
+                num_sites=cur_sites,
+                pincode=cur_pincode,
+                is_kyc_verified=(cur_stage in ["KYC_VERIFIED", "ADDRESS_ENTERED", "TOKEN_PAID"]),
+                is_token_paid=(cur_stage in ["TOKEN_PAID", "ORDER_CONFIRMED"])
+            )
+            priority = "HIGH" if p_score >= 70 else ("MEDIUM" if p_score >= 50 else "STANDARD")
+
+            if row:
+                conn.execute("""
+                    UPDATE customer_leads SET
+                        business_name = ?,
+                        email = ?,
+                        phone = ?,
+                        city = ?,
+                        pincode = ?,
+                        business_type = ?,
+                        employee_count = ?,
+                        num_sites = ?,
+                        monthly_spend_inr = ?,
+                        has_gstin = ?,
+                        stage_reached = ?,
+                        drop_reason = ?,
+                        propensity_score = ?,
+                        priority = ?,
+                        bundle_json = ?,
+                        last_activity_at = ?
+                    WHERE lead_id = ?
+                """, (
+                    cur_bname, cur_email, cur_phone, cur_city, cur_pincode,
+                    cur_btype, cur_emp, cur_sites, cur_spend, cur_gstin,
+                    cur_stage, cur_drop_reason, p_score, priority,
+                    json.dumps(cur_bundle) if cur_bundle else None,
+                    now_iso, cur_lead_id
+                ))
+            else:
+                conn.execute("""
+                    INSERT INTO customer_leads (
+                        lead_id, user_id, business_name, email, phone,
+                        city, pincode, business_type, employee_count, num_sites,
+                        monthly_spend_inr, has_gstin, stage_reached, drop_reason,
+                        propensity_score, priority, bundle_json, is_claimed,
+                        claimed_by, claimed_at, recovery_bounty_inr, created_at, last_activity_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, 1000.0, ?, ?)
+                """, (
+                    cur_lead_id, cur_user_id, cur_bname, cur_email, cur_phone,
+                    cur_city, cur_pincode, cur_btype, cur_emp, cur_sites,
+                    cur_spend, cur_gstin, cur_stage, cur_drop_reason,
+                    p_score, priority, json.dumps(cur_bundle) if cur_bundle else None,
+                    now_iso, now_iso
+                ))
+            conn.commit()
+
+            cursor = conn.execute("SELECT * FROM customer_leads WHERE lead_id = ?", (cur_lead_id,))
+            saved_lead = dict(cursor.fetchone())
+            saved_lead["bundle"] = cur_bundle
+            return saved_lead
 
     def resolve_partner_for_lead(
         self,
@@ -172,14 +435,81 @@ class PartnerPortal:
         return min(score, 100)
 
     def get_stalled_leads_with_propensity(self, limit: int = 15) -> List[Dict[str, Any]]:
-        raw_leads = self.loader.get_stalled_leads(limit=limit)
         results = []
+
+        # 1. Fetch Real Live Customer Leads from SQLite Database
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.execute("""
+                    SELECT * FROM customer_leads 
+                    ORDER BY propensity_score DESC, last_activity_at DESC
+                """)
+                real_rows = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            real_rows = []
+
+        for r in real_rows:
+            lid = r["lead_id"]
+            claim_info = self.claimed_leads.get(lid)
+            is_claimed = bool(r.get("is_claimed")) or bool(claim_info)
+            p_score = int(r.get("propensity_score", 35))
+
+            city_val = r.get("city") or "Rohtak"
+            pin_val = r.get("pincode") or "124001"
+            routing = self.resolve_partner_for_lead(
+                pincode=pin_val,
+                city=city_val,
+                tier=2
+            )
+
+            # Fast-Track 4-Hour SLA Computation
+            if is_claimed:
+                sla_remaining = "Locked"
+                sla_status = "CLAIMED"
+            elif p_score >= 70:
+                sla_remaining = "3.5h left"
+                sla_status = "ACTIVE"
+            else:
+                sla_remaining = "24h SLA"
+                sla_status = "STANDARD"
+
+            results.append({
+                "lead_id": lid,
+                "business_name": r["business_name"],
+                "city": city_val,
+                "pincode": pin_val,
+                "phone": r.get("phone") or "+91 98110 12345",
+                "stage_reached": r.get("stage_reached", "BUNDLE_CUSTOMIZED"),
+                "drop_reason": r.get("drop_reason", "Active Session"),
+                "monthly_spend_inr": r.get("monthly_spend_inr", 0.0),
+                "has_gstin": r.get("has_gstin", "N"),
+                "propensity_score": p_score,
+                "priority": r.get("priority") or ("HIGH" if p_score >= 70 else ("MEDIUM" if p_score >= 50 else "STANDARD")),
+                "is_claimed": is_claimed,
+                "claimed_by": r.get("claimed_by") or (claim_info.get("partner_id") if claim_info else None),
+                "recovery_bounty_inr": r.get("recovery_bounty_inr", 1000.0),
+                "routing_tier": routing["routing_tier"],
+                "routing_label": routing["routing_label"],
+                "assigned_partner_id": routing["partner_id"],
+                "assigned_partner_name": routing["partner_name"],
+                "sla_hours": routing["sla_hours"],
+                "sla_remaining": sla_remaining,
+                "sla_status": sla_status,
+                "is_real_time": True,
+                "source": "LIVE_CUSTOMER",
+                "last_activity_at": r.get("last_activity_at")
+            })
+
+        # 2. Append historical dataset leads
+        raw_leads = self.loader.get_stalled_leads(limit=limit)
         for idx, l in enumerate(raw_leads):
+            if any(res["lead_id"] == l["lead_id"] for res in results):
+                continue
+
             p_score = self.calculate_propensity_score(l)
             lid = l["lead_id"]
             claim_info = self.claimed_leads.get(lid)
 
-            # Resolve partner via 4-Tier Hierarchical Routing Engine
             city_val = l.get("city", "Indore")
             pin_val = l.get("installation_pincode") or ("452001" if city_val.lower() == "indore" else None)
             routing = self.resolve_partner_for_lead(
@@ -188,17 +518,14 @@ class PartnerPortal:
                 tier=l.get("city_tier", 2)
             )
 
-            # 4-Hour SLA Computation for Fast-Track Routing
             is_claimed = bool(claim_info)
             if is_claimed:
                 sla_remaining = "Locked"
                 sla_status = "CLAIMED"
             elif lid == "L00007":
-                # Planted exception scenario: SLA expired without claim -> Escalated to Central Ops
                 sla_remaining = "0.0h (Breached)"
                 sla_status = "BREACHED"
             elif p_score >= 70:
-                # High propensity: countdown from 4.0 hours
                 hours_left = max(0.5, round(4.0 - ((idx % 6) * 0.6), 1))
                 sla_remaining = f"{hours_left}h left"
                 sla_status = "WARNING" if hours_left < 1.5 else "ACTIVE"
@@ -211,6 +538,7 @@ class PartnerPortal:
                 "business_name": l["business_name"],
                 "city": l["city"],
                 "pincode": pin_val or routing.get("hub_pincode", "452001"),
+                "phone": "+91 98260 12345",
                 "stage_reached": l["stage_reached"],
                 "drop_reason": l["drop_reason"],
                 "monthly_spend_inr": l.get("monthly_telecom_spend_inr", 0),
@@ -220,16 +548,19 @@ class PartnerPortal:
                 "is_claimed": is_claimed,
                 "claimed_by": claim_info.get("partner_id") if claim_info else None,
                 "recovery_bounty_inr": 1000,
-                # Phase 3 Routing & SLA fields:
                 "routing_tier": routing["routing_tier"],
                 "routing_label": routing["routing_label"],
                 "assigned_partner_id": routing["partner_id"],
                 "assigned_partner_name": routing["partner_name"],
                 "sla_hours": routing["sla_hours"],
                 "sla_remaining": sla_remaining,
-                "sla_status": sla_status
+                "sla_status": sla_status,
+                "is_real_time": False,
+                "source": "DATASET"
             })
-        return sorted(results, key=lambda x: x["propensity_score"], reverse=True)
+
+        # Priority sort: Live real customers first, then by propensity score DESC
+        return sorted(results, key=lambda x: (not x.get("is_real_time", False), -x["propensity_score"]))
 
     def claim_stalled_lead(self, lead_id: str, partner_id: str = "PTR-IND-882") -> Dict[str, Any]:
         self.claimed_leads[lead_id] = {
@@ -238,6 +569,19 @@ class PartnerPortal:
             "bounty_inr": 1000,
             "status": "CLAIMED"
         }
+
+        # Update SQLite if it is a real customer lead
+        try:
+            with self._get_connection() as conn:
+                conn.execute("""
+                    UPDATE customer_leads 
+                    SET is_claimed = 1, claimed_by = ?, claimed_at = ?
+                    WHERE lead_id = ?
+                """, (partner_id, datetime.now().isoformat(), lead_id))
+                conn.commit()
+        except Exception:
+            pass
+
         return {
             "status": "SUCCESS",
             "claim_status": "CLAIMED",
@@ -259,7 +603,19 @@ class PartnerPortal:
         }
 
     def get_partner_commissions(self, partner_id: str = "PTR-IND-882") -> Dict[str, Any]:
-        claimed_count = sum(1 for c in self.claimed_leads.values() if c.get("partner_id") == partner_id)
+        claimed_ids = set()
+        for lid, c in self.claimed_leads.items():
+            if c.get("partner_id") == partner_id:
+                claimed_ids.add(lid)
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.execute("SELECT lead_id FROM customer_leads WHERE is_claimed = 1 AND claimed_by = ?", (partner_id,))
+                for row in cursor.fetchall():
+                    claimed_ids.add(row[0])
+        except Exception:
+            pass
+
+        claimed_count = len(claimed_ids)
         return {
             "partner_id": partner_id,
             "partner_name": "Vikram Telecom",

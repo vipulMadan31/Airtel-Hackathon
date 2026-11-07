@@ -432,6 +432,72 @@ def confirm_payment(req: PaymentConfirmRequest):
             )
     return receipt
 
+class CustomerActivityRequest(BaseModel):
+    user_id: Optional[str] = None
+    business_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    action: str = "LOGGED_IN"
+    stage: Optional[str] = None
+    city: Optional[str] = None
+    pincode: Optional[str] = None
+    business_type: Optional[str] = None
+    employee_count: Optional[int] = 1
+    num_sites: Optional[int] = 1
+    monthly_spend_inr: Optional[float] = 0.0
+    has_gstin: Optional[str] = "N"
+    bundle: Optional[Dict[str, Any]] = None
+    lead_id: Optional[str] = None
+
+@app.post("/api/leads/activity")
+def record_customer_lead_activity(
+    req: CustomerActivityRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None)
+):
+    try:
+        extracted = extract_token_from_header(authorization, x_session_token, None)
+        if extracted:
+            user = get_user_by_token(extracted)
+            if user and user.get("role") == ROLE_MERCHANT:
+                if not req.user_id:
+                    req.user_id = user.get("user_id")
+                if not req.business_name:
+                    req.business_name = user.get("name")
+                if not req.email:
+                    req.email = user.get("email")
+                if not req.phone:
+                    req.phone = user.get("phone")
+    except Exception:
+        pass
+
+    saved = partner_portal.record_customer_activity(
+        user_id=req.user_id,
+        business_name=req.business_name,
+        email=req.email,
+        phone=req.phone,
+        action=req.action,
+        stage=req.stage,
+        city=req.city,
+        pincode=req.pincode,
+        business_type=req.business_type,
+        employee_count=req.employee_count,
+        num_sites=req.num_sites,
+        monthly_spend_inr=req.monthly_spend_inr,
+        has_gstin=req.has_gstin,
+        bundle=req.bundle,
+        lead_id=req.lead_id
+    )
+    return {
+        "status": "success",
+        "lead": saved,
+        "lead_id": saved["lead_id"],
+        "propensity_score": saved["propensity_score"],
+        "stage_reached": saved["stage_reached"],
+        "priority": saved["priority"],
+        "updated_at": saved["last_activity_at"]
+    }
+
 class FunnelProgressionRequest(BaseModel):
     lead_id: Optional[str] = "L00003"
     stage: str
@@ -439,13 +505,17 @@ class FunnelProgressionRequest(BaseModel):
 
 @app.post("/api/funnel/update-lead")
 def update_funnel_lead(req: FunnelProgressionRequest):
+    saved = partner_portal.record_customer_activity(
+        lead_id=req.lead_id,
+        stage=req.stage
+    )
     return {
         "status": "success",
-        "lead_id": req.lead_id,
-        "updated_stage": req.stage,
-        "new_propensity_score": 100 if req.stage in ["TOKEN_PAID", "ORDER_CONFIRMED"] else 85,
+        "lead_id": saved["lead_id"],
+        "updated_stage": saved["stage_reached"],
+        "new_propensity_score": saved["propensity_score"],
         "fast_track_stp": True,
-        "updated_at": datetime.now().isoformat()
+        "updated_at": saved["last_activity_at"]
     }
 
 @app.get("/api/payment/receipt/{order_id}")
@@ -460,6 +530,19 @@ def get_order_receipt(order_id: str):
 def login_user(req: LoginRequest):
     try:
         res = user_db.authenticate(req.email, req.password, role=req.role)
+        if res["user"]["role"] == ROLE_MERCHANT:
+            try:
+                partner_portal.record_customer_activity(
+                    user_id=res["user"]["user_id"],
+                    business_name=res["user"]["name"],
+                    email=res["user"]["email"],
+                    phone=res["user"].get("phone", "+91 98110 12345"),
+                    action="LOGGED_IN",
+                    city="Rohtak",
+                    pincode="124001"
+                )
+            except Exception:
+                pass
         return {
             "status": "success",
             "access_token": res["token"],
@@ -480,6 +563,19 @@ def signup_user(req: SignUpRequest):
             name=req.name,
             phone=req.phone
         )
+        if res["user"]["role"] == ROLE_MERCHANT:
+            try:
+                partner_portal.record_customer_activity(
+                    user_id=res["user"]["user_id"],
+                    business_name=res["user"]["name"],
+                    email=res["user"]["email"],
+                    phone=res["user"].get("phone", "+91 98110 12345"),
+                    action="LOGGED_IN",
+                    city="Rohtak",
+                    pincode="124001"
+                )
+            except Exception:
+                pass
         return {
             "status": "success",
             "access_token": res["token"],

@@ -43,6 +43,60 @@ function safeOn(id, event, handler) {
   if (el) el.addEventListener(event, handler);
 }
 
+// --- LIVE CUSTOMER PROPENSITY & LEAD TRACKING ENGINE ---
+window.syncCustomerLeadActivity = async function(action, extra = {}) {
+  // Only track customer leads
+  if (STATE.auth && STATE.auth.role && STATE.auth.role !== 'MERCHANT') return;
+
+  const user = STATE.auth?.user || {};
+  const bundle = STATE.selectedBundle || {};
+  const profile = STATE.profile || {};
+
+  let monthlySpend = 0.0;
+  if (STATE.activeQuote?.grand_total_monthly_inr) {
+    monthlySpend = STATE.activeQuote.grand_total_monthly_inr;
+  } else if (STATE.activeQuote?.monthly_subtotal_inr) {
+    monthlySpend = STATE.activeQuote.monthly_subtotal_inr;
+  } else if (Object.keys(bundle).length > 0) {
+    monthlySpend = Object.values(bundle).reduce((sum, item) => sum + ((item.price_inr || item.price || 0) * (item.quantity || 1)), 0);
+  }
+
+  const payload = {
+    user_id: user.user_id || 'USR-CUST-1001',
+    business_name: user.name || (profile.business_type ? `${profile.business_type} Enterprise` : 'Airtel MSME Customer'),
+    email: user.email || 'customer@business.in',
+    phone: user.phone || '+91 98110 12345',
+    action: action,
+    stage: extra.stage || action,
+    city: profile.city || document.getElementById('installCity')?.value || 'Rohtak',
+    pincode: document.getElementById('pincodeInput')?.value || document.getElementById('installPincode')?.value || '124001',
+    business_type: profile.business_type || 'Commercial Enterprise',
+    employee_count: profile.employee_count || 1,
+    num_sites: profile.num_sites || 1,
+    monthly_spend_inr: monthlySpend,
+    has_gstin: (STATE.safeModeNonGst ? 'N' : (profile.has_gstin === false ? 'N' : 'Y')),
+    bundle: bundle,
+    ...extra
+  };
+
+  try {
+    const res = await fetch("/api/leads/activity", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(STATE.auth?.token ? { "Authorization": `Bearer ${STATE.auth.token}` } : {})
+      },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      console.log(`[Propensity Engine] Live customer lead synced: ${data.propensity_score}/100 (${data.stage_reached})`);
+    }
+  } catch (err) {
+    console.warn("[Propensity Engine] Sync note:", err);
+  }
+};
+
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
   try { initAuthSession(); } catch (e) { console.error("initAuthSession error:", e); }
@@ -524,16 +578,24 @@ async function loadPartnerViewData() {
           `;
         }
 
+        const isLive = l.is_real_time || (l.lead_id && l.lead_id.startsWith("LD-"));
+        const liveBadge = isLive
+          ? `<span class="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 ml-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span><span>Live Customer</span></span>`
+          : '';
+
         return `
-          <tr class="hover:bg-slate-50/80 transition ${isClaimed ? 'bg-emerald-50/30' : ''}">
+          <tr class="hover:bg-slate-50/80 transition ${isClaimed ? 'bg-emerald-50/30' : (isLive ? 'bg-emerald-50/15' : '')}">
             <td class="p-3 font-mono font-bold">${l.lead_id}</td>
             <td class="p-3 font-semibold text-slate-900">
-              ${l.business_name}
-              <span class="text-slate-400 block text-[10px]">${l.city} &bull; ${l.phone || '+91 98765 12345'}</span>
+              <div class="flex items-center flex-wrap">
+                <span>${l.business_name}</span>
+                ${liveBadge}
+              </div>
+              <span class="text-slate-400 block text-[10px]">${l.city} &bull; ${l.phone || '+91 98110 12345'}${l.monthly_spend_inr ? ` &bull; Basket: ₹${Math.round(l.monthly_spend_inr)}/mo` : ''}</span>
               ${routingBadge}
             </td>
-            <td class="p-3 text-slate-600">${l.stage_reached}</td>
-            <td class="p-3 text-red-600 font-medium">${l.drop_reason}</td>
+            <td class="p-3 text-slate-600 font-medium">${l.stage_reached}</td>
+            <td class="p-3 text-slate-700 font-medium">${l.drop_reason}</td>
             <td class="p-3">
               ${scoreBadge}
               <div class="mt-1">${slaBadge}</div>
@@ -796,6 +858,7 @@ window.submitCustomerLogin = async function() {
 
     setAuthAlert("success", `Welcome back, ${data.user.name}!`);
     saveAuthSession(data);
+    if (window.syncCustomerLeadActivity) window.syncCustomerLeadActivity("LOGGED_IN");
     setTimeout(() => {
       closeAuthModal(true);
       navigateToView("MERCHANT");
@@ -844,6 +907,7 @@ window.submitCustomerSignup = async function() {
 
     setAuthAlert("success", `Account created successfully! Welcome, ${data.user.name}.`);
     saveAuthSession(data);
+    if (window.syncCustomerLeadActivity) window.syncCustomerLeadActivity("LOGGED_IN");
     setTimeout(() => {
       closeAuthModal(true);
       navigateToView("MERCHANT");
@@ -1460,6 +1524,10 @@ async function handlePincodeCheck() {
           : `Optical wireline digging is pending at pincode ${pincode}. We seamlessly updated your bundle to <strong>Airtel Biz 5G AirFiber 100 (P04)</strong> at ₹899/mo with zero-wire installation in <48 hours!`
       );
     }
+
+    if (window.syncCustomerLeadActivity) {
+      window.syncCustomerLeadActivity("PINCODE_CHECKED", { pincode: pincode });
+    }
   } catch (err) {
     console.error("Feasibility check error:", err);
   }
@@ -1687,6 +1755,12 @@ function renderKycDecision(data) {
     }
 
     confirmBtn.disabled = false;
+    if (window.syncCustomerLeadActivity) {
+      window.syncCustomerLeadActivity("KYC_VERIFIED", {
+        business_name: entityName,
+        has_gstin: data.is_non_gst_mode ? "N" : "Y"
+      });
+    }
   } else if (data.status === "REJECTED") {
     const addrSec = document.getElementById("installationAddressSection");
     if (addrSec) addrSec.classList.add("hidden");
@@ -1820,6 +1894,11 @@ async function handleChatSubmit() {
     }
 
     addAiChatMessage(data.message, data.explainability_tags);
+    if (window.syncCustomerLeadActivity) {
+      window.syncCustomerLeadActivity(
+        (data.recommended_bundle && Object.keys(data.recommended_bundle).length > 0) ? "BUNDLE_CUSTOMIZED" : "ADVISOR_ENGAGED"
+      );
+    }
   } catch (err) {
     removeChatTyping();
     addAiChatMessage("Sorry, could not process request right now. Fallback to guided selection.");
@@ -1880,6 +1959,12 @@ async function recalculateQuote() {
     document.getElementById("monthlySubtotal").innerText = `₹${quote.monthly_subtotal_inr.toFixed(2)}`;
     document.getElementById("gstTotal").innerText = `₹${quote.gst_18_inr.toFixed(2)}`;
     document.getElementById("monthlyGrandTotal").innerText = `₹${quote.total_monthly_inr.toFixed(2)} / mo`;
+
+    if (quote.items && quote.items.length > 0 && window.syncCustomerLeadActivity) {
+      window.syncCustomerLeadActivity("BUNDLE_CUSTOMIZED", {
+        monthly_spend_inr: quote.total_monthly_inr
+      });
+    }
   } catch (err) {
     console.error("Quote calculation error:", err);
   }
@@ -2097,6 +2182,15 @@ async function handleConfirmOrder() {
     const order = await res.json();
     STATE.activeOrder = order;
 
+    if (window.syncCustomerLeadActivity) {
+      window.syncCustomerLeadActivity("ADDRESS_ENTERED", {
+        lead_id: order.order_id,
+        business_name: order.business_name,
+        city: city,
+        pincode: pincode
+      });
+    }
+
     document.getElementById("kycCard").classList.add("hidden");
     document.getElementById("trackerCard").classList.remove("hidden");
 
@@ -2111,6 +2205,12 @@ async function handleConfirmOrder() {
   } catch (err) {
     alert("Order creation failed.");
     confirmBtn.disabled = false;
+    if (window.syncCustomerLeadActivity) {
+      window.syncCustomerLeadActivity("KYC_VERIFIED", {
+        business_name: entityName,
+        has_gstin: data.is_non_gst_mode ? "N" : "Y"
+      });
+    }
   }
 }
 
@@ -2456,15 +2556,23 @@ async function openPartnerModal() {
         `;
       }
 
+      const isLive = l.is_real_time || (l.lead_id && l.lead_id.startsWith("LD-"));
+      const liveBadge = isLive
+        ? `<span class="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 ml-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span><span>Live Customer</span></span>`
+        : '';
+
       return `
-        <tr class="hover:bg-slate-50/80 transition ${isClaimed ? 'bg-emerald-50/30' : ''}">
+        <tr class="hover:bg-slate-50/80 transition ${isClaimed ? 'bg-emerald-50/30' : (isLive ? 'bg-emerald-50/15' : '')}">
           <td class="p-2.5 font-mono font-bold">${l.lead_id}</td>
           <td class="p-2.5 font-semibold text-slate-900">
-            ${l.business_name}
-            <span class="text-slate-400 block text-[10px]">${l.city} &bull; ${l.phone || '+91 98765 12345'}</span>
+            <div class="flex items-center flex-wrap">
+              <span>${l.business_name}</span>
+              ${liveBadge}
+            </div>
+            <span class="text-slate-400 block text-[10px]">${l.city} &bull; ${l.phone || '+91 98110 12345'}${l.monthly_spend_inr ? ` &bull; Basket: ₹${Math.round(l.monthly_spend_inr)}/mo` : ''}</span>
           </td>
-          <td class="p-2.5 text-slate-600">${l.stage_reached}</td>
-          <td class="p-2.5 text-red-600 font-medium">${l.drop_reason}</td>
+          <td class="p-2.5 text-slate-600 font-medium">${l.stage_reached}</td>
+          <td class="p-2.5 text-slate-700 font-medium">${l.drop_reason}</td>
           <td class="p-2.5">${scoreBadge}</td>
           <td class="p-2.5">${actionButtons}</td>
         </tr>
