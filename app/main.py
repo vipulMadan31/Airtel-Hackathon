@@ -26,13 +26,11 @@ from app.modules.auth import (
     ROLE_MERCHANT,
     ROLE_PARTNER,
     ROLE_ADMIN,
-    PERSONAS,
     get_user_by_token,
+    verify_role_access,
     extract_token_from_header,
     get_admin_telemetry,
     UserDatabase,
-    FIXED_ADMIN_PASSWORD,
-    FIXED_MITRA_PASSWORD,
     oauth2_scheme
 )
 from app.data_loader import DataLoader
@@ -133,9 +131,6 @@ class RescheduleRequest(BaseModel):
 
 class NPSRequest(BaseModel):
     rating: int
-
-class SwitchRoleRequest(BaseModel):
-    role: str
 
 class LoginRequest(BaseModel):
     email: str
@@ -650,10 +645,12 @@ def login_user(req: LoginRequest):
 @app.post("/api/auth/register")
 def signup_user(req: SignUpRequest):
     try:
-        res = user_db.register_customer(
+        role = (req.role or "MERCHANT").upper().strip()
+        res = user_db.register_user(
             email=req.email,
             password=req.password,
             name=req.name,
+            role=role,
             phone=req.phone
         )
         if res["user"]["role"] == ROLE_MERCHANT:
@@ -708,18 +705,6 @@ def logout_user(
         user_db.logout_token(extracted)
     return {"status": "success", "message": "Successfully logged out"}
 
-@app.post("/api/auth/switch-role")
-def switch_role(req: SwitchRoleRequest):
-    role_key = req.role.strip().upper()
-    if role_key not in PERSONAS:
-        raise HTTPException(status_code=400, detail=f"Invalid role. Supported: {list(PERSONAS.keys())}")
-    user = PERSONAS[role_key]
-    return {
-        "status": "success",
-        "token": user["token"],
-        "user": user
-    }
-
 @app.get("/api/auth/me")
 def get_current_user_profile(
     authorization: Optional[str] = Header(None),
@@ -727,7 +712,18 @@ def get_current_user_profile(
     token: Optional[str] = Query(None)
 ):
     extracted = extract_token_from_header(authorization, x_session_token, token)
-    return get_user_by_token(extracted)
+    if not extracted:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required. Please provide a valid session token."
+        )
+    user = get_user_by_token(extracted)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired session token. Please log in again."
+        )
+    return user
 
 # 7. Partner Portal (RBAC Guarded)
 @app.get("/api/partner/leads")
@@ -736,13 +732,7 @@ def get_partner_leads(
     x_session_token: Optional[str] = Header(None),
     token: Optional[str] = Query(None)
 ):
-    extracted = extract_token_from_header(authorization, x_session_token, token)
-    user = get_user_by_token(extracted)
-    if user["role"] not in [ROLE_PARTNER, ROLE_ADMIN]:
-        raise HTTPException(
-            status_code=403,
-            detail="Access denied: Channel Partner or Admin credentials required. Regular customer accounts cannot view unclosed leads."
-        )
+    user = verify_role_access([ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
     return partner_portal.get_stalled_leads_with_propensity(limit=15)
 
 @app.get("/api/partner/referral")
@@ -752,8 +742,7 @@ def get_partner_referral(
     x_session_token: Optional[str] = Header(None),
     token: Optional[str] = Query(None)
 ):
-    extracted = extract_token_from_header(authorization, x_session_token, token)
-    user = get_user_by_token(extracted)
+    user = verify_role_access([ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
     pid = user["user_id"] if user["role"] == ROLE_PARTNER else partner_id
     return partner_portal.generate_partner_referral_link(partner_id=pid)
 
@@ -764,13 +753,7 @@ def claim_partner_lead(
     x_session_token: Optional[str] = Header(None),
     token: Optional[str] = Query(None)
 ):
-    extracted = extract_token_from_header(authorization, x_session_token, token)
-    user = get_user_by_token(extracted)
-    if user["role"] not in [ROLE_PARTNER, ROLE_ADMIN]:
-        raise HTTPException(
-            status_code=403,
-            detail="Access denied: Channel Partner credentials required to claim recovery bounties."
-        )
+    user = verify_role_access([ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
     return partner_portal.claim_stalled_lead(lead_id=lead_id, partner_id=user["user_id"])
 
 @app.get("/api/partner/commissions")
@@ -779,13 +762,7 @@ def get_partner_commissions(
     x_session_token: Optional[str] = Header(None),
     token: Optional[str] = Query(None)
 ):
-    extracted = extract_token_from_header(authorization, x_session_token, token)
-    user = get_user_by_token(extracted)
-    if user["role"] not in [ROLE_PARTNER, ROLE_ADMIN]:
-        raise HTTPException(
-            status_code=403,
-            detail="Access denied: Channel Partner credentials required."
-        )
+    user = verify_role_access([ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
     return partner_portal.get_partner_commissions(partner_id=user["user_id"])
 
 # 8. Admin Telemetry & Escalation Queue (RBAC Guarded)
@@ -795,13 +772,7 @@ def get_admin_metrics(
     x_session_token: Optional[str] = Header(None),
     token: Optional[str] = Query(None)
 ):
-    extracted = extract_token_from_header(authorization, x_session_token, token)
-    user = get_user_by_token(extracted)
-    if user["role"] != ROLE_ADMIN:
-        raise HTTPException(
-            status_code=403,
-            detail="Access denied: Enterprise Ops Admin credentials required."
-        )
+    user = verify_role_access([ROLE_ADMIN], authorization, x_session_token, token)
     return get_admin_telemetry()
 
 # 7. WhatsApp Integration Router

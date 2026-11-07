@@ -1,36 +1,37 @@
 import requests
+import uuid
 
 base = "http://127.0.0.1:8000"
 
-print("--- 1. Testing Arbitrary Email Mitra Partner Authentication ---")
-# Test 1a: Custom email logging in as Mitra Partner
-r_mitra = requests.post(f"{base}/api/auth/login", json={
-    "email": "my.own.partner.email@gmail.com",
-    "password": "airtelmitra",
-    "role": "PARTNER"
+print("--- 1. Testing Mitra Partner Authentication with Individual Credentials ---")
+# Register an individual Mitra Partner
+partner_email = f"mitra_{uuid.uuid4().hex[:6]}@airtelagency.in"
+partner_pwd = "PartnerSecureKey456!"
+r_reg_mitra = requests.post(f"{base}/api/auth/register", json={
+    "email": partner_email,
+    "password": partner_pwd,
+    "name": "Rohtak Central Mitra",
+    "role": "PARTNER",
+    "phone": "+91 98110 55443"
 })
-print("Custom Mitra Partner status:", r_mitra.status_code)
-assert r_mitra.status_code == 200, f"Expected 200, got {r_mitra.status_code}: {r_mitra.text}"
-mitra_data = r_mitra.json()
-mitra_token = mitra_data["access_token"]
-print("Mitra authenticated successfully:", mitra_data["user"]["email"], "Role:", mitra_data["user"]["role"])
-assert mitra_data["user"]["role"] == "PARTNER"
+assert r_reg_mitra.status_code == 200, f"Registration failed: {r_reg_mitra.text}"
+mitra_token = r_reg_mitra.json()["access_token"]
+print("Mitra authenticated successfully:", partner_email, "Role: PARTNER")
 
-print("\n--- 2. Testing Arbitrary Email Admin Authentication ---")
-# Test 2a: Custom email logging in as Admin
+print("\n--- 2. Testing Enterprise Ops Admin Authentication ---")
 r_admin = requests.post(f"{base}/api/auth/login", json={
-    "email": "my.custom.admin@somedomain.org",
+    "email": "admin@airtel.com",
     "password": "airteladmin",
     "role": "ADMIN"
 })
-print("Custom Admin status:", r_admin.status_code)
+print("Admin login status:", r_admin.status_code)
 assert r_admin.status_code == 200, f"Expected 200, got {r_admin.status_code}: {r_admin.text}"
 admin_data = r_admin.json()
 print("Admin authenticated successfully:", admin_data["user"]["email"], "Role:", admin_data["user"]["role"])
 assert admin_data["user"]["role"] == "ADMIN"
 
 print("\n--- 3. Testing Mitra Partner Leads Feed (No TOKEN_PAID) ---")
-# Fetch leads using the custom partner's token
+# Fetch leads using the partner's token
 r_leads = requests.get(f"{base}/api/partner/leads", headers={
     "Authorization": f"Bearer {mitra_token}"
 })
@@ -46,13 +47,13 @@ for l in leads:
 
 print("Check Passed: ZERO leads with TOKEN_PAID in Mitra feed!")
 
-print("\n--- 4. Testing HTML Form Inputs Have No Hardcoded Default Emails ---")
+print("\n--- 4. Testing HTML Form Inputs Have No Hardcoded Default Emails or Passwords ---")
 r_html = requests.get(f"{base}/")
 assert r_html.status_code == 200
 assert 'id="loginMitraEmail" required value="mitra@airtel.com"' not in r_html.text
 assert 'id="loginAdminEmail" required value="admin@airtel.com"' not in r_html.text
-assert 'placeholder="Enter any partner email' in r_html.text
-assert 'placeholder="Enter any admin email' in r_html.text
-print("Check Passed: Default emails cleanly removed from UI form inputs!")
+assert 'id="loginMitraPassword" required value="airtelmitra"' not in r_html.text
+assert 'id="loginAdminPassword" required value="airteladmin"' not in r_html.text
+print("Check Passed: Default emails and fixed passwords cleanly removed from UI form inputs!")
 
 print("\nALL TESTS PASSED SUCCESSFULLY!")

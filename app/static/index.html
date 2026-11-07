@@ -1299,21 +1299,18 @@
               <span>Airtel Mitra Channel Partner Authentication</span>
             </div>
             <div class="mt-1 text-[11px] text-amber-800">
-              Authorized Mitra partners have a mandatory security password: <strong class="bg-amber-100 px-1 py-0.5 rounded font-mono">airtelmitra</strong>
+              Authorized Mitra Channel Partners must authenticate with their individual account credentials.
             </div>
           </div>
 
           <form id="mitraLoginForm" action="javascript:void(0);" method="post" class="space-y-3" onsubmit="event.preventDefault(); window.submitMitraLogin(); return false;">
             <div>
               <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Partner Email</label>
-              <input type="email" id="loginMitraEmail" required placeholder="Enter any partner email (e.g. yourname@domain.com)" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitMitraLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+              <input type="email" id="loginMitraEmail" required placeholder="Enter partner email (e.g. mitra@airtel.com)" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitMitraLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
             </div>
             <div>
-              <div class="flex items-center justify-between mb-1">
-                <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Fixed Security Password</label>
-                <button type="button" id="fillDemoMitraBtn" class="text-[10px] text-amber-800 hover:underline font-bold cursor-pointer">Auto-fill (airtelmitra)</button>
-              </div>
-              <input type="password" id="loginMitraPassword" required value="airtelmitra" placeholder="Fixed: airtelmitra" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitMitraLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 font-mono">
+              <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Password</label>
+              <input type="password" id="loginMitraPassword" required placeholder="Enter your partner password" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitMitraLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 font-mono">
             </div>
             <button type="button" id="submitMitraLoginBtn" onclick="window.submitMitraLogin()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1.5 cursor-pointer">
               <span>Authenticate as Mitra Partner</span>
@@ -1330,21 +1327,18 @@
               <span>Enterprise Operations Desk Authentication</span>
             </div>
             <div class="mt-1 text-[11px] text-purple-800">
-              National operations admins have a mandatory security password: <strong class="bg-purple-100 px-1 py-0.5 rounded font-mono">airteladmin</strong>
+              National operations admins must authenticate with their individual account credentials.
             </div>
           </div>
 
           <form id="adminLoginForm" action="javascript:void(0);" method="post" class="space-y-3" onsubmit="event.preventDefault(); window.submitAdminLogin(); return false;">
             <div>
               <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Admin Email</label>
-              <input type="email" id="loginAdminEmail" required placeholder="Enter any admin email (e.g. admin@domain.com)" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitAdminLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600">
+              <input type="email" id="loginAdminEmail" required placeholder="Enter admin email (e.g. admin@airtel.com)" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitAdminLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600">
             </div>
             <div>
-              <div class="flex items-center justify-between mb-1">
-                <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Fixed Security Password</label>
-                <button type="button" id="fillDemoAdminBtn" class="text-[10px] text-purple-800 hover:underline font-bold cursor-pointer">Auto-fill (airteladmin)</button>
-              </div>
-              <input type="password" id="loginAdminPassword" required value="airteladmin" placeholder="Fixed: airteladmin" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitAdminLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 font-mono">
+              <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Password</label>
+              <input type="password" id="loginAdminPassword" required placeholder="Enter your admin password" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.submitAdminLogin();}" class="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 font-mono">
             </div>
             <button type="button" id="submitAdminLoginBtn" onclick="window.submitAdminLogin()" class="w-full bg-slate-900 hover:bg-black text-white font-bold py-2.5 rounded-xl shadow-md transition text-xs flex items-center justify-center space-x-1.5 cursor-pointer">
               <span>Authenticate as Ops Admin</span>

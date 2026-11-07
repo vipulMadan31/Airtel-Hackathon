@@ -400,9 +400,15 @@ function updateRoleSwitcherUI() {
 function navigateToView(role, pushHistory = true) {
   let normRole = (role || 'MERCHANT').toUpperCase();
 
-  // Strict role segregation: Enforce that users can ONLY view their authenticated persona's screen.
-  // Customers cannot switch to Mitra or Admin without logging out.
-  if (STATE.auth && STATE.auth.token) {
+  // If user is not authenticated, accessing PARTNER or ADMIN must trigger login modal and fail closed
+  if (!STATE.auth || !STATE.auth.token || !STATE.auth.user) {
+    if (normRole === 'PARTNER' || normRole === 'ADMIN') {
+      openAuthModal(normRole, "login", false);
+      normRole = 'MERCHANT';
+    }
+  } else {
+    // Strict role segregation: Enforce that users can ONLY view their authenticated persona's screen.
+    // Customers cannot switch to Mitra or Admin without logging out.
     if (STATE.auth.role === 'MERCHANT' && normRole !== 'MERCHANT') {
       normRole = 'MERCHANT';
     } else if (STATE.auth.role === 'PARTNER' && normRole !== 'PARTNER') {
@@ -458,7 +464,11 @@ function navigateToView(role, pushHistory = true) {
 
 async function loadPartnerViewData() {
   try {
-    const token = STATE.auth.token || 'tok_partner_demo';
+    const token = STATE.auth?.token;
+    if (!token) {
+      console.warn("loadPartnerViewData aborted: no active session token");
+      return;
+    }
     // 1. Fetch Partner Commissions & Telemetry
     const commRes = await fetch("/api/partner/commissions", {
       headers: {
@@ -602,7 +612,11 @@ async function loadPartnerViewData() {
 
 async function loadOpsViewData() {
   try {
-    const token = STATE.auth.token || 'tok_admin_demo';
+    const token = STATE.auth?.token;
+    if (!token) {
+      console.warn("loadOpsViewData aborted: no active session token");
+      return;
+    }
     const res = await fetch("/api/admin/metrics", {
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -708,9 +722,9 @@ function initAuthSession() {
     try {
       const parsed = JSON.parse(saved);
       if (parsed && parsed.token && parsed.user) {
-        // Invalidate any legacy demo session containing "rajesh"
+        // Invalidate any legacy demo session containing demo tokens or "rajesh"
         if (
-          parsed.token === "tok_merchant_demo" ||
+          (typeof parsed.token === 'string' && parsed.token.startsWith("tok_")) ||
           (parsed.user.name && parsed.user.name.includes("Rajesh")) ||
           (parsed.user.email && parsed.user.email.includes("rajesh"))
         ) {
@@ -1050,7 +1064,7 @@ window.submitMitraLogin = async function() {
 
     const { data, text } = await parseJsonResponse(res);
     if (!res.ok || !data) {
-      const msg = extractErrorMessage(data, text, "Authentication failed. Partner password must be 'airtelmitra'.");
+      const msg = extractErrorMessage(data, text, "Authentication failed. Invalid email or password.");
       setAuthAlert("error", msg);
       return;
     }
@@ -1097,7 +1111,7 @@ window.submitAdminLogin = async function() {
 
     const { data, text } = await parseJsonResponse(res);
     if (!res.ok || !data) {
-      const msg = extractErrorMessage(data, text, "Authentication failed. Admin password must be 'airteladmin'.");
+      const msg = extractErrorMessage(data, text, "Authentication failed. Invalid email or password.");
       setAuthAlert("error", msg);
       return;
     }
@@ -1330,16 +1344,6 @@ function initEventListeners() {
       }
     });
   }
-
-  safeOn("fillDemoMitraBtn", "click", () => {
-    const pw = document.getElementById("loginMitraPassword");
-    if (pw) pw.value = "airtelmitra";
-  });
-
-  safeOn("fillDemoAdminBtn", "click", () => {
-    const pw = document.getElementById("loginAdminPassword");
-    if (pw) pw.value = "airteladmin";
-  });
 
   // UI-Only KYC Track Selector
   try { initKycTrackSelector(); } catch (e) { console.warn("Track selector init note:", e); }
@@ -2849,6 +2853,13 @@ async function handleNpsSubmit(rating) {
 async function openPartnerModal() {
   const modal = document.getElementById("partnerModal");
   if (!modal) return;
+
+  if (!STATE.auth || !STATE.auth.token) {
+    alert("Authentication required. Please log in with your partner credentials.");
+    openAuthModal("PARTNER", "login", false);
+    return;
+  }
+
   modal.classList.remove("hidden");
 
   try {
@@ -3004,6 +3015,13 @@ function closePartnerModal() {
 async function openAdminModal() {
   const modal = document.getElementById("adminModal");
   if (!modal) return;
+
+  if (!STATE.auth || !STATE.auth.token) {
+    alert("Authentication required. Please log in with your admin credentials.");
+    openAuthModal("ADMIN", "login", false);
+    return;
+  }
+
   modal.classList.remove("hidden");
 
   try {
@@ -3014,7 +3032,7 @@ async function openAdminModal() {
       }
     });
 
-    if (res.status === 403) {
+    if (res.status === 401 || res.status === 403) {
       alert("Access Denied: Enterprise Ops Admin credentials required.");
       modal.classList.add("hidden");
       return;

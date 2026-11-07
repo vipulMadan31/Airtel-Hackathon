@@ -9,45 +9,6 @@ ROLE_MERCHANT = "MERCHANT"
 ROLE_PARTNER = "PARTNER"
 ROLE_ADMIN = "ADMIN"
 
-PERSONAS: Dict[str, Dict[str, Any]] = {
-    "MERCHANT": {
-        "user_id": "USR-CUST-1001",
-        "name": "Customer Self-Serve (MSME)",
-        "phone": "+91 98110 12345",
-        "role": ROLE_MERCHANT,
-        "badge": "🛒 Customer Mode",
-        "assigned_pincode": "452001",
-        "token": "tok_merchant_demo",
-        "permissions": ["view_my_quote", "view_my_order", "submit_kyc", "chat_advisor"]
-    },
-    "PARTNER": {
-        "user_id": "PTR-IND-882",
-        "name": "Airtel Mitra Partner",
-        "phone": "+91 98260 55443",
-        "role": ROLE_PARTNER,
-        "badge": "🤝 Airtel Mitra Partner",
-        "assigned_pincode": "452001",
-        "token": "tok_partner_demo",
-        "permissions": ["view_my_quote", "view_my_order", "submit_kyc", "chat_advisor", "view_partner_leads", "claim_bounty", "generate_referral_qr"]
-    },
-    "ADMIN": {
-        "user_id": "ADM-HQ-001",
-        "name": "Airtel Enterprise Ops Admin",
-        "phone": "+91 98765 00001",
-        "role": ROLE_ADMIN,
-        "badge": "🛡️ Airtel Ops Admin",
-        "assigned_pincode": "ALL",
-        "token": "tok_admin_demo",
-        "permissions": ["*"]
-    }
-}
-
-TOKEN_TO_ROLE: Dict[str, str] = {
-    "tok_merchant_demo": "MERCHANT",
-    "tok_partner_demo": "PARTNER",
-    "tok_admin_demo": "ADMIN"
-}
-
 def extract_token_from_header(
     authorization: Optional[str] = None,
     x_session_token: Optional[str] = None,
@@ -67,33 +28,21 @@ def extract_token_from_header(
         return token_param.strip()
     return None
 
-def get_user_by_token(token: Optional[str]) -> Dict[str, Any]:
+def get_user_by_token(token: Optional[str]) -> Optional[Dict[str, Any]]:
     """
-    Resolves session token into a structured User profile.
-    1. First checks dynamic SQLite UserDatabase token store.
-    2. Then checks static demo persona tokens (tok_merchant_demo, etc.).
-    3. Defaults to MERCHANT persona if token is missing or unrecognized.
+    Resolves session token strictly from the secure SQLite UserDatabase.
+    Fails closed: returns None if token is missing, invalid, or expired.
+    Never returns a default persona or demo token bypass.
     """
-    if not token:
-        return PERSONAS["MERCHANT"]
+    if not token or not str(token).strip():
+        return None
 
-    # 1. Dynamic SQLite UserDatabase lookup
     try:
         from app.modules.auth.db import UserDatabase
         db = UserDatabase.get_instance()
-        user = db.get_user_by_token(token)
-        if user:
-            return user
+        return db.get_user_by_token(str(token).strip())
     except Exception:
-        pass
-
-    # 2. Legacy / Demo persona tokens
-    role = TOKEN_TO_ROLE.get(token)
-    if role and role in PERSONAS:
-        return PERSONAS[role]
-
-    # 3. Default fallback
-    return PERSONAS["MERCHANT"]
+        return None
 
 def verify_role_access(
     allowed_roles: List[str],
@@ -102,18 +51,31 @@ def verify_role_access(
     token: Optional[str] = Query(None)
 ) -> Dict[str, Any]:
     """
-    FastAPI dependency enforcing that the request carries a token with an allowed role.
-    Raises HTTP 403 Forbidden if permission is denied.
+    Enforces strict authentication and role authorization.
+    Fails closed:
+    - 401 Unauthorized if token is missing, expired, or invalid.
+    - 403 Forbidden if authenticated user's role is not in allowed_roles.
     """
     extracted_token = extract_token_from_header(authorization, x_session_token, token)
+    if not extracted_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required. Please provide a valid Bearer token in the Authorization header."
+        )
+
     user = get_user_by_token(extracted_token)
-    
-    # If the user doesn't even supply a partner/admin token or has MERCHANT role
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired session token. Please log in again."
+        )
+
     if user["role"] not in allowed_roles:
         raise HTTPException(
             status_code=403,
-            detail=f"Access denied: {user['role']} role does not have authorization for this resource. Required: {', '.join(allowed_roles)}."
+            detail=f"Access denied: '{user['role']}' role is not authorized for this resource. Required: {', '.join(allowed_roles)}."
         )
+
     return user
 
 def get_admin_telemetry() -> Dict[str, Any]:
