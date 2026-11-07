@@ -1,6 +1,9 @@
 # app/modules/auth/rbac.py
 from typing import Dict, Any, List, Optional
 from fastapi import Header, Query, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token", auto_error=False)
 
 ROLE_MERCHANT = "MERCHANT"
 ROLE_PARTNER = "PARTNER"
@@ -48,13 +51,16 @@ TOKEN_TO_ROLE: Dict[str, str] = {
 def extract_token_from_header(
     authorization: Optional[str] = None,
     x_session_token: Optional[str] = None,
-    token_param: Optional[str] = None
+    token_param: Optional[str] = None,
+    oauth_token: Optional[str] = None
 ) -> Optional[str]:
     """
-    Extracts session token from Authorization Bearer, X-Session-Token, or query param.
+    Extracts session token from Authorization Bearer, X-Session-Token, query param, or OAuth2 scheme.
     """
     if authorization and authorization.startswith("Bearer "):
         return authorization.replace("Bearer ", "").strip()
+    if oauth_token:
+        return oauth_token.strip()
     if x_session_token:
         return x_session_token.strip()
     if token_param:
@@ -64,14 +70,29 @@ def extract_token_from_header(
 def get_user_by_token(token: Optional[str]) -> Dict[str, Any]:
     """
     Resolves session token into a structured User profile.
-    Defaults to MERCHANT if token is missing or unrecognized.
+    1. First checks dynamic SQLite UserDatabase token store.
+    2. Then checks static demo persona tokens (tok_merchant_demo, etc.).
+    3. Defaults to MERCHANT persona if token is missing or unrecognized.
     """
     if not token:
         return PERSONAS["MERCHANT"]
+
+    # 1. Dynamic SQLite UserDatabase lookup
+    try:
+        from app.modules.auth.db import UserDatabase
+        db = UserDatabase.get_instance()
+        user = db.get_user_by_token(token)
+        if user:
+            return user
+    except Exception:
+        pass
+
+    # 2. Legacy / Demo persona tokens
     role = TOKEN_TO_ROLE.get(token)
     if role and role in PERSONAS:
         return PERSONAS[role]
-    # Default fallback
+
+    # 3. Default fallback
     return PERSONAS["MERCHANT"]
 
 def verify_role_access(

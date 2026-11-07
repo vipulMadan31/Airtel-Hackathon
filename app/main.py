@@ -2,9 +2,10 @@ import os
 import shutil
 from pathlib import Path
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header, Query, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header, Query, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 
@@ -24,7 +25,11 @@ from app.modules.auth import (
     PERSONAS,
     get_user_by_token,
     extract_token_from_header,
-    get_admin_telemetry
+    get_admin_telemetry,
+    UserDatabase,
+    FIXED_ADMIN_PASSWORD,
+    FIXED_MITRA_PASSWORD,
+    oauth2_scheme
 )
 from app.data_loader import DataLoader
 from app.config import KYC_DOCUMENTS_DIR
@@ -52,6 +57,7 @@ ocr_engine = OCREngine()
 order_sm = OrderStateMachine()
 payment_gw = PaymentGateway(order_sm=order_sm)
 partner_portal = PartnerPortal()
+user_db = UserDatabase.get_instance()
 loader = DataLoader.get_instance()
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
@@ -120,6 +126,18 @@ class NPSRequest(BaseModel):
 
 class SwitchRoleRequest(BaseModel):
     role: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+    role: Optional[str] = None
+
+class SignUpRequest(BaseModel):
+    email: str
+    password: str
+    name: str
+    phone: Optional[str] = None
+    role: Optional[str] = "MERCHANT"
 
 class PaymentIntentRequest(BaseModel):
     order_id: Optional[str] = "PENDING_QUOTE"
@@ -437,7 +455,66 @@ def get_order_receipt(order_id: str):
         raise HTTPException(status_code=404, detail="Receipt not found for this order")
     return order["receipt"]
 
-# 6. Auth & RBAC (Role-Based Access Control)
+# 6. Auth & RBAC (OAuth2 + SQLite Database)
+@app.post("/api/auth/login")
+def login_user(req: LoginRequest):
+    try:
+        res = user_db.authenticate(req.email, req.password, role=req.role)
+        return {
+            "status": "success",
+            "access_token": res["token"],
+            "token_type": "bearer",
+            "expires_in": 86400,
+            "user": res["user"]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+@app.post("/api/auth/signup")
+@app.post("/api/auth/register")
+def signup_user(req: SignUpRequest):
+    try:
+        res = user_db.register_customer(
+            email=req.email,
+            password=req.password,
+            name=req.name,
+            phone=req.phone
+        )
+        return {
+            "status": "success",
+            "access_token": res["token"],
+            "token_type": "bearer",
+            "expires_in": 86400,
+            "user": res["user"]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/auth/token")
+def oauth_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    try:
+        role = form_data.scopes[0] if form_data.scopes else None
+        res = user_db.authenticate(form_data.username, form_data.password, role=role)
+        return {
+            "access_token": res["token"],
+            "token_type": "bearer",
+            "expires_in": 86400,
+            "user": res["user"]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+@app.post("/api/auth/logout")
+def logout_user(
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    if extracted:
+        user_db.logout_token(extracted)
+    return {"status": "success", "message": "Successfully logged out"}
+
 @app.post("/api/auth/switch-role")
 def switch_role(req: SwitchRoleRequest):
     role_key = req.role.strip().upper()
@@ -546,6 +623,14 @@ def serve_whatsapp_simulator():
     if sim_path.exists():
         return FileResponse(sim_path)
     raise HTTPException(status_code=404, detail="Simulator UI not found")
+
+@app.get("/login")
+def serve_login_page():
+    from fastapi.responses import FileResponse
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    raise HTTPException(status_code=404, detail="Portal index not found")
 
 @app.get("/mitra")
 def serve_mitra_portal():

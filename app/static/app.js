@@ -49,6 +49,7 @@ function safeOn(id, event, handler) {
 
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
+  try { initAuthSession(); } catch (e) { console.error("initAuthSession error:", e); }
   try { initEventListeners(); } catch (e) { console.error("initEventListeners error:", e); }
   try { applyLanguage('en'); } catch (e) { console.error("applyLanguage error:", e); }
   try {
@@ -69,7 +70,9 @@ function initViewRouter() {
   const urlParams = new URLSearchParams(window.location.search);
   const roleParam = (urlParams.get("role") || "").toUpperCase();
 
-  if (path === "/mitra" || roleParam === "PARTNER") {
+  if (path === "/login") {
+    openAuthModal("MERCHANT", "login");
+  } else if (path === "/mitra" || roleParam === "PARTNER") {
     switchUserRole("PARTNER");
   } else if (path === "/ops" || path === "/admin" || roleParam === "ADMIN") {
     switchUserRole("ADMIN");
@@ -79,7 +82,9 @@ function initViewRouter() {
 
   window.addEventListener("popstate", () => {
     const curPath = window.location.pathname.toLowerCase();
-    if (curPath === "/mitra") {
+    if (curPath === "/login") {
+      openAuthModal("MERCHANT", "login");
+    } else if (curPath === "/mitra") {
       switchUserRole("PARTNER");
     } else if (curPath === "/ops" || curPath === "/admin") {
       switchUserRole("ADMIN");
@@ -599,6 +604,335 @@ async function loadOpsViewData() {
   }
 }
 
+// --- OAUTH2 MULTI-ROLE AUTHENTICATION ENGINE ---
+let CURRENT_AUTH_ROLE = "MERCHANT";
+
+function initAuthSession() {
+  const saved = localStorage.getItem("udyam_auth");
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.token && parsed.user) {
+        STATE.auth = parsed;
+      }
+    } catch (e) {}
+  }
+  updateAuthUI();
+}
+
+function updateAuthUI() {
+  const userIcon = document.getElementById("userAuthIcon");
+  const userName = document.getElementById("userAuthName");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  if (!userName) return;
+
+  if (STATE.auth && STATE.auth.user && STATE.auth.user.name && STATE.auth.token) {
+    const isCustom = STATE.auth.token.startsWith("oa_");
+    userName.innerText = isCustom ? STATE.auth.user.name : (STATE.auth.user.name.split(" ")[0] || "Account");
+    if (userIcon) {
+      userIcon.innerText = STATE.auth.role === 'ADMIN' ? '🛡️' : (STATE.auth.role === 'PARTNER' ? '🤝' : '🛒');
+    }
+    if (logoutBtn) logoutBtn.classList.remove("hidden");
+  } else {
+    userName.innerText = "Sign In / Register";
+    if (userIcon) userIcon.innerText = "👤";
+    if (logoutBtn) logoutBtn.classList.add("hidden");
+  }
+}
+
+function openAuthModal(defaultRole = "MERCHANT", subTab = "login") {
+  const modal = document.getElementById("authModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  clearAuthAlert();
+  switchAuthTab(defaultRole);
+  if (defaultRole === "MERCHANT") {
+    switchCustSubTab(subTab);
+  }
+}
+
+function closeAuthModal() {
+  const modal = document.getElementById("authModal");
+  if (modal) modal.classList.add("hidden");
+  clearAuthAlert();
+}
+
+function clearAuthAlert() {
+  const box = document.getElementById("authAlertBox");
+  if (box) box.classList.add("hidden");
+}
+
+function setAuthAlert(type, message) {
+  const box = document.getElementById("authAlertBox");
+  const icon = document.getElementById("authAlertIcon");
+  const msg = document.getElementById("authAlertMsg");
+  if (!box || !msg) return;
+
+  box.classList.remove("hidden", "bg-rose-50", "border-rose-200", "text-rose-900", "bg-emerald-50", "border-emerald-200", "text-emerald-900");
+
+  if (type === "success") {
+    box.classList.add("bg-emerald-50", "border-emerald-200", "text-emerald-900");
+    if (icon) icon.innerText = "✔";
+  } else {
+    box.classList.add("bg-rose-50", "border-rose-200", "text-rose-900");
+    if (icon) icon.innerText = "⚠️";
+  }
+  msg.innerText = message;
+}
+
+function switchAuthTab(role) {
+  CURRENT_AUTH_ROLE = role;
+  const tabCust = document.getElementById("authTabCustomer");
+  const tabMitra = document.getElementById("authTabPartner");
+  const tabAdmin = document.getElementById("authTabAdmin");
+
+  const secCust = document.getElementById("authCustomerSection");
+  const secMitra = document.getElementById("authPartnerSection");
+  const secAdmin = document.getElementById("authAdminSection");
+
+  clearAuthAlert();
+
+  [tabCust, tabMitra, tabAdmin].forEach(t => {
+    if (t) t.className = "flex-1 py-1.5 rounded-xl border border-transparent hover:border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-white/80 transition flex items-center justify-center space-x-1 cursor-pointer";
+  });
+
+  if (secCust) secCust.classList.add("hidden");
+  if (secMitra) secMitra.classList.add("hidden");
+  if (secAdmin) secAdmin.classList.add("hidden");
+
+  if (role === "PARTNER") {
+    if (tabMitra) tabMitra.className = "flex-1 py-1.5 rounded-xl border border-amber-600 bg-amber-50 text-amber-900 shadow-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer";
+    if (secMitra) secMitra.classList.remove("hidden");
+  } else if (role === "ADMIN") {
+    if (tabAdmin) tabAdmin.className = "flex-1 py-1.5 rounded-xl border border-purple-900 bg-purple-50 text-purple-950 shadow-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer";
+    if (secAdmin) secAdmin.classList.remove("hidden");
+  } else {
+    if (tabCust) tabCust.className = "flex-1 py-1.5 rounded-xl border border-airtel-red bg-red-50/50 text-airtel-red shadow-xs font-bold transition flex items-center justify-center space-x-1 cursor-pointer";
+    if (secCust) secCust.classList.remove("hidden");
+  }
+}
+
+function switchCustSubTab(sub) {
+  const btnLogin = document.getElementById("custSubTabLogin");
+  const btnSignup = document.getElementById("custSubTabSignup");
+  const formLogin = document.getElementById("custLoginForm");
+  const formSignup = document.getElementById("custSignupForm");
+
+  clearAuthAlert();
+
+  if (sub === "signup") {
+    if (btnLogin) btnLogin.className = "flex-1 py-1 rounded-lg text-slate-500 hover:text-slate-900 transition cursor-pointer";
+    if (btnSignup) btnSignup.className = "flex-1 py-1 rounded-lg bg-white shadow-xs text-slate-900 font-bold transition cursor-pointer";
+    if (formLogin) formLogin.classList.add("hidden");
+    if (formSignup) formSignup.classList.remove("hidden");
+  } else {
+    if (btnLogin) btnLogin.className = "flex-1 py-1 rounded-lg bg-white shadow-xs text-slate-900 font-bold transition cursor-pointer";
+    if (btnSignup) btnSignup.className = "flex-1 py-1 rounded-lg text-slate-500 hover:text-slate-900 transition cursor-pointer";
+    if (formLogin) formLogin.classList.remove("hidden");
+    if (formSignup) formSignup.classList.add("hidden");
+  }
+}
+
+window.submitCustomerLogin = async function() {
+  const email = document.getElementById("loginCustEmail")?.value?.trim();
+  const password = document.getElementById("loginCustPassword")?.value;
+
+  if (!email || !password) {
+    setAuthAlert("error", "Please provide both email and password.");
+    return;
+  }
+
+  const btn = document.getElementById("submitCustLoginBtn");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, role: "MERCHANT" })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthAlert("error", data.detail || "Login failed. Please check your credentials.");
+      return;
+    }
+
+    setAuthAlert("success", `Welcome back, ${data.user.name}!`);
+    saveAuthSession(data);
+    setTimeout(() => {
+      closeAuthModal();
+      navigateToView("MERCHANT");
+    }, 400);
+  } catch (err) {
+    setAuthAlert("error", "Network error during login. Please try again.");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+
+window.submitCustomerSignup = async function() {
+  const name = document.getElementById("signupCustName")?.value?.trim();
+  const email = document.getElementById("signupCustEmail")?.value?.trim();
+  const phone = document.getElementById("signupCustPhone")?.value?.trim();
+  const password = document.getElementById("signupCustPassword")?.value;
+  const confirm = document.getElementById("signupCustConfirmPassword")?.value;
+
+  if (!name || !email || !password) {
+    setAuthAlert("error", "Please fill in all required fields.");
+    return;
+  }
+  if (password.length < 6) {
+    setAuthAlert("error", "Password must be at least 6 characters.");
+    return;
+  }
+  if (password !== confirm) {
+    setAuthAlert("error", "Passwords do not match. Please re-enter.");
+    return;
+  }
+
+  const btn = document.getElementById("submitCustSignupBtn");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, phone, password, role: "MERCHANT" })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthAlert("error", data.detail || "Registration failed. An account may already exist.");
+      return;
+    }
+
+    setAuthAlert("success", `Account created successfully! Welcome, ${data.user.name}.`);
+    saveAuthSession(data);
+    setTimeout(() => {
+      closeAuthModal();
+      navigateToView("MERCHANT");
+    }, 500);
+  } catch (err) {
+    setAuthAlert("error", "Network error during registration.");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+
+window.submitMitraLogin = async function() {
+  const email = document.getElementById("loginMitraEmail")?.value?.trim();
+  const password = document.getElementById("loginMitraPassword")?.value;
+
+  if (!email || !password) {
+    setAuthAlert("error", "Please provide Mitra partner email and security password.");
+    return;
+  }
+
+  const btn = document.getElementById("submitMitraLoginBtn");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, role: "PARTNER" })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthAlert("error", data.detail || "Authentication failed. Partner password must be 'airtelmitra'.");
+      return;
+    }
+
+    setAuthAlert("success", `Mitra Partner authenticated! Welcome, ${data.user.name}.`);
+    saveAuthSession(data);
+    setTimeout(() => {
+      closeAuthModal();
+      navigateToView("PARTNER");
+    }, 400);
+  } catch (err) {
+    setAuthAlert("error", "Network error during Mitra login.");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+
+window.submitAdminLogin = async function() {
+  const email = document.getElementById("loginAdminEmail")?.value?.trim();
+  const password = document.getElementById("loginAdminPassword")?.value;
+
+  if (!email || !password) {
+    setAuthAlert("error", "Please provide Admin email and security password.");
+    return;
+  }
+
+  const btn = document.getElementById("submitAdminLoginBtn");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, role: "ADMIN" })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAuthAlert("error", data.detail || "Authentication failed. Admin password must be 'airteladmin'.");
+      return;
+    }
+
+    setAuthAlert("success", `Enterprise Ops Admin authenticated! Welcome, ${data.user.name}.`);
+    saveAuthSession(data);
+    setTimeout(() => {
+      closeAuthModal();
+      navigateToView("ADMIN");
+    }, 400);
+  } catch (err) {
+    setAuthAlert("error", "Network error during Admin login.");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
+
+function saveAuthSession(data) {
+  STATE.auth.token = data.access_token || data.token;
+  STATE.auth.role = data.user.role;
+  STATE.auth.user = data.user;
+  try {
+    localStorage.setItem("udyam_auth", JSON.stringify(STATE.auth));
+  } catch (e) {}
+  updateAuthUI();
+  updateRoleSwitcherUI();
+}
+
+window.handleLogout = async function() {
+  try {
+    if (STATE.auth.token) {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${STATE.auth.token}` }
+      });
+    }
+  } catch (e) {}
+
+  try {
+    localStorage.removeItem("udyam_auth");
+  } catch (e) {}
+
+  STATE.auth = {
+    role: "MERCHANT",
+    token: "tok_merchant_demo",
+    user: {
+      user_id: "USR-CUST-1001",
+      name: "Rajesh Gupta (Rajesh Kirana)",
+      role: "MERCHANT"
+    }
+  };
+
+  updateAuthUI();
+  navigateToView("MERCHANT");
+  openAuthModal("MERCHANT", "login");
+};
+
 async function switchUserRole(roleName) {
   const dropdown = document.getElementById("roleDropdownMenu");
   if (dropdown) dropdown.classList.add("hidden");
@@ -614,6 +948,8 @@ async function switchUserRole(roleName) {
       STATE.auth.role = data.user.role;
       STATE.auth.token = data.token;
       STATE.auth.user = data.user;
+      try { localStorage.setItem("udyam_auth", JSON.stringify(STATE.auth)); } catch (e) {}
+      updateAuthUI();
       navigateToView(data.user.role, true);
 
       const isHi = STATE.language === 'hi';
@@ -765,6 +1101,39 @@ function initEventListeners() {
   // Admin Modal
   safeOn("adminPortalBtn", "click", openAdminModal);
   safeOn("closeAdminModalBtn", "click", closeAdminModal);
+
+  // OAuth2 Authentication Modal Listeners
+  safeOn("openAuthModalBtn", "click", () => openAuthModal(STATE.auth.role || "MERCHANT"));
+  safeOn("closeAuthModalBtn", "click", closeAuthModal);
+  safeOn("logoutBtn", "click", window.handleLogout);
+
+  safeOn("authTabCustomer", "click", () => switchAuthTab("MERCHANT"));
+  safeOn("authTabPartner", "click", () => switchAuthTab("PARTNER"));
+  safeOn("authTabAdmin", "click", () => switchAuthTab("ADMIN"));
+
+  safeOn("custSubTabLogin", "click", () => switchCustSubTab("login"));
+  safeOn("custSubTabSignup", "click", () => switchCustSubTab("signup"));
+
+  safeOn("fillDemoCustBtn", "click", () => {
+    const em = document.getElementById("loginCustEmail");
+    const pw = document.getElementById("loginCustPassword");
+    if (em) em.value = "rajesh@kirana.com";
+    if (pw) pw.value = "customer123";
+  });
+
+  safeOn("fillDemoMitraBtn", "click", () => {
+    const em = document.getElementById("loginMitraEmail");
+    const pw = document.getElementById("loginMitraPassword");
+    if (em) em.value = "mitra@airtel.com";
+    if (pw) pw.value = "airtelmitra";
+  });
+
+  safeOn("fillDemoAdminBtn", "click", () => {
+    const em = document.getElementById("loginAdminEmail");
+    const pw = document.getElementById("loginAdminPassword");
+    if (em) em.value = "admin@airtel.com";
+    if (pw) pw.value = "airteladmin";
+  });
 
   // Role Switcher Dropdown Toggle
   const roleDropdownBtn = document.getElementById("roleDropdownBtn");
