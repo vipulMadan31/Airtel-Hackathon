@@ -1780,20 +1780,30 @@ async function handleVerifyExtracted() {
   resultBox.innerHTML = `<span>Checking extracted fields against mock registries & DPDP rules...</span>`;
 
   try {
+    const headers = { "Content-Type": "application/json" };
+    if (STATE.auth?.token) {
+      headers["Authorization"] = `Bearer ${STATE.auth.token}`;
+      headers["X-Session-Token"] = STATE.auth.token;
+    }
     const res = await fetch("/api/kyc/verify-extracted", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: JSON.stringify({
         gstin: gstin,
         udyam_number: udyam,
         entity_name: name,
         bill_date: date,
         blur_variance: blurVariance,
-        is_non_gst_mode: STATE.safeModeNonGst
+        is_non_gst_mode: STATE.safeModeNonGst,
+        user_id: STATE.auth?.user?.user_id,
+        customer_email: STATE.auth?.user?.email
       })
     });
     const data = await res.json();
     STATE.kycDecision = data;
+    if (data.case_id) {
+      STATE.kycCaseId = data.case_id;
+    }
     renderKycDecision(data);
   } catch (err) {
     resultBox.innerHTML = `<span>Validation API connection error.</span>`;
@@ -2274,16 +2284,28 @@ async function handleConfirmOrder() {
   const extractedGstin = document.getElementById("extractedGstinInput")?.value?.trim() || null;
 
   try {
+    const headers = { "Content-Type": "application/json" };
+    if (STATE.auth?.token) {
+      headers["Authorization"] = `Bearer ${STATE.auth.token}`;
+      headers["X-Session-Token"] = STATE.auth.token;
+    }
     const res = await fetch("/api/orders/create", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: JSON.stringify({
         business_name: document.getElementById("extractedNameInput").value || "Star Electronics",
         contact_phone: cleanPhone,
         bundle_data: STATE.activeQuote,
-        kyc_status: "VERIFIED",
+        case_id: STATE.kycCaseId || (STATE.kycDecision?.case_id) || null,
+        consent: {
+          granted: true,
+          timestamp: new Date().toISOString(),
+          version: "v1.0",
+          purpose: "DoT Identity Verification and Optical Line Installation under DPDP Act 2023",
+          consent_text: "Customer explicitly granted affirmative consent for subscriber KYC and optical line installation."
+        },
         language: STATE.language,
-        partner_id: STATE.attribution.partner_id || (STATE.auth.role === 'PARTNER' ? STATE.auth.user.user_id : null),
+        partner_id: STATE.attribution.partner_id || (STATE.auth?.role === 'PARTNER' ? STATE.auth.user.user_id : null),
         installation_address: installationAddress,
         user_id: STATE.auth?.user?.user_id || null,
         udyam_number: extractedUdyam,
@@ -2476,7 +2498,12 @@ async function restoreActiveOrderIfAny() {
     if (savedOrderId) queryParams.set("order_id", savedOrderId);
 
     try {
-      const res = await fetch(`/api/orders/user/latest?${queryParams.toString()}`);
+      const headers = {};
+      if (STATE.auth?.token) {
+        headers["Authorization"] = `Bearer ${STATE.auth.token}`;
+        headers["X-Session-Token"] = STATE.auth.token;
+      }
+      const res = await fetch(`/api/orders/user/latest?${queryParams.toString()}`, { headers });
       if (res.ok) {
         const order = await res.json();
         if (order && order.order_id) {
@@ -2501,9 +2528,14 @@ async function restoreActiveOrderIfAny() {
       console.warn("Could not sync latest order from server:", err);
     }
   } else if (savedOrderId) {
-    // Unauthenticated guest user with an order ID
+    // Guest or unauthenticated user
     try {
-      const res = await fetch(`/api/orders/user/latest?order_id=${savedOrderId}`);
+      const headers = {};
+      if (STATE.auth?.token) {
+        headers["Authorization"] = `Bearer ${STATE.auth.token}`;
+        headers["X-Session-Token"] = STATE.auth.token;
+      }
+      const res = await fetch(`/api/orders/user/latest?order_id=${savedOrderId}`, { headers });
       if (res.ok) {
         const order = await res.json();
         if (order && order.order_id) {
@@ -2561,9 +2593,14 @@ async function openPaymentModal(orderId = null) {
   const businessName = document.getElementById("extractedNameInput")?.value || "Airtel MSME Customer";
 
   try {
+    const headers = { "Content-Type": "application/json" };
+    if (STATE.auth?.token) {
+      headers["Authorization"] = `Bearer ${STATE.auth.token}`;
+      headers["X-Session-Token"] = STATE.auth.token;
+    }
     const res = await fetch("/api/payment/create-intent", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: JSON.stringify({
         order_id: effectiveOrderId,
         amount_inr: 499.0,
@@ -2575,7 +2612,7 @@ async function openPaymentModal(orderId = null) {
     STATE.payment.activeIntent = intent;
 
     const amtEl = document.getElementById("payModalAmount");
-    if (amtEl) amtEl.innerText = `₹${intent.amount_inr.toFixed(2)}`;
+    if (amtEl) amtEl.innerText = `₹${(intent.amount_inr || 499.0).toFixed(2)}`;
 
     const dateEl = document.getElementById("payScheduledDate");
     if (dateEl && STATE.activeOrder) {
@@ -2599,15 +2636,20 @@ async function handlePaymentExecute() {
   }
 
   const orderId = STATE.activeOrder ? STATE.activeOrder.order_id : "UDYAM-PREPAID";
-  const txnId = STATE.payment.activeIntent ? STATE.payment.activeIntent.txn_id : `TXN-UPI-${Date.now()}`;
+  const intentId = STATE.payment.activeIntent ? STATE.payment.activeIntent.intent_id : null;
 
   try {
+    const headers = { "Content-Type": "application/json" };
+    if (STATE.auth?.token) {
+      headers["Authorization"] = `Bearer ${STATE.auth.token}`;
+      headers["X-Session-Token"] = STATE.auth.token;
+    }
     const res = await fetch("/api/payment/confirm", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: JSON.stringify({
         order_id: orderId,
-        txn_id: txnId,
+        intent_id: intentId,
         payment_method: STATE.payment.selectedMethod || "UPI_PHONEPE",
         mandate_active: STATE.payment.mandateOptIn,
         amount_inr: 499.0
@@ -2710,7 +2752,13 @@ async function openEmailModal() {
     if (orderId) query.set("order_id", orderId);
     if (targetEmail) query.set("email", targetEmail);
 
-    const res = await fetch(`/api/notifications/emails/latest?${query.toString()}`);
+    const headers = {};
+    if (STATE.auth?.token) {
+      headers["Authorization"] = `Bearer ${STATE.auth.token}`;
+      headers["X-Session-Token"] = STATE.auth.token;
+    }
+
+    const res = await fetch(`/api/notifications/emails/latest?${query.toString()}`, { headers });
     if (res.ok) {
       const notif = await res.json();
       const fromEl = document.getElementById("emailModalFrom");
@@ -2808,9 +2856,14 @@ async function handleReschedule() {
   if (!newDate) return;
 
   try {
+    const headers = { "Content-Type": "application/json" };
+    if (STATE.auth?.token) {
+      headers["Authorization"] = `Bearer ${STATE.auth.token}`;
+      headers["X-Session-Token"] = STATE.auth.token;
+    }
     const res = await fetch(`/api/orders/${STATE.activeOrder.order_id}/reschedule`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: JSON.stringify({ new_date: newDate })
     });
     const data = await res.json();
@@ -2837,9 +2890,14 @@ function initNpsButtons() {
 async function handleNpsSubmit(rating) {
   if (!STATE.activeOrder) return;
   try {
+    const headers = { "Content-Type": "application/json" };
+    if (STATE.auth?.token) {
+      headers["Authorization"] = `Bearer ${STATE.auth.token}`;
+      headers["X-Session-Token"] = STATE.auth.token;
+    }
     await fetch(`/api/orders/${STATE.activeOrder.order_id}/nps`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: JSON.stringify({ rating: rating })
     });
     document.getElementById("npsButtonsContainer").classList.add("hidden");

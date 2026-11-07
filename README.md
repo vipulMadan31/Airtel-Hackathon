@@ -105,7 +105,7 @@ flowchart TD
 
 ### 7. Channel Harmony & Partner Ecosystem
 * **Filtered Lead Marketplace**: Orders where the token has already been paid (`TOKEN_PAID`) are **automatically filtered out** of the Mitra feed to prevent duplicate outreach on already converted customers.
-* **Open Authentication**: Any email address can authenticate as an Airtel Mitra (with security password `airtelmitra`) or as an Ops Admin (with security password `airteladmin`).
+* **Hardened RBAC & Individual Credentials**: Channel partners and Enterprise Ops Admins authenticate using individual credentials stored with salted PBKDF2 hashes; universal backdoor passwords and public role switching have been strictly purged.
 * **4-Tier Hierarchical Routing**:
   * Level 1: Exact 6-Digit PIN Match $\rightarrow$ Local Retail Store Counter.
   * Level 2: 3-Digit Postal District Prefix $\rightarrow$ District Mitra Hub.
@@ -164,7 +164,17 @@ SMTP_PASSWORD=your_16_digit_google_app_password
 ```powershell
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
-Open your browser at **`http://127.0.0.1:8000`**.
+### 5. Default Seeded Accounts
+
+The platform is pre-seeded with individual PBKDF2-salted credentials for rapid evaluation:
+
+| Role | Email | Password | Access Portal |
+| :--- | :--- | :--- | :--- |
+| **Enterprise Ops Admin** | `admin@airtel.com` | `airteladmin` | Click Admin tab &rarr; Enter credentials &rarr; Opens National Ops Dashboard |
+| **Airtel Mitra Partner** | `mitra@airtel.com` | `airtelmitra` | Click Mitra tab &rarr; Enter credentials &rarr; Opens Partner Portal & Leads |
+| **MSME Customer** | `customer@business.in` | `customer123` | Click Customer tab &rarr; Sign In |
+
+*(Each account verifies against its own cryptographic salt and PBKDF2 hash. New individual accounts for any role can be registered via `POST /api/auth/register`).*
 
 ---
 

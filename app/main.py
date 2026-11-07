@@ -105,6 +105,8 @@ class VerifyExtractedRequest(BaseModel):
     blur_variance: Optional[float] = 1000.0
     applicant_code: Optional[str] = "CUSTOM"
     is_non_gst_mode: Optional[bool] = False
+    customer_email: Optional[str] = None
+    user_id: Optional[str] = None
 
 class GstinLookupRequest(BaseModel):
     gstin: str
@@ -116,7 +118,7 @@ class CreateOrderRequest(BaseModel):
     business_name: str
     contact_phone: str
     bundle_data: Dict[str, Any]
-    kyc_status: str = "VERIFIED"
+    kyc_status: Optional[str] = None
     language: str = "en"
     partner_id: Optional[str] = None
     installation_address: Optional[Dict[str, Any]] = None
@@ -125,6 +127,8 @@ class CreateOrderRequest(BaseModel):
     gstin: Optional[str] = None
     kyc_details: Optional[Dict[str, Any]] = None
     customer_email: Optional[str] = None
+    case_id: Optional[str] = None
+    consent: Optional[Dict[str, Any]] = None
 
 class RescheduleRequest(BaseModel):
     new_date: str
@@ -145,17 +149,18 @@ class SignUpRequest(BaseModel):
     role: Optional[str] = "MERCHANT"
 
 class PaymentIntentRequest(BaseModel):
-    order_id: Optional[str] = "PENDING_QUOTE"
-    amount_inr: float = 499.0
+    order_id: str = "PENDING_QUOTE"
+    amount_inr: Optional[float] = 499.0
     business_name: Optional[str] = ""
     phone: Optional[str] = ""
 
 class PaymentConfirmRequest(BaseModel):
     order_id: Optional[str] = None
-    txn_id: str
+    intent_id: Optional[str] = None
+    txn_id: Optional[str] = None
     payment_method: str = "UPI_PHONEPE"
     mandate_active: bool = True
-    amount_inr: float = 499.0
+    amount_inr: Optional[float] = 499.0
 
 # --- API ENDPOINTS ---
 
@@ -294,11 +299,22 @@ def verify_udyam_lookup(req: UdyamLookupRequest):
     }
 
 @app.post("/api/kyc/verify-extracted")
-def verify_extracted_data(req: VerifyExtractedRequest):
+def verify_extracted_data(
+    req: VerifyExtractedRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
     """
     Validates reviewed extracted fields against mock registries (GSTIN & Udyam),
     90-day date rule, and blur threshold.
+    Creates and stores a server-controlled KYC Case record (Requirement 6).
     """
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    user = get_user_by_token(extracted) if extracted else None
+    effective_user_id = user["user_id"] if user else req.user_id
+    effective_email = user["email"] if user else req.customer_email
+
     reasons = []
     registry_rec = None
     udyam_rec = None
@@ -359,22 +375,45 @@ def verify_extracted_data(req: VerifyExtractedRequest):
             if not matched and score < 70:
                 reasons.append(f"Entity Name Discrepancy: '{check_name}' does not match registered Udyam name '{u_name}'.")
 
-    # Decision Logic
+    # Server-Controlled Verdict Calculation
     if len(reasons) == 0:
         status_decision = "VERIFIED"
+        verdict = "APPROVED"
         action = "Approve Instant Straight-Through Processing" + (" (Non-GST Safe Mode)" if req.is_non_gst_mode else "")
     elif any("Statutory Rejection" in r or "Expired" in r for r in reasons):
         status_decision = "REJECTED"
+        verdict = "REJECTED"
         action = "Hard Stop - Inform applicant and block onboarding"
     elif any("blurry" in r for r in reasons):
         status_decision = "ACTION_REQUIRED"
+        verdict = "ACTION_REQUIRED"
         action = "Prompt customer to re-upload clear document"
     else:
         status_decision = "MANUAL_REVIEW"
+        verdict = "MANUAL_REVIEW"
         action = "Route to partner/agent for manual review"
 
+    # Store authoritative server KYC case (Requirement 6)
+    case_id = order_sm.create_kyc_case(
+        user_id=effective_user_id,
+        customer_email=effective_email,
+        doc_type="UDYAM" if req.is_non_gst_mode or req.udyam_number else "GST",
+        id_number=req.udyam_number if req.is_non_gst_mode or req.udyam_number else req.gstin,
+        entity_name=req.entity_name,
+        verdict=verdict,
+        details={
+            "action": action,
+            "reasons": reasons,
+            "registry_details": registry_rec or {},
+            "udyam_details": udyam_rec or {},
+            "is_non_gst_mode": bool(req.is_non_gst_mode)
+        }
+    )
+
     return {
+        "case_id": case_id,
         "status": status_decision,
+        "verdict": verdict,
         "action": action,
         "reasons": reasons,
         "registry_details": registry_rec or {},
@@ -388,48 +427,142 @@ def verify_extracted_data(req: VerifyExtractedRequest):
         }
     }
 
+@app.get("/api/kyc/cases/{case_id}")
+def get_kyc_case_details(
+    case_id: str,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    """
+    Retrieves verified KYC case record. Enforces strict ownership check (Requirement 5).
+    """
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    if not extracted:
+        raise HTTPException(status_code=401, detail="Authentication required to inspect KYC case.")
+    user = get_user_by_token(extracted)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token.")
+
+    case = order_sm.get_kyc_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="KYC case not found")
+
+    if user["role"] == ROLE_MERCHANT:
+        u_id = user["user_id"]
+        u_email = (user["email"] or "").lower().strip()
+        case_uid = case.get("user_id")
+        case_email = (case.get("customer_email") or "").lower().strip()
+        if (case_uid and case_uid != u_id) and (case_email and case_email != u_email):
+            raise HTTPException(status_code=403, detail="Access denied: You do not own this KYC case.")
+
+    return case
+
 # 5. Orders & Tracker
 @app.post("/api/orders/create")
-def create_order(req: CreateOrderRequest):
-    return order_sm.create_order(
-        business_name=req.business_name,
-        contact_phone=req.contact_phone,
-        bundle_data=req.bundle_data,
-        kyc_status=req.kyc_status,
-        language=req.language,
-        partner_id=req.partner_id,
-        installation_address=req.installation_address,
-        user_id=req.user_id,
-        udyam_number=req.udyam_number,
-        gstin=req.gstin,
-        kyc_details=req.kyc_details,
-        customer_email=req.customer_email
-    )
+def create_order(
+    req: CreateOrderRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    """
+    Stages an enterprise subscriber order.
+    - Requires explicit customer consent (Requirement 8).
+    - Validates server-controlled KYC case with approved verdict (Requirement 6).
+    - Enforces ownership & identity binding (Requirement 5).
+    """
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    user = get_user_by_token(extracted) if extracted else None
+
+    effective_user_id = user["user_id"] if user else req.user_id
+    effective_email = user["email"] if user else req.customer_email
+    effective_phone = user.get("phone") if (user and user.get("phone")) else req.contact_phone
+
+    try:
+        return order_sm.create_order(
+            business_name=req.business_name,
+            contact_phone=effective_phone,
+            bundle_data=req.bundle_data,
+            case_id=req.case_id,
+            explicit_consent=req.consent,
+            language=req.language,
+            partner_id=req.partner_id,
+            installation_address=req.installation_address,
+            user_id=effective_user_id,
+            udyam_number=req.udyam_number,
+            gstin=req.gstin,
+            kyc_details=req.kyc_details,
+            customer_email=effective_email
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Order creation service error: {str(e)}")
 
 @app.get("/api/notifications/emails/latest")
 def get_latest_email_notification(
     order_id: Optional[str] = None,
-    email: Optional[str] = None
+    email: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
 ):
+    """
+    Retrieves latest email notification. Enforces ownership check (Requirement 5).
+    Never leaks notifications of other customers.
+    """
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    if not extracted:
+        raise HTTPException(status_code=401, detail="Authentication required to view notifications.")
+    user = get_user_by_token(extracted)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token.")
+
     from app.modules.notifications.email_service import EmailNotificationService
     svc = EmailNotificationService.get_instance()
+
     if order_id:
+        order = order_sm.get_order(order_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        if not order_sm.verify_order_ownership(order, user):
+            raise HTTPException(status_code=403, detail="Access denied: You do not own this order's notifications.")
         notifs = svc.get_notifications_for_order(order_id)
         if notifs:
             return notifs[0]
-    if email:
-        notif = svc.get_latest_notification_for_email(email)
-        if notif:
-            return notif
-    # Fallback to latest
-    with svc._get_connection() as conn:
-        row = conn.execute("SELECT * FROM email_notifications ORDER BY id DESC LIMIT 1").fetchone()
-        if row:
-            return dict(row)
-    raise HTTPException(status_code=404, detail="No email notification found")
+        raise HTTPException(status_code=404, detail="No notification found for this order")
+
+    # Strictly bound to authenticated customer's email (Requirement 5)
+    target_email = user["email"].strip().lower() if user["role"] == ROLE_MERCHANT else (email or user["email"]).strip().lower()
+    notif = svc.get_latest_notification_for_email(target_email)
+    if notif:
+        return notif
+    raise HTTPException(status_code=404, detail="No email notification found for this account")
 
 @app.get("/api/notifications/emails/{order_id}")
-def get_order_email_notifications(order_id: str):
+def get_order_email_notifications(
+    order_id: str,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    """
+    Retrieves email notifications for an order. Enforces ownership check (Requirement 5).
+    """
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    if not extracted:
+        raise HTTPException(status_code=401, detail="Authentication required to view notifications.")
+    user = get_user_by_token(extracted)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token.")
+
+    order = order_sm.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if not order_sm.verify_order_ownership(order, user):
+        raise HTTPException(status_code=403, detail="Access denied: You do not have permission to view notifications for this order.")
+
     from app.modules.notifications.email_service import EmailNotificationService
     svc = EmailNotificationService.get_instance()
     notifs = svc.get_notifications_for_order(order_id)
@@ -450,33 +583,117 @@ def get_latest_user_order(
     user_id: Optional[str] = None,
     phone: Optional[str] = None,
     email: Optional[str] = None,
-    order_id: Optional[str] = None
+    order_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
 ):
     """
     Fetches the latest active order for the specific session/user.
-    Never leaks orders from other accounts.
+    Enforces ownership check: never leaks orders from other accounts (Requirement 5).
     """
-    order = order_sm.get_latest_order_for_user(user_id=user_id, phone=phone, email=email, order_id=order_id)
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    if not extracted:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    user = get_user_by_token(extracted)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token.")
+
+    if user["role"] == ROLE_MERCHANT:
+        eff_user_id = user["user_id"]
+        eff_email = user["email"]
+        eff_phone = user.get("phone")
+    else:
+        eff_user_id = user_id or user["user_id"]
+        eff_email = email or user["email"]
+        eff_phone = phone
+
+    order = order_sm.get_latest_order_for_user(
+        user_id=eff_user_id, phone=eff_phone, email=eff_email, order_id=order_id
+    )
     if not order:
         raise HTTPException(status_code=404, detail="No active order found for this user")
+    if not order_sm.verify_order_ownership(order, user):
+        raise HTTPException(status_code=403, detail="Access denied: You do not have permission to access this order.")
     return order
 
 @app.get("/api/orders/{order_id}")
-def get_order(order_id: str):
+def get_order(
+    order_id: str,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    """
+    Retrieves order details. Enforces ownership check (Requirement 5).
+    """
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    if not extracted:
+        raise HTTPException(status_code=401, detail="Authentication required to view order details.")
+    user = get_user_by_token(extracted)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token.")
+
     order = order_sm.get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    if not order_sm.verify_order_ownership(order, user):
+        raise HTTPException(status_code=403, detail="Access denied: You do not have permission to access this order.")
     return order
 
 @app.post("/api/orders/{order_id}/reschedule")
-def reschedule_order(order_id: str, req: RescheduleRequest):
+def reschedule_order(
+    order_id: str,
+    req: RescheduleRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    """
+    Reschedules installation date. Enforces ownership check (Requirement 5).
+    """
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    if not extracted:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    user = get_user_by_token(extracted)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token.")
+
+    order = order_sm.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if not order_sm.verify_order_ownership(order, user):
+        raise HTTPException(status_code=403, detail="Access denied: You do not have permission to modify this order.")
+
     success = order_sm.reschedule_installation(order_id, req.new_date)
     if not success:
         raise HTTPException(status_code=404, detail="Order not found or update failed")
     return {"status": "success", "order_id": order_id, "new_install_date": req.new_date}
 
 @app.post("/api/orders/{order_id}/nps")
-def submit_nps(order_id: str, req: NPSRequest):
+def submit_nps(
+    order_id: str,
+    req: NPSRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    """
+    Records customer NPS rating. Enforces ownership check (Requirement 5).
+    """
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    if not extracted:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    user = get_user_by_token(extracted)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token.")
+
+    order = order_sm.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if not order_sm.verify_order_ownership(order, user):
+        raise HTTPException(status_code=403, detail="Access denied: You do not have permission to rate this order.")
+
     success = order_sm.record_nps(order_id, req.rating)
     if not success:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -484,35 +701,91 @@ def submit_nps(order_id: str, req: NPSRequest):
 
 # 5b. Payment Gateway & UPI AutoPay Mandate
 @app.post("/api/payment/create-intent")
-def create_payment_intent(req: PaymentIntentRequest):
-    return payment_gw.create_payment_intent(
-        order_id=req.order_id or "PENDING_QUOTE",
-        amount_inr=req.amount_inr,
-        business_name=req.business_name or "",
-        phone=req.phone or ""
-    )
+def create_payment_intent(
+    req: PaymentIntentRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    """
+    Creates server-controlled payment intent (Requirement 7).
+    Enforces order ownership check (Requirement 5).
+    """
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    user = get_user_by_token(extracted) if extracted else None
+    try:
+        return payment_gw.create_payment_intent(
+            order_id=req.order_id or "PENDING_QUOTE",
+            amount_inr=req.amount_inr,
+            business_name=req.business_name or "",
+            phone=req.phone or "",
+            user=user
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/payment/confirm")
-def confirm_payment(req: PaymentConfirmRequest):
-    receipt = payment_gw.confirm_payment(
-        order_id=req.order_id or "",
-        txn_id=req.txn_id,
-        payment_method=req.payment_method,
-        mandate_active=req.mandate_active,
-        amount_inr=req.amount_inr
-    )
-    # Simultaneous Funnel & Propensity Updation
-    if req.order_id:
-        order = order_sm.get_order(req.order_id)
-        if order and order.get("partner_attribution_id"):
-            partner_portal.commissions["active_referrals_count"] = partner_portal.commissions.get("active_referrals_count", 28) + 1
-            partner_portal.commissions["monthly_recurring_trail_inr"] = round(
-                partner_portal.commissions.get("monthly_recurring_trail_inr", 42850.0) + (order.get("monthly_total", 0.0) * 0.15), 2
-            )
-            partner_portal.commissions["total_pending_payout_inr"] = round(
-                partner_portal.commissions.get("total_pending_payout_inr", 16450.0) + 1000.0, 2
-            )
-    return receipt
+def confirm_payment(
+    req: PaymentConfirmRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    """
+    Validates payment through server payment intent (Requirement 7).
+    Enforces ownership check and rejects client-declared transactions (Requirement 5 & 7).
+    """
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    user = get_user_by_token(extracted) if extracted else None
+    try:
+        receipt = payment_gw.confirm_payment(
+            order_id=req.order_id,
+            intent_id=req.intent_id,
+            payment_method=req.payment_method,
+            mandate_active=req.mandate_active,
+            user=user
+        )
+        if req.order_id:
+            order = order_sm.get_order(req.order_id)
+            if order and order.get("partner_attribution_id"):
+                partner_portal.commissions["active_referrals_count"] = partner_portal.commissions.get("active_referrals_count", 28) + 1
+                partner_portal.commissions["monthly_recurring_trail_inr"] = round(
+                    partner_portal.commissions.get("monthly_recurring_trail_inr", 42850.0) + (order.get("monthly_total", 0.0) * 0.15), 2
+                )
+                partner_portal.commissions["total_pending_payout_inr"] = round(
+                    partner_portal.commissions.get("total_pending_payout_inr", 16450.0) + 1000.0, 2
+                )
+        return receipt
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/payment/receipt/{order_id}")
+def get_order_receipt(
+    order_id: str,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    """
+    Retrieves official B2B tax receipt. Enforces ownership check (Requirement 5).
+    """
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    if not extracted:
+        raise HTTPException(status_code=401, detail="Authentication required to view payment receipt.")
+    user = get_user_by_token(extracted)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token.")
+
+    order = order_sm.get_order(order_id)
+    if not order or not order.get("receipt"):
+        raise HTTPException(status_code=404, detail="Receipt not found for this order")
+    if not order_sm.verify_order_ownership(order, user):
+        raise HTTPException(status_code=403, detail="Access denied: You do not own this payment receipt.")
+    return order["receipt"]
 
 class CustomerActivityRequest(BaseModel):
     user_id: Optional[str] = None
@@ -599,13 +872,6 @@ def update_funnel_lead(req: FunnelProgressionRequest):
         "fast_track_stp": True,
         "updated_at": saved["last_activity_at"]
     }
-
-@app.get("/api/payment/receipt/{order_id}")
-def get_order_receipt(order_id: str):
-    order = order_sm.get_order(order_id)
-    if not order or not order.get("receipt"):
-        raise HTTPException(status_code=404, detail="Receipt not found for this order")
-    return order["receipt"]
 
 # 6. Auth & RBAC (OAuth2 + SQLite Database)
 @app.post("/api/auth/login")

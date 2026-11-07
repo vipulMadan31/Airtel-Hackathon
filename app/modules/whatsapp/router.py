@@ -3,7 +3,7 @@ import uuid
 import shutil
 from pathlib import Path
 from typing import Dict, Any, Optional
-from fastapi import APIRouter, Request, Response, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Request, Response, HTTPException, UploadFile, File, Form, Header, Query
 from pydantic import BaseModel
 
 from app.modules.whatsapp.handler import WhatsAppHandler
@@ -206,10 +206,30 @@ async def simulate_document_upload(
     }
 
 @router.get("/session/{phone}")
-def get_session_info(phone: str):
+def get_session_info(
+    phone: str,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
     """
     Retrieves the current state of a WhatsApp conversation session.
+    Enforces phone ownership check: users can only inspect their own session.
     """
+    from app.modules.auth import extract_token_from_header, get_user_by_token, ROLE_ADMIN, ROLE_MERCHANT
+    extracted = extract_token_from_header(authorization, x_session_token, token)
+    if not extracted:
+        raise HTTPException(status_code=401, detail="Authentication required to inspect WhatsApp session.")
+    user = get_user_by_token(extracted)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token.")
+
+    if user["role"] == ROLE_MERCHANT:
+        u_phone_digits = "".join(c for c in (user.get("phone") or "") if c.isdigit())[-10:]
+        q_phone_digits = "".join(c for c in phone if c.isdigit())[-10:]
+        if not u_phone_digits or u_phone_digits != q_phone_digits:
+            raise HTTPException(status_code=403, detail="Access denied: You do not own this WhatsApp session.")
+
     return whatsapp_handler.session_mgr.get_session(phone)
 
 @router.get("/token/{token}")

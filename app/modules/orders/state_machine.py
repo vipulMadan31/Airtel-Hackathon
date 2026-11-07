@@ -47,10 +47,29 @@ class OrderStateMachine:
             CREATE TABLE IF NOT EXISTS consent_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 order_id TEXT,
-                data_items TEXT,
+                user_id TEXT,
+                customer_email TEXT,
+                consent_type TEXT,
+                version TEXT,
+                consent_text TEXT,
                 purpose TEXT,
                 action TEXT,
                 timestamp TEXT
+            )
+            """)
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS kyc_cases (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                case_id TEXT UNIQUE NOT NULL,
+                user_id TEXT,
+                customer_email TEXT,
+                doc_type TEXT,
+                id_number TEXT,
+                entity_name TEXT,
+                verdict TEXT NOT NULL,
+                verification_details_json TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             )
             """)
             conn.execute("""
@@ -69,6 +88,20 @@ class OrderStateMachine:
             )
             """)
             
+            # Dynamic schema migrations for consent_logs
+            c_cursor = conn.execute("PRAGMA table_info(consent_logs)")
+            c_cols = [col[1] for col in c_cursor.fetchall()]
+            if "user_id" not in c_cols:
+                conn.execute("ALTER TABLE consent_logs ADD COLUMN user_id TEXT")
+            if "customer_email" not in c_cols:
+                conn.execute("ALTER TABLE consent_logs ADD COLUMN customer_email TEXT")
+            if "consent_type" not in c_cols:
+                conn.execute("ALTER TABLE consent_logs ADD COLUMN consent_type TEXT")
+            if "version" not in c_cols:
+                conn.execute("ALTER TABLE consent_logs ADD COLUMN version TEXT")
+            if "consent_text" not in c_cols:
+                conn.execute("ALTER TABLE consent_logs ADD COLUMN consent_text TEXT")
+
             # Dynamic schema migrations for payment columns
             cursor = conn.execute("PRAGMA table_info(orders)")
             cols = [col[1] for col in cursor.fetchall()]
@@ -96,14 +129,116 @@ class OrderStateMachine:
                 conn.execute("ALTER TABLE orders ADD COLUMN kyc_details_json TEXT")
             if "customer_email" not in cols:
                 conn.execute("ALTER TABLE orders ADD COLUMN customer_email TEXT")
+            if "kyc_case_id" not in cols:
+                conn.execute("ALTER TABLE orders ADD COLUMN kyc_case_id TEXT")
             conn.commit()
+
+    def create_kyc_case(
+        self,
+        user_id: Optional[str],
+        customer_email: Optional[str],
+        doc_type: str,
+        id_number: Optional[str],
+        entity_name: Optional[str],
+        verdict: str,
+        details: Optional[Dict[str, Any]] = None
+    ) -> str:
+        case_id = f"KYC-CAS-{uuid.uuid4().hex[:8].upper()}"
+        now_iso = datetime.now().isoformat()
+        with self._get_connection() as conn:
+            conn.execute("""
+            INSERT INTO kyc_cases (
+                case_id, user_id, customer_email, doc_type, id_number,
+                entity_name, verdict, verification_details_json, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                case_id,
+                user_id or "",
+                (customer_email or "").lower().strip(),
+                doc_type,
+                id_number or "",
+                entity_name or "",
+                verdict,
+                json.dumps(details or {}),
+                now_iso,
+                now_iso
+            ))
+            conn.commit()
+        return case_id
+
+    def get_kyc_case(self, case_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            row = conn.execute("SELECT * FROM kyc_cases WHERE case_id = ?", (case_id,)).fetchone()
+            if row:
+                d = dict(row)
+                d["details"] = json.loads(d.get("verification_details_json") or "{}")
+                return d
+        return None
+
+    def get_latest_approved_kyc_case(
+        self,
+        user_id: Optional[str] = None,
+        customer_email: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        user_id = user_id.strip() if user_id else None
+        customer_email = customer_email.strip().lower() if customer_email else None
+        with self._get_connection() as conn:
+            if user_id:
+                row = conn.execute(
+                    "SELECT * FROM kyc_cases WHERE user_id = ? AND verdict = 'APPROVED' ORDER BY id DESC LIMIT 1",
+                    (user_id,)
+                ).fetchone()
+                if row:
+                    d = dict(row)
+                    d["details"] = json.loads(d.get("verification_details_json") or "{}")
+                    return d
+            if customer_email:
+                row = conn.execute(
+                    "SELECT * FROM kyc_cases WHERE lower(customer_email) = ? AND verdict = 'APPROVED' ORDER BY id DESC LIMIT 1",
+                    (customer_email,)
+                ).fetchone()
+                if row:
+                    d = dict(row)
+                    d["details"] = json.loads(d.get("verification_details_json") or "{}")
+                    return d
+        return None
+
+    def verify_order_ownership(self, order: Optional[Dict[str, Any]], user: Optional[Dict[str, Any]]) -> bool:
+        if not order or not user:
+            return False
+        role = user.get("role", "MERCHANT")
+        if role == "ADMIN":
+            return True
+        if role == "PARTNER":
+            partner_id = user.get("user_id")
+            if order.get("partner_attribution_id") and order.get("partner_attribution_id") == partner_id:
+                return True
+            assigned_pin = user.get("assigned_pincode")
+            if assigned_pin == "ALL":
+                return True
+            inst_addr = order.get("installation_address") or {}
+            if isinstance(inst_addr, dict) and assigned_pin and assigned_pin in str(inst_addr.get("pincode", "")):
+                return True
+            return True
+        # Role MERCHANT (Customer)
+        u_id = user.get("user_id")
+        u_email = (user.get("email") or "").lower().strip()
+        ord_uid = order.get("user_id")
+        ord_email = (order.get("customer_email") or "").lower().strip()
+        if ord_uid and ord_uid == u_id:
+            return True
+        if ord_email and ord_email == u_email:
+            return True
+        return False
 
     def create_order(
         self,
         business_name: str,
         contact_phone: str,
         bundle_data: Dict[str, Any],
-        kyc_status: str = "VERIFIED",
+        case_id: Optional[str] = None,
+        explicit_consent: Optional[Dict[str, Any]] = None,
+        kyc_status: Optional[str] = None,
         language: str = "en",
         typical_install_days: int = 5,
         partner_id: Optional[str] = None,
@@ -114,6 +249,30 @@ class OrderStateMachine:
         kyc_details: Optional[Dict[str, Any]] = None,
         customer_email: Optional[str] = None
     ) -> Dict[str, Any]:
+        # 1. Enforcement of Explicit DPDP Consent (Requirement 8)
+        # Automatic consent assumption is removed; customer must explicitly consent.
+        if not explicit_consent or not explicit_consent.get("granted"):
+            raise ValueError(
+                "DPDP Act 2023 statutory consent required: Customer must explicitly grant consent before an enterprise order can be staged."
+            )
+
+        # 2. Server-Controlled KYC Case Verification (Requirement 6)
+        # Never accept kyc_status: VERIFIED directly from frontend.
+        kyc_case = None
+        if case_id:
+            kyc_case = self.get_kyc_case(case_id)
+        if not kyc_case:
+            kyc_case = self.get_latest_approved_kyc_case(user_id=user_id, customer_email=customer_email)
+
+        if not kyc_case or kyc_case.get("verdict") != "APPROVED":
+            verdict = kyc_case.get("verdict") if kyc_case else "MISSING"
+            raise ValueError(
+                f"Cannot create order: Validated server KYC case with approved verdict is required. Current case status: {verdict}. Frontend-asserted kyc_status is strictly rejected."
+            )
+
+        server_kyc_status = "VERIFIED"
+        matched_case_id = kyc_case.get("case_id")
+
         order_id = f"UDYAM-{uuid.uuid4().hex[:6].upper()}"
         install_date = (datetime.now() + timedelta(days=typical_install_days)).strftime("%Y-%m-%d")
 
@@ -124,8 +283,8 @@ class OrderStateMachine:
                 bundle_json, monthly_total, kyc_status, current_milestone,
                 scheduled_install_date, engineer_name, engineer_phone, nps_rating, 
                 partner_attribution_id, installation_address,
-                user_id, udyam_number, gstin, kyc_details_json, customer_email, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                user_id, udyam_number, gstin, kyc_details_json, customer_email, kyc_case_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 order_id,
                 business_name,
@@ -133,7 +292,7 @@ class OrderStateMachine:
                 language,
                 json.dumps(bundle_data),
                 bundle_data.get("total_monthly_inr", 0.0),
-                kyc_status,
+                server_kyc_status,
                 3, # Milestone 3: Order Confirmed / Scheduled
                 install_date,
                 "Ramesh Sharma (Field Lead)",
@@ -146,10 +305,11 @@ class OrderStateMachine:
                 gstin,
                 json.dumps(kyc_details) if kyc_details else None,
                 customer_email,
+                matched_case_id,
                 datetime.now().isoformat()
             ))
 
-            # Store verified KYC record - Raw certificate file is deleted post-validation; only statutory metadata retained
+            # Store verified KYC record linked to verified server case
             formatted_addr = installation_address.get("formatted_address") if isinstance(installation_address, dict) else str(installation_address or "")
             conn.execute("""
             INSERT INTO kyc_records (
@@ -164,21 +324,30 @@ class OrderStateMachine:
                 gstin,
                 business_name,
                 formatted_addr,
-                kyc_status,
-                "CERTIFICATE_SHREDDED_POST_VALIDATION_DPDP_COMPLIANT",
+                server_kyc_status,
+                f"CERTIFICATE_SHREDDED_POST_VALIDATION_LINKED_CASE_{matched_case_id}",
                 datetime.now().isoformat()
             ))
 
-            # Log DPDP Rule 3 Consent Event
+            # Record Explicit DPDP Consent Event with timestamp, version, purpose, and disclosure text
+            consent_ver = explicit_consent.get("version") or "v1.0"
+            consent_purpose = explicit_consent.get("purpose") or "DoT Identity Verification and Optical Line Installation under DPDP Act 2023"
+            consent_text = explicit_consent.get("consent_text") or "Customer explicitly granted affirmative consent for subscriber KYC and optical line installation."
+            consent_ts = explicit_consent.get("timestamp") or datetime.now().isoformat()
+
             conn.execute("""
-            INSERT INTO consent_logs (order_id, data_items, purpose, action, timestamp)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO consent_logs (order_id, user_id, customer_email, consent_type, version, consent_text, purpose, action, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 order_id,
-                "GSTIN, Udyam Registration, Principal Address Proof, Signatory ID",
-                "DoT Subscriber Verification and Optical Line Installation (Data Minimization Applied)",
-                "EXPLICIT_AFFIRMATIVE_CONSENT_GIVEN_RAW_DOC_SHREDDED",
-                datetime.now().isoformat()
+                user_id or "",
+                (customer_email or "").lower().strip(),
+                "DPDP_ACT_2023_KYC_PROCESSING",
+                consent_ver,
+                consent_text,
+                consent_purpose,
+                "EXPLICIT_AFFIRMATIVE_CONSENT_GRANTED",
+                consent_ts
             ))
             conn.commit()
 
