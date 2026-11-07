@@ -1022,6 +1022,19 @@ def claim_partner_lead(
     user = verify_role_access([ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
     return partner_portal.claim_stalled_lead(lead_id=lead_id, partner_id=user["user_id"])
 
+@app.post("/api/partner/leads/{lead_id}/call")
+def call_partner_lead(
+    lead_id: str,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    user = verify_role_access([ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
+    res = partner_portal.call_lead(lead_id=lead_id, partner_id=user["user_id"])
+    if res.get("status") == "NOT_FOUND":
+        raise HTTPException(status_code=404, detail=res["message"])
+    return res
+
 @app.get("/api/partner/commissions")
 def get_partner_commissions(
     authorization: Optional[str] = Header(None),

@@ -114,6 +114,19 @@ class PartnerPortal:
                     last_activity_at TEXT
                 )
                 """)
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS called_leads (
+                    lead_id TEXT PRIMARY KEY,
+                    user_id TEXT,
+                    business_name TEXT,
+                    email TEXT,
+                    phone TEXT,
+                    called_by TEXT,
+                    called_at TEXT,
+                    notes TEXT,
+                    lead_data TEXT
+                )
+                """)
         finally:
             conn.close()
 
@@ -224,6 +237,10 @@ class PartnerPortal:
             with conn:
                 row = None
             if lead_id:
+                # Check if lead was already contacted and removed
+                c_chk = conn.execute("SELECT 1 FROM called_leads WHERE lead_id = ?", (lead_id,)).fetchone()
+                if c_chk:
+                    return {"lead_id": lead_id, "status": "ALREADY_CALLED"}
                 cursor = conn.execute("SELECT * FROM customer_leads WHERE lead_id = ?", (lead_id,))
                 row = cursor.fetchone()
             elif user_id:
@@ -431,9 +448,10 @@ class PartnerPortal:
                   AND cl.email NOT LIKE '%example.com%'
                   AND cl.email NOT LIKE '%stores.in%'
                   AND cl.email NOT LIKE '%clinic.in%'
-                  AND cl.stage_reached NOT IN ('TOKEN_PAID', 'ORDER_CONFIRMED', 'ACTIVATED')
+                  AND cl.stage_reached NOT IN ('TOKEN_PAID', 'ORDER_CONFIRMED', 'ACTIVATED', 'OUTREACH_CALLED')
                   AND (cl.drop_reason IS NULL OR cl.drop_reason NOT LIKE '%Paid%')
                   AND cl.lead_id NOT IN (SELECT order_id FROM orders WHERE token_paid = 1)
+                  AND cl.lead_id NOT IN (SELECT lead_id FROM called_leads)
                 ORDER BY cl.propensity_score DESC, cl.last_activity_at DESC
             """)
             real_rows = [dict(r) for r in cursor.fetchall()]
@@ -532,6 +550,67 @@ class PartnerPortal:
             "partner_id": partner_id,
             "bounty_inr": 1000,
             "recovery_sla_hours": 24
+        }
+
+    def call_lead(self, lead_id: str, partner_id: str = "PTR-IND-882") -> Dict[str, Any]:
+        """
+        Atomically removes a lead from the active leads pool upon partner outreach call,
+        archiving the contact event in called_leads table.
+        """
+        conn = self._get_connection()
+        try:
+            with conn:
+                cursor = conn.execute("SELECT * FROM customer_leads WHERE lead_id = ?", (lead_id,))
+                row = cursor.fetchone()
+                if not row:
+                    c_cursor = conn.execute("SELECT * FROM called_leads WHERE lead_id = ?", (lead_id,))
+                    c_row = c_cursor.fetchone()
+                    if c_row:
+                        return {
+                            "status": "ALREADY_CALLED",
+                            "lead_id": lead_id,
+                            "partner_id": partner_id,
+                            "action": "ALREADY_CALLED",
+                            "message": f"Lead {lead_id} was already contacted and removed from active pool."
+                        }
+                    return {
+                        "status": "NOT_FOUND",
+                        "lead_id": lead_id,
+                        "partner_id": partner_id,
+                        "action": "NOT_FOUND",
+                        "message": f"Lead {lead_id} not found."
+                    }
+
+                lead_data = dict(row)
+                now_iso = datetime.now().isoformat()
+                conn.execute("""
+                    INSERT OR REPLACE INTO called_leads (
+                        lead_id, user_id, business_name, email, phone, called_by, called_at, notes, lead_data
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    lead_data.get("lead_id"),
+                    lead_data.get("user_id"),
+                    lead_data.get("business_name"),
+                    lead_data.get("email"),
+                    lead_data.get("phone"),
+                    partner_id,
+                    now_iso,
+                    "Partner outreach call completed",
+                    json.dumps(lead_data)
+                ))
+                conn.execute("DELETE FROM customer_leads WHERE lead_id = ?", (lead_id,))
+        finally:
+            conn.close()
+
+        # Remove from in-memory claimed tracking
+        self.claimed_leads.pop(lead_id, None)
+
+        return {
+            "status": "SUCCESS",
+            "lead_id": lead_id,
+            "partner_id": partner_id,
+            "action": "CALLED_AND_REMOVED",
+            "message": f"Lead {lead_id} contacted by {partner_id} and atomically removed from leads."
         }
 
     def generate_partner_referral_link(self, partner_id: str = "PTR-IND-882") -> Dict[str, Any]:

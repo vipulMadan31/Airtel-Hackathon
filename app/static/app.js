@@ -544,7 +544,7 @@ async function loadPartnerViewData() {
                 <span>✔</span>
                 <span>₹1,000 ${isHi ? 'बाउंटी लॉक' : 'Bounty Locked'}</span>
               </span>
-              <button class="bg-slate-900 hover:bg-black text-white px-2 py-1 rounded text-[10px] font-bold" onclick="alert('Calling claimed customer ${l.business_name} (${l.phone || '+91 98765 12345'})...')">
+              <button class="bg-slate-900 hover:bg-black text-white px-2 py-1 rounded text-[10px] font-bold" onclick="window.initiateLeadCall('${l.lead_id}', '${(l.business_name || '').replace(/'/g, "\\'")}', '${l.phone || ''}')">
                 ${isHi ? 'कॉल करें' : 'Call'}
               </button>
             </div>
@@ -566,7 +566,7 @@ async function loadPartnerViewData() {
               <button class="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded text-[10px] font-extrabold shadow-xs transition" onclick="claimLeadBounty('${l.lead_id}')">
                 ${isHi ? 'लीड क्लेम (₹1,000)' : 'Claim Lead (₹1k)'}
               </button>
-              <button class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-2 py-1 rounded text-[10px] font-bold" onclick="alert('Partner outreach initiated for ${l.business_name}')">
+              <button class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-2 py-1 rounded text-[10px] font-bold" onclick="window.initiateLeadCall('${l.lead_id}', '${(l.business_name || '').replace(/'/g, "\\'")}', '${l.phone || ''}')">
                 ${isHi ? 'कॉल' : 'Call'}
               </button>
             </div>
@@ -579,7 +579,7 @@ async function loadPartnerViewData() {
           : '';
 
         return `
-          <tr class="hover:bg-slate-50/80 transition ${isClaimed ? 'bg-emerald-50/30' : (isLive ? 'bg-emerald-50/15' : '')}">
+          <tr data-lead-id="${l.lead_id}" class="hover:bg-slate-50/80 transition ${isClaimed ? 'bg-emerald-50/30' : (isLive ? 'bg-emerald-50/15' : '')}">
             <td class="p-3 font-mono font-bold">${l.lead_id}</td>
             <td class="p-3 font-semibold text-slate-900">
               <div class="flex items-center flex-wrap">
@@ -2987,7 +2987,7 @@ async function openPartnerModal() {
               <span>✔</span>
               <span>₹1,000 ${isHi ? 'बाउंटी लॉक' : 'Bounty Locked'}</span>
             </span>
-            <button class="bg-slate-900 hover:bg-black text-white px-2 py-1 rounded text-[10px] font-bold" onclick="alert('Calling claimed customer ${l.business_name} (${l.phone || '+91 98765 12345'})...')">
+            <button class="bg-slate-900 hover:bg-black text-white px-2 py-1 rounded text-[10px] font-bold" onclick="window.initiateLeadCall('${l.lead_id}', '${(l.business_name || '').replace(/'/g, "\\'")}', '${l.phone || ''}')">
               ${isHi ? 'कॉल करें' : 'Call'}
             </button>
           </div>
@@ -2998,7 +2998,7 @@ async function openPartnerModal() {
             <button class="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded text-[10px] font-extrabold shadow-xs transition" onclick="claimLeadBounty('${l.lead_id}')">
               ${isHi ? 'लीड क्लेम (₹1,000)' : 'Claim Lead (₹1k)'}
             </button>
-            <button class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-2 py-1 rounded text-[10px] font-bold" onclick="alert('Partner outreach initiated for ${l.business_name}')">
+            <button class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-2 py-1 rounded text-[10px] font-bold" onclick="window.initiateLeadCall('${l.lead_id}', '${(l.business_name || '').replace(/'/g, "\\'")}', '${l.phone || ''}')">
               ${isHi ? 'कॉल' : 'Call'}
             </button>
           </div>
@@ -3011,7 +3011,7 @@ async function openPartnerModal() {
         : '';
 
       return `
-        <tr class="hover:bg-slate-50/80 transition ${isClaimed ? 'bg-emerald-50/30' : (isLive ? 'bg-emerald-50/15' : '')}">
+        <tr data-lead-id="${l.lead_id}" class="hover:bg-slate-50/80 transition ${isClaimed ? 'bg-emerald-50/30' : (isLive ? 'bg-emerald-50/15' : '')}">
           <td class="p-2.5 font-mono font-bold">${l.lead_id}</td>
           <td class="p-2.5 font-semibold text-slate-900">
             <div class="flex items-center flex-wrap">
@@ -3061,6 +3061,62 @@ window.claimLeadBounty = async function(leadId) {
   } catch (err) {
     console.error("Claim error:", err);
     alert("Network error while claiming lead.");
+  }
+};
+
+// Window handler for Calling & Atomically Removing Lead
+window.initiateLeadCall = async function(leadId, businessName, phone) {
+  const isHi = STATE.language === 'hi';
+  const targetPhone = phone || '+91 98110 12345';
+  const bName = businessName || 'Customer';
+  const confirmMsg = isHi
+    ? `क्या आप ${bName} (${targetPhone}) को कॉल करना चाहते हैं?\nकॉल करने के बाद यह लीड सक्रिय सूची से हटा दी जाएगी।`
+    : `Initiate outbound outreach call to ${bName} (${targetPhone})?\nThis lead will be contacted and atomically removed from the active leads pool.`;
+
+  if (!confirm(confirmMsg)) {
+    return;
+  }
+
+  try {
+    const token = STATE.auth?.token;
+    const res = await fetch(`/api/partner/leads/${encodeURIComponent(leadId)}/call`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "X-Session-Token": token,
+        "Content-Type": "application/json"
+      }
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(`Call outreach failed: ${err.detail || 'Could not record call'}`);
+      return;
+    }
+
+    // Atomic DOM removal across both active views
+    const rows = document.querySelectorAll(`tr[data-lead-id="${leadId}"]`);
+    rows.forEach(r => {
+      r.style.transition = 'all 0.35s ease';
+      r.style.opacity = '0';
+      r.style.transform = 'scale(0.95)';
+      setTimeout(() => r.remove(), 350);
+    });
+
+    const successMsg = isHi
+      ? `कॉल संपन्न: ${bName} से संपर्क किया गया। लीड को सक्रिय सूची से हटा दिया गया है।`
+      : `Call Completed: Outbound call logged for ${bName}.\nLead ${leadId} atomically removed from leads pool.`;
+    alert(successMsg);
+
+    // Refresh partner views to sync totals & remaining list
+    await loadPartnerViewData();
+    const modal = document.getElementById("partnerModal");
+    if (modal && !modal.classList.contains("hidden")) {
+      await loadPartnerModalData();
+    }
+  } catch (err) {
+    console.error("Lead call error:", err);
+    alert("Network error while recording lead call.");
   }
 };
 
