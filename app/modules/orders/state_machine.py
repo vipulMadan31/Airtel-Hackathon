@@ -241,43 +241,60 @@ class OrderStateMachine:
         self,
         user_id: Optional[str] = None,
         phone: Optional[str] = None,
+        email: Optional[str] = None,
         order_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
-        # 1. Direct order_id lookup
-        if order_id:
-            ord_obj = self.get_order(order_id.strip())
-            if ord_obj:
-                return ord_obj
+        # Clean inputs
+        user_id = user_id.strip() if user_id else None
+        phone = phone.strip() if phone else None
+        email = email.strip().lower() if email else None
+        order_id = order_id.strip() if order_id else None
 
         with self._get_connection() as conn:
-            # 2. Lookup by user_id
-            if user_id and user_id.strip():
+            # 1. Lookup by user_id
+            if user_id:
                 row = conn.execute(
                     "SELECT order_id FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
-                    (user_id.strip(),)
+                    (user_id,)
+                ).fetchone()
+                if row:
+                    return self.get_order(row["order_id"])
+
+            # 2. Lookup by email
+            if email:
+                row = conn.execute(
+                    "SELECT order_id FROM orders WHERE lower(customer_email) = ? ORDER BY created_at DESC LIMIT 1",
+                    (email,)
                 ).fetchone()
                 if row:
                     return self.get_order(row["order_id"])
 
             # 3. Lookup by phone digits
-            if phone and phone.strip():
-                clean_phone = phone.strip()
-                digits = "".join([c for c in clean_phone if c.isdigit()])[-10:]
+            if phone:
+                digits = "".join([c for c in phone if c.isdigit()])[-10:]
                 if digits:
                     row = conn.execute(
                         "SELECT order_id FROM orders WHERE contact_phone LIKE ? OR installation_address LIKE ? ORDER BY created_at DESC LIMIT 1",
                         (f"%{digits}%", f"%{digits}%")
                     ).fetchone()
                     if row:
-                        return self.get_order(row["order_id"])
+                        ord_candidate = self.get_order(row["order_id"])
+                        # If authenticated user_id was supplied, verify it matches
+                        if not user_id or ord_candidate.get("user_id") == user_id:
+                            return ord_candidate
 
-            # 4. Fallback: most recent active order placed in the system
-            row = conn.execute(
-                "SELECT order_id FROM orders ORDER BY created_at DESC LIMIT 1"
-            ).fetchone()
-            if row:
-                return self.get_order(row["order_id"])
+            # 4. Direct order_id lookup (only for guest or if user matches)
+            if order_id:
+                ord_obj = self.get_order(order_id)
+                if ord_obj:
+                    # If user is authenticated, ensure this order actually belongs to them
+                    if user_id and ord_obj.get("user_id") and ord_obj.get("user_id") != user_id:
+                        return None
+                    if email and ord_obj.get("customer_email") and ord_obj.get("customer_email").lower() != email:
+                        return None
+                    return ord_obj
 
+        # If user has no orders, strictly return None (never leak previous user's order)
         return None
 
     def record_payment(

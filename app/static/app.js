@@ -926,6 +926,13 @@ window.submitCustomerLogin = async function() {
     }
 
     setAuthAlert("success", `Welcome back, ${data.user?.name || "Customer"}!`);
+    // Clear any previous session's active order before restoring this user's order
+    STATE.activeOrder = null;
+    try {
+      localStorage.removeItem("udyam_active_order_id");
+      localStorage.removeItem("udyam_active_order_data");
+    } catch (e) {}
+    hideOrderTrackerView();
     saveAuthSession(data);
     if (window.syncCustomerLeadActivity) {
       try { window.syncCustomerLeadActivity("LOGGED_IN"); } catch (e) {}
@@ -987,6 +994,13 @@ window.submitCustomerSignup = async function() {
     }
 
     setAuthAlert("success", `Account created successfully! Welcome, ${data.user?.name || name}.`);
+    // Brand new user has no orders: clear previous session order
+    STATE.activeOrder = null;
+    try {
+      localStorage.removeItem("udyam_active_order_id");
+      localStorage.removeItem("udyam_active_order_data");
+    } catch (e) {}
+    hideOrderTrackerView();
     saveAuthSession(data);
     if (window.syncCustomerLeadActivity) {
       try { window.syncCustomerLeadActivity("LOGGED_IN"); } catch (e) {}
@@ -2407,6 +2421,10 @@ async function restoreActiveOrderIfAny() {
     return;
   }
 
+  const currentUserId = STATE.auth?.user?.user_id || "";
+  const currentUserEmail = (STATE.auth?.user?.email || "").toLowerCase();
+  const currentUserPhone = STATE.auth?.user?.phone || "";
+
   let savedOrderId = null;
   let savedOrderData = null;
 
@@ -2420,36 +2438,80 @@ async function restoreActiveOrderIfAny() {
     console.warn("Storage read note:", e);
   }
 
-  // 1. Instant local restore (zero flicker)
+  // Cross-user leak prevention:
+  // If an authenticated user is logged in, ensure cached order actually belongs to THIS user.
+  if (savedOrderData) {
+    const orderUserId = savedOrderData.user_id || "";
+    const orderEmail = (savedOrderData.customer_email || "").toLowerCase();
+
+    const isMatch = (currentUserId && orderUserId && currentUserId === orderUserId) ||
+                    (currentUserEmail && orderEmail && currentUserEmail === orderEmail);
+
+    if (currentUserId && !isMatch) {
+      // Belongs to a different user! Purge old session data
+      savedOrderData = null;
+      savedOrderId = null;
+      try {
+        localStorage.removeItem("udyam_active_order_id");
+        localStorage.removeItem("udyam_active_order_data");
+      } catch (e) {}
+    }
+  }
+
+  // 1. Instant local restore (zero flicker) only if it belongs to current session
   if (savedOrderData && savedOrderData.order_id) {
     STATE.activeOrder = savedOrderData;
     showOrderTrackerView(savedOrderData);
   }
 
   // 2. Authoritative sync with backend SQLite database
-  const userId = STATE.auth?.user?.user_id || "";
-  const phone = STATE.auth?.user?.phone || "";
+  if (currentUserId || currentUserEmail || currentUserPhone) {
+    const queryParams = new URLSearchParams();
+    if (currentUserId) queryParams.set("user_id", currentUserId);
+    if (currentUserEmail) queryParams.set("email", currentUserEmail);
+    if (currentUserPhone) queryParams.set("phone", currentUserPhone);
+    if (savedOrderId) queryParams.set("order_id", savedOrderId);
 
-  const queryParams = new URLSearchParams();
-  if (savedOrderId) queryParams.set("order_id", savedOrderId);
-  if (userId) queryParams.set("user_id", userId);
-  if (phone) queryParams.set("phone", phone);
-
-  try {
-    const res = await fetch(`/api/orders/user/latest?${queryParams.toString()}`);
-    if (res.ok) {
-      const order = await res.json();
-      if (order && order.order_id) {
-        STATE.activeOrder = order;
+    try {
+      const res = await fetch(`/api/orders/user/latest?${queryParams.toString()}`);
+      if (res.ok) {
+        const order = await res.json();
+        if (order && order.order_id) {
+          STATE.activeOrder = order;
+          try {
+            localStorage.setItem("udyam_active_order_id", order.order_id);
+            localStorage.setItem("udyam_active_order_data", JSON.stringify(order));
+          } catch (e) {}
+          showOrderTrackerView(order);
+          return;
+        }
+      } else if (res.status === 404) {
+        // Current user has NO active order in DB: reset tracker view to clean quote view
+        STATE.activeOrder = null;
         try {
-          localStorage.setItem("udyam_active_order_id", order.order_id);
-          localStorage.setItem("udyam_active_order_data", JSON.stringify(order));
+          localStorage.removeItem("udyam_active_order_id");
+          localStorage.removeItem("udyam_active_order_data");
         } catch (e) {}
-        showOrderTrackerView(order);
+        hideOrderTrackerView();
       }
+    } catch (err) {
+      console.warn("Could not sync latest order from server:", err);
     }
-  } catch (err) {
-    console.warn("Could not sync latest order from server:", err);
+  } else if (savedOrderId) {
+    // Unauthenticated guest user with an order ID
+    try {
+      const res = await fetch(`/api/orders/user/latest?order_id=${savedOrderId}`);
+      if (res.ok) {
+        const order = await res.json();
+        if (order && order.order_id) {
+          STATE.activeOrder = order;
+          showOrderTrackerView(order);
+          return;
+        }
+      }
+    } catch (e) {}
+  } else {
+    hideOrderTrackerView();
   }
 }
 
@@ -2466,18 +2528,23 @@ function showOrderTrackerView(order) {
   }
 }
 
+function hideOrderTrackerView() {
+  const quoteCard = document.getElementById("quoteCard");
+  const kycCard = document.getElementById("kycCard");
+  const trackerCard = document.getElementById("trackerCard");
+
+  if (trackerCard) trackerCard.classList.add("hidden");
+  if (kycCard) kycCard.classList.add("hidden");
+  if (quoteCard) quoteCard.classList.remove("hidden");
+}
+
 window.clearActiveOrderAndStartNew = function() {
   STATE.activeOrder = null;
   try {
     localStorage.removeItem("udyam_active_order_id");
     localStorage.removeItem("udyam_active_order_data");
   } catch (e) {}
-  const trackerCard = document.getElementById("trackerCard");
-  const quoteCard = document.getElementById("quoteCard");
-  const kycCard = document.getElementById("kycCard");
-  if (trackerCard) trackerCard.classList.add("hidden");
-  if (kycCard) kycCard.classList.add("hidden");
-  if (quoteCard) quoteCard.classList.remove("hidden");
+  hideOrderTrackerView();
   recalculateQuote();
 };
 

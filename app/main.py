@@ -444,15 +444,16 @@ def get_order_email_notifications(order_id: str):
 def get_latest_user_order(
     user_id: Optional[str] = None,
     phone: Optional[str] = None,
+    email: Optional[str] = None,
     order_id: Optional[str] = None
 ):
     """
-    Fetches the latest active order for the session/user/order_id.
-    Restores the order tracker view when the customer refreshes the webpage.
+    Fetches the latest active order for the specific session/user.
+    Never leaks orders from other accounts.
     """
-    order = order_sm.get_latest_order_for_user(user_id=user_id, phone=phone, order_id=order_id)
+    order = order_sm.get_latest_order_for_user(user_id=user_id, phone=phone, email=email, order_id=order_id)
     if not order:
-        raise HTTPException(status_code=404, detail="No active order found")
+        raise HTTPException(status_code=404, detail="No active order found for this user")
     return order
 
 @app.get("/api/orders/{order_id}")

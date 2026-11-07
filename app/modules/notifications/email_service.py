@@ -361,3 +361,4 @@ Toll Free: 1800-103-0405 | 121@airtel.com
                 (notif_id,)
             ).fetchone()
             return dict(row) if row else None
+
