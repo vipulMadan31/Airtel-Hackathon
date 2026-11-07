@@ -18,6 +18,8 @@ Thumbs.db
 
 # Local Runtime DB & Uploads
 udyam_orders.db
+database.sqlite
+cloudflared.exe
 uploads/*
 !uploads/.gitkeep
 
