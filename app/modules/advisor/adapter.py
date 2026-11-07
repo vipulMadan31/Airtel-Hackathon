@@ -1178,7 +1178,7 @@ Return ONLY a valid JSON object matching this schema:
                     for pk, pv in llm_profile_raw.items():
                         if pv is not None and pv != "":
                             merged_profile[pk] = pv
-                    if merged_profile.get("city") and not merged_profile.get("city_tier"):
+                    if merged_profile.get("city"):
                         city_tier_map = {
                             "delhi": 1, "mumbai": 1, "bangalore": 1, "bengaluru": 1, "chennai": 1,
                             "hyderabad": 1, "pune": 1, "kolkata": 1, "noida": 1, "gurgaon": 1,
@@ -1189,7 +1189,8 @@ Return ONLY a valid JSON object matching this schema:
                             "rohtak": 3
                         }
                         c_lower = str(merged_profile["city"]).lower().strip()
-                        merged_profile["city_tier"] = city_tier_map.get(c_lower, 2)
+                        if c_lower in city_tier_map:
+                            merged_profile["city_tier"] = city_tier_map[c_lower]
                     if merged_profile.get("city") and not merged_profile.get("pincode"):
                         merged_profile["pincode"] = CITY_BENCHMARK_PINCODES.get(merged_profile["city"], "452001")
                     llm_profile = merged_profile
