@@ -19,7 +19,10 @@ class CatalogEngine:
         """
         # 1. City Tier check
         allowed_tiers = [t.strip() for t in str(product["available_city_tiers"]).split(";")]
-        if str(city_tier) not in allowed_tiers:
+        tier_str = str(city_tier)
+        if "2" in allowed_tiers and city_tier >= 2:
+            pass  # Standard pan-India non-metro availability across Tier 2, Tier 3, and Tier 4 towns
+        elif tier_str not in allowed_tiers:
             return False, f"Available only in Tier-{','.join(allowed_tiers)} cities"
 
         # 2. Minimum Employees check
@@ -27,8 +30,11 @@ class CatalogEngine:
             return False, f"Requires at least {product['min_employees']} employees"
 
         # 3. Minimum Sites check
-        if num_sites < int(product["min_sites"]):
-            return False, f"Requires at least {product['min_sites']} business locations"
+        min_sites_req = int(product.get("min_sites", 1))
+        if product.get("product_id") == "P10" and num_sites >= 2:
+            min_sites_req = 2  # Support multi-branch private networking for 2+ sites
+        if num_sites < min_sites_req:
+            return False, f"Requires at least {min_sites_req} business locations"
 
         # 4. GSTIN requirement check
         if str(product["requires_gstin"]).upper() == "Y" and not has_gstin:

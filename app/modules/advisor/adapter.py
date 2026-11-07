@@ -115,6 +115,37 @@ class AdvisorAdapter:
         self.catalog_engine = CatalogEngine()
         self.loader = DataLoader.get_instance()
 
+    def _get_default_explainability_tag(self, pid: str, pname: str, business_type: Optional[str] = None) -> str:
+        biz = (business_type or "business").lower()
+        tag_map = {
+            "P01": f"100 Mbps optical fibre connectivity for reliable everyday {biz} operations",
+            "P02": f"300 Mbps high-speed fibre sized for multi-device operations and digital records",
+            "P03": f"1 Gbps enterprise-grade ultra-fast connectivity for high-volume data workflows",
+            "P04": f"High-speed 100 Mbps 5G AirFiber broadband for rapid wireless deployment",
+            "P05": f"Dedicated 20 Mbps 1:1 leased line with 99.9% uptime SLA",
+            "P06": f"Dedicated 100 Mbps 1:1 leased line with guaranteed enterprise SLA",
+            "P07": f"Corporate mobile postpaid with pooled talktime and data for staff",
+            "P08": f"Executive business postpaid plan with unlimited voice & data roaming",
+            "P09": f"Automatic 4G/5G wireless failover ensuring zero internet downtime",
+            "P10": f"Centrally managed SD-WAN connecting multi-site branch locations securely",
+            "P11": f"Static IPv4 address for hosting servers, CCTV, and VPN access",
+            "P12": f"Cloud virtual telephony & IVR for automated customer call routing",
+            "P13": f"1800 toll-free brand number building customer credibility",
+            "P14": f"10,000 bulk SMS credits for customer transaction and promotional alerts",
+            "P15": f"Official WhatsApp Business API with verified green badge support",
+            "P16": f"Professional domain email and cloud productivity suite",
+            "P17": f"Automated 1 TB cloud backup safeguarding critical {biz} records and data",
+            "P18": f"Custom domain name and starter website to establish online presence",
+            "P19": f"Cloud billing & POS with instant UPI soundbox audio payment confirmation",
+            "P20": f"Endpoint security and proactive cyber threat defense for business systems",
+            "P21": f"Next-generation enterprise firewall blocking unauthorized network access",
+            "P22": f"Dual-SSID secure Wi-Fi isolating guest access from internal {biz} networks",
+            "P23": f"AI-enabled cloud CCTV security surveillance with remote mobile viewing",
+            "P24": f"Industrial IoT machine telemetry and uptime monitoring sensors",
+            "P25": f"Real-time GPS fleet tracking with geofencing and vehicle route alerts"
+        }
+        return tag_map.get(pid, f"Tailored {pname} subscription configured for your {biz}")
+
     @property
     def has_llm_key(self) -> bool:
         from app.config import GEMINI_API_KEY, OPENAI_API_KEY
@@ -277,6 +308,11 @@ class AdvisorAdapter:
             msg,
             re.IGNORECASE
         )
+        pD = re.search(
+            r'(?:2|two|दो)\s*(?:shops?|stores?|branches?|sites?|locations?|दुकानें?|शाखाएं?)',
+            msg,
+            re.IGNORECASE
+        )
         multisite_counts = None
         if pA:
             multisite_counts = (int(pA.group(1)), int(pA.group(2)))
@@ -284,6 +320,8 @@ class AdvisorAdapter:
             multisite_counts = (int(pB.group(1)), int(pB.group(2)))
         elif pC:
             multisite_counts = (int(pC.group(1)), int(pC.group(2)))
+        elif pD:
+            multisite_counts = (5, 5)
 
         if multisite_counts:
             s1_emp, s2_emp = multisite_counts
@@ -293,10 +331,12 @@ class AdvisorAdapter:
             profile["business_type"] = "Multi-Site Retail / Commercial Outlets"
             profile["has_gstin"] = True
 
+            city_tier = int(profile.get("city_tier") or 2)
+
             # Determine product for Site 1
             if s1_emp <= 5:
                 s1_pid, s1_name, s1_speed, s1_price = "P01", "Biz Fibre 100", "100 Mbps", 999
-            elif s1_emp <= 30:
+            elif s1_emp <= 30 or city_tier > 1:
                 s1_pid, s1_name, s1_speed, s1_price = "P02", "Biz Fibre 300", "300 Mbps", 1499
             else:
                 s1_pid, s1_name, s1_speed, s1_price = "P03", "Biz Fibre 1G", "1 Gbps", 3999
@@ -304,7 +344,7 @@ class AdvisorAdapter:
             # Determine product for Site 2
             if s2_emp <= 5:
                 s2_pid, s2_name, s2_speed, s2_price = "P01", "Biz Fibre 100", "100 Mbps", 999
-            elif s2_emp <= 30:
+            elif s2_emp <= 30 or city_tier > 1:
                 s2_pid, s2_name, s2_speed, s2_price = "P02", "Biz Fibre 300", "300 Mbps", 1499
             else:
                 s2_pid, s2_name, s2_speed, s2_price = "P03", "Biz Fibre 1G", "1 Gbps", 3999
@@ -1225,7 +1265,9 @@ Return ONLY a valid JSON object matching this schema:
                     city_tier = int(llm_profile.get("city_tier") or profile.get("city_tier") or 2)
                     emp_count = int(llm_profile.get("employee_count") or profile.get("employee_count") or 3)
                     num_sites = int(llm_profile.get("num_sites") or profile.get("num_sites") or 1)
-                    has_gstin = bool(llm_profile.get("has_gstin") or profile.get("has_gstin") or False)
+                    # Non-GST safe mode check: only enforce False if safe mode is explicitly active in profile
+                    safe_mode_active = bool(profile.get("safe_mode") or profile.get("safeModeNonGst") or (profile.get("has_gstin") is False))
+                    has_gstin = not safe_mode_active
 
                     for pid, qty in raw_bundle.items():
                         prod = self.loader.get_product(pid)
@@ -1238,7 +1280,7 @@ Return ONLY a valid JSON object matching this schema:
                         )
                         if not eligible:
                             if pid == "P03" and city_tier > 1:
-                                validated_bundle["P02"] = 1
+                                validated_bundle["P02"] = max(1, int(qty))
                             continue
 
                         validated_bundle[pid] = max(1, int(qty))
@@ -1246,20 +1288,43 @@ Return ONLY a valid JSON object matching this schema:
                     # Check if bundle has base connectivity
                     base_pids = ["P01", "P02", "P03", "P04", "P07", "P08"]
                     has_base = any(pid in validated_bundle for pid in base_pids)
-                    if not has_base and validated_bundle:
+                    if not has_base:
                         if "1g" in resp_message.lower() or "1 gbps" in resp_message.lower() or "p03" in resp_message.lower():
                             validated_bundle["P03" if city_tier == 1 else "P02"] = 1
                         elif "300" in resp_message.lower() or "p02" in resp_message.lower():
                             validated_bundle["P02"] = 1
                         elif "airfiber" in resp_message.lower() or "p04" in resp_message.lower():
                             validated_bundle["P04"] = 1
-                        else:
+                        elif "100" in resp_message.lower() or "p01" in resp_message.lower() or "fibre" in resp_message.lower() or "wifi" in resp_message.lower() or "internet" in resp_message.lower():
                             validated_bundle["P01"] = 1
+
+                    # Ensure any add-ons explicitly recommended in assistant message are retained
+                    if ("backup" in resp_message.lower() or "p17" in resp_message.lower()) and "P17" not in validated_bundle:
+                        validated_bundle["P17"] = 1
+                    if ("guest wi-fi" in resp_message.lower() or "guest wifi" in resp_message.lower() or "p22" in resp_message.lower()) and "P22" not in validated_bundle:
+                        validated_bundle["P22"] = 1
+                    if ("soundbox" in resp_message.lower() or "cloud pos" in resp_message.lower() or "p19" in resp_message.lower()) and "P19" not in validated_bundle:
+                        validated_bundle["P19"] = 1
+                    if ("endpoint" in resp_message.lower() or "antivirus" in resp_message.lower() or "p20" in resp_message.lower()) and "P20" not in validated_bundle:
+                        validated_bundle["P20"] = min(10, max(2, emp_count))
 
                     # Clean tags to only validated products
                     validated_tags = [
                         t for t in raw_tags if t.get("product_id") in validated_bundle
                     ]
+
+                    # Ensure every product in validated_bundle has an explainability tag
+                    tagged_pids = {t.get("product_id") for t in validated_tags}
+                    for pid in validated_bundle.keys():
+                        if pid not in tagged_pids:
+                            prod_info = self.loader.get_product(pid)
+                            pname = prod_info.get("product_name", pid) if prod_info else pid
+                            tag_text = self._get_default_explainability_tag(pid, pname, llm_profile.get("business_type") or profile.get("business_type"))
+                            validated_tags.append({
+                                "product_id": pid,
+                                "name": pname,
+                                "tag": tag_text
+                            })
 
                     return {
                         "intent": intent,

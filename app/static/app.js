@@ -1502,6 +1502,10 @@ function renderSelectedItems(items) {
     let siteBadge = "";
     if (isBase && isMultiSiteBase) {
       siteBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1">Shop / Site ${siteIndex++}</span>`;
+    } else if (isBase && item.quantity > 1) {
+      siteBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1">${item.quantity} Shops (${item.quantity} Connections)</span>`;
+    } else if (item.quantity > 1) {
+      siteBadge = `<span class="bg-slate-100 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1">&times;${item.quantity}</span>`;
     }
 
     const div = document.createElement("div");
