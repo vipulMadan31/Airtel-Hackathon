@@ -71,10 +71,20 @@ def run_tests():
 
     # 6. Orders & Persistence State Machine Test
     order_sm = OrderStateMachine()
+    case_id = order_sm.create_kyc_case(
+        user_id="USR-TEST-STAR",
+        customer_email="star@electronics.in",
+        doc_type="GST",
+        id_number="06AAAAA0000A1Z5",
+        entity_name="Star Electronics",
+        verdict="APPROVED"
+    )
     order = order_sm.create_order(
         business_name="Star Electronics",
         contact_phone="+91 98765 00000",
         bundle_data=quote,
+        case_id=case_id,
+        explicit_consent={"granted": True, "timestamp": "2026-07-15T10:00:00Z", "version": "1.0"},
         kyc_status="VERIFIED"
     )
     order_id = order["order_id"]
