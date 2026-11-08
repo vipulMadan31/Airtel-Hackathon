@@ -2,7 +2,9 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "YTL_TrackA_Udyam_Digital_Data"
+DATA_DIR = BASE_DIR / "app" / "data"
+if not DATA_DIR.exists():
+    DATA_DIR = BASE_DIR / "YTL_TrackA_Udyam_Digital_Data"
 
 PRODUCT_CATALOGUE_PATH = DATA_DIR / "product_catalogue.csv"
 MOCK_GSTIN_REGISTRY_PATH = DATA_DIR / "mock_gstin_registry.csv"
