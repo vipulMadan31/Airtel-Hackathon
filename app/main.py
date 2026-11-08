@@ -1345,7 +1345,8 @@ def get_admin_metrics(
                 "sla_remaining_hours": 3.5
             }
         ],
-        "raw_analytics": raw
+        "raw_analytics": raw,
+        "comparative_benchmarks": dashboard_service.get_comparative_ops_benchmarks()
     }
 
 @app.get("/api/admin/reports/export.csv")

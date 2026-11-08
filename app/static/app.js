@@ -891,14 +891,62 @@ async function loadOpsViewData() {
       const vRet = document.getElementById("opsViewRetentionMetrics");
       const vRetSub = document.getElementById("opsViewRetentionSub");
 
+      const compData = data.comparative_benchmarks;
+
       if (vTotal) vTotal.innerText = fmtNum(fm.total_inbound_leads);
       if (vConv) vConv.innerText = fmtPct(fm.projected_digital_conversion_rate_percent);
-      if (vTta) vTta.innerText = fmtDays(oe.udyam_digital_tta_days);
+      if (vTta) {
+        const dbTta = compData?.current_db?.operational_kpis?.avg_tta_days;
+        vTta.innerText = (dbTta !== null && dbTta !== undefined) ? fmtDays(dbTta) : "—";
+      }
       if (vPending) vPending.innerText = fmtNum(fm.pending_orders_count ?? (fm.quote_accepted - fm.activated));
       if (vKyc) vKyc.innerText = fmtNum(kycData.total_kyc_failures ?? 0);
       if (vKycRate) vKycRate.innerText = `${kycData.failure_rate_percent ?? 0}% failure rate`;
-      if (vRet) vRet.innerText = `${retentionData.csat_average ?? 4.8} ★`;
-      if (vRetSub) vRetSub.innerText = `${retentionData.churn_risk_percent ?? 2.1}% Churn Risk`;
+      if (vRet) {
+        const dbCsat = compData?.current_db?.operational_kpis?.csat_score_out_of_5;
+        vRet.innerText = (dbCsat !== null && dbCsat !== undefined) ? `${dbCsat} / 5 ★` : "—";
+      }
+      if (vRetSub) {
+        const openT = compData?.current_db?.operational_kpis?.open_support_tickets ?? 0;
+        vRetSub.innerText = `${openT} Open Tickets`;
+      }
+
+      // Populate 3-Pillar Comparative Benchmarks Table
+      const compTableBody = document.getElementById("opsComparativeBenchmarksTableBody");
+      if (compTableBody && compData && compData.comparison_table) {
+        compTableBody.innerHTML = compData.comparison_table.map((row) => {
+          const val = row.current_db;
+          const isBlank = !val || val === "—" || val === "null" || val === "-" || val === "None";
+          const currentDbDisplay = isBlank 
+            ? `<span class="text-slate-400 font-mono font-bold text-sm block">—</span><span class="text-[9px] text-slate-400 font-medium block uppercase tracking-wider">[Not Tracked]</span>`
+            : `<span class="font-black text-emerald-950 font-mono text-sm block">${val}</span><span class="text-[9px] text-emerald-700 font-semibold block uppercase tracking-wider">Live DB Verified</span>`;
+
+          return `
+            <tr class="hover:bg-slate-50/80 transition">
+              <td class="p-3">
+                <span class="font-extrabold text-slate-900 block text-xs">${row.metric}</span>
+                <span class="text-[10px] text-slate-500 font-mono">Unit: ${row.unit}</span>
+              </td>
+              <td class="p-3 bg-blue-50/40 border-l border-blue-100 font-mono font-bold text-blue-900 text-xs">
+                ${row.baseline}
+              </td>
+              <td class="p-3 bg-emerald-50/40 border-l border-emerald-100">
+                ${currentDbDisplay}
+              </td>
+              <td class="p-3 bg-purple-50/40 border-l border-purple-100 font-mono font-black text-purple-950 text-xs">
+                ${row.projected}
+              </td>
+              <td class="p-3 font-semibold text-slate-700 font-mono text-[11px]">
+                ${row.variance}
+              </td>
+              <td class="p-3 text-[11px] text-slate-600 leading-snug">
+                ${row.notes}
+                ${row.is_assumed ? '<span class="inline-block mt-0.5 text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.2 rounded font-semibold ml-1">Assumed (Pessimistic)</span>' : '<span class="inline-block mt-0.5 text-[9px] bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.2 rounded font-semibold ml-1">Empirical</span>'}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
 
       // Funnel Progression Breakdown
       const fInbound = document.getElementById("opsFunnelInbound");
@@ -941,8 +989,14 @@ async function loadOpsViewData() {
       const mCac = document.getElementById("adminCac");
       if (mTotal) mTotal.innerText = fmtNum(fm.total_inbound_leads);
       if (mConv) mConv.innerText = fmtPct(fm.projected_digital_conversion_rate_percent);
-      if (mTta) mTta.innerText = fmtDays(oe.udyam_digital_tta_days);
-      if (mCac) mCac.innerText = fmtInr(oe.udyam_digital_cac_inr);
+      if (mTta) {
+        const dbTta = compData?.current_db?.operational_kpis?.avg_tta_days;
+        mTta.innerText = (dbTta !== null && dbTta !== undefined) ? fmtDays(dbTta) : "—";
+      }
+      if (mCac) {
+        const dbCac = compData?.current_db?.operational_kpis?.blended_cac_inr;
+        mCac.innerText = (dbCac !== null && dbCac !== undefined) ? fmtInr(dbCac) : "—";
+      }
 
       // Update Exceptions Badge
       const opsBadge = document.getElementById("opsViewExceptionsBadge");
