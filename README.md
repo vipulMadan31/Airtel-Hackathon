@@ -1,18 +1,23 @@
-# Project Udyam Digital — Airtel Business Onboarding Platform
+# Project Udyam Digital — Airtel Business Onboarding Prototype
+
 > **Airtel SYNC Hackathon 2026 — Enterprise Track A: MSME Digital Self-Serve Acquisition & Onboarding**  
-> *Transforming Telco Enterprise Onboarding from 17.6 Days to < 48 Hours with AI Discovery, Smart KYC & DPDP Compliance.*
+> *A working reference prototype demonstrating digital self-serve onboarding, conversational AI discovery, smart document verification, and channel partner harmony for Indian MSMEs.*
 
 ---
 
-## 🚀 Executive Summary & Impact Metrics
+## 📌 Project Overview & Scope
 
-Project Udyam Digital is a production-grade, digital-first self-serve acquisition, onboarding, and partner collaboration platform purpose-built for India's 63+ million Micro, Small, and Medium Enterprises (MSMEs). 
+**Project Udyam Digital** is an end-to-end working prototype developed as a proof-of-concept for the Airtel SYNC Hackathon. It addresses the operational bottlenecks of traditional enterprise telco onboarding—manual discovery, slow document turnaround, paper-heavy KYC verification, and channel friction between direct digital channels and local field partners (Airtel Mitras).
 
-It dismantles the four critical bottlenecks of legacy telco enterprise sales:
-1. **Time-to-Activate (TTA)**: Slashed from **17.6 days to < 48 hours** via automated straight-through processing (STP).
-2. **Customer Acquisition Cost (CAC)**: Dropped from **₹15,000 to < ₹2,500** through zero-touch conversational discovery and self-serve ordering.
-3. **Funnel Conversion Rate**: Lifted from **7.36% to > 25.0%** using transparent itemized pricing, 4-step progressive down-sells, and zero-risk ₹499 priority bookings.
-4. **Channel Harmony**: Local field agents (Airtel Mitras) earn **15% recurring commission trails** plus **₹1,000 spot recovery bounties** on digitally referred and assisted customers, completely eliminating channel conflict.
+> [!NOTE]
+> **Prototype Grounding & Current State**:  
+> This codebase is an **advanced prototype and reference implementation**, not a production-hardened commercial system. While all primary user flows—conversational advisory, catalog pricing, document parsing, order state transitions, receipt generation, and email dispatch—are functional and test-verified, it utilizes local/mock integrations for external dependencies (e.g., SQLite for persistence, simulated registry lookups, and test payment flows) in place of enterprise telco backend infrastructure.
+
+### Key Objectives
+* **Accelerate Discovery to Staging**: Enable micro and small enterprises to configure eligible connectivity and SaaS bundles in minutes through natural conversation.
+* **Dual-Track KYC Verification**: Support both formal GST-registered businesses and informal proprietorships operating via Udyam Registration.
+* **Deterministic Server-Side Control**: Use LLMs (Google Gemini) strictly for natural language understanding and dialogue orchestration, while keeping all pricing calculations, plan eligibility, statutory constraints, and cart state deterministic and backend-enforced.
+* **Channel Harmony**: Preserve and empower the local partner network (Airtel Mitra) with a dedicated portal, localized lead routing, atomic lead claiming, and transparent commissions.
 
 ---
 
@@ -20,121 +25,136 @@ It dismantles the four critical bottlenecks of legacy telco enterprise sales:
 
 ```mermaid
 flowchart TD
-    subgraph MultiChannel["Multi-Channel Customer Ingestion"]
+    subgraph MultiChannel["Customer Ingestion Layer"]
         WebStore["Web Storefront SPA (Bilingual EN/HI)"]
         WhatsApp["WhatsApp Bot Simulator (Mobile-First)"]
-        MitraReferral["Mitra Partner QR / Deep Link (?ref=PTR-IND-882)"]
+        MitraReferral["Mitra Partner Referral Link"]
     end
 
-    subgraph DiscoveryEngine["Conversational AI Discovery Engine"]
-        Clarification["Interactive Clarification Gate<br/>(GSTIN status & Employee scale)"]
-        GeminiAdapter["Google Gemini Flash LLM & Heuristic Fallback"]
-        PersonaPicks["Explainability Engine<br/>('Why we picked this for your business')"]
+    subgraph AIAdvisor["AI Advisor Engine (Modular Architecture)"]
+        NLU["NLU Parser & Entity Extraction (nlu.py)"]
+        ProfileEngine["Profile & Mandatory Discovery Gate (profile.py)"]
+        LLMClient["Gemini Client / Scripted Fallback (llm_client.py / scripted.py)"]
+        Tools["Deterministic Business Operations (tools.py)"]
+        ResponseGuard["Server-Side Guardrails & Pricing (response_guard.py)"]
+        SessionStore["Server Session State (session.py)"]
     end
 
-    subgraph CatalogPricing["Transparent Catalog & Pricing Reconciler"]
-        ThreeBucket["3-Bucket Architecture:<br/>A: Base Fibre | B: Add-Ons | C: Ineligible Plans"]
-        DownSell["4-Step Progressive Down-Sell Reconciler"]
-        Feasibility["Upfront Pincode Feasibility & AirFiber Gate"]
+    subgraph CatalogEngine["Catalog & Feasibility"]
+        Catalog["Product Catalog (Base Connectivity & SaaS Add-ons)"]
+        Pricing["Authoritative Pricing Calculator (18% GST itemized)"]
+        Feasibility["Pincode & City-Tier Feasibility (Fibre vs 5G AirFiber)"]
     end
 
-    subgraph SmartKYC["Smart KYC & DPDP Pipeline"]
-        DualTrack["Dual Track Verification:<br/>Track 1: GSTIN | Track 2: Udyam (Non-GST)"]
-        OCR["WinOCR + OpenCV Laplacian Blur Check (Thresh: 100.0)"]
-        RegistryCheck["Mock GSTIN & Udyam Registry Cross-Verification"]
-        DPDPShredder["DPDP Act 2023 Data Minimization:<br/>Temporary Binary Auto-Shredder"]
+    subgraph SmartKYC["Document Verification Pipeline"]
+        Preprocessing["Image Preprocessing & Deskewing (OpenCV)"]
+        DualOCR["OCR Engine (Windows Media OCR / Tesseract)"]
+        FieldExtractor["Spatial Field Extraction (GSTIN, Udyam, Name, Address)"]
+        ConfidenceCheck["Field-Level Confidence & Format Validation"]
+        DPDPMinimization["Data Minimization (Temporary Upload Disposal)"]
     end
 
-    subgraph OrderFulfillment["Order State Machine & Payment Gateway"]
-        OrderSM["SQLite Order State Machine"]
-        UPIPay["Post-KYC ₹499 UPI AutoPay Modal<br/>(PhonePe, GPay, Paytm, Airtel Bank)"]
-        ReceiptEngine["Official B2B GST Tax Receipt (SAC 998411)"]
-        LiveSMTP["Real Email Dispatcher (smtp.gmail.com:587)<br/>From: vipul23600@iiitd.ac.in"]
+    subgraph OrderCore["Order State Machine & Payment Engine"]
+        OrderDB["Order State Machine (SQLite WAL Mode)"]
+        AuthRBAC["Fail-Closed RBAC & Password Hashing (PBKDF2)"]
+        PaymentIntent["Verified Payment Intent & Simulation Flow"]
+        ReceiptEngine["Tax Invoice Generator (SAC 998411)"]
+        SMTPDispatch["Real SMTP Dispatcher (smtp.gmail.com:587)"]
     end
 
-    subgraph ChannelOps["Channel Harmony & Enterprise Ops"]
-        MitraMarketplace["Mitra Lead Marketplace<br/>(Auto-Excludes Converted 'TOKEN_PAID' Leads)"]
-        HierarchicalRouting["4-Tier Hierarchical Routing Engine<br/>(Exact PIN -> District -> Circle -> HQ)"]
-        SLAEngine["Fast-Track 4-Hour SLA & HQ Escalation"]
-        AdminDashboard["National Ops Admin Funnel Analytics"]
+    subgraph ChannelOps["Mitra Partner & Ops Portal"]
+        MitraPortal["Mitra Partner Portal & Lead Stream"]
+        AtomicClaim["Atomic Lead Claiming & Removal on Call"]
+        HierarchicalRouting["4-Tier Routing (Pincode -> District -> Circle -> HQ)"]
+        AdminDashboard["Enterprise Ops Funnel Dashboard"]
     end
 
-    MultiChannel --> DiscoveryEngine
-    DiscoveryEngine --> CatalogPricing
-    CatalogPricing --> SmartKYC
-    SmartKYC --> OrderFulfillment
-    OrderFulfillment --> LiveSMTP
-    OrderFulfillment -.-> ChannelOps
+    MultiChannel --> NLU
+    NLU --> ProfileEngine
+    ProfileEngine --> LLMClient
+    LLMClient --> Tools
+    Tools --> Catalog
+    Tools --> Pricing
+    Tools --> Feasibility
+    AIAdvisor --> ResponseGuard
+    ResponseGuard --> MultiChannel
+    MultiChannel --> SmartKYC
+    SmartKYC --> OrderCore
+    OrderCore --> SMTPDispatch
+    OrderCore -.-> ChannelOps
+    ChannelOps --> AtomicClaim
 ```
 
 ---
 
-## 🌟 Key Capabilities & Technical Highlights
+## ⚙️ Core Modules & Functional Implementation
 
-### 1. Interactive Multi-Turn AI Advisor (Gemini-Powered)
-* **Grounded Clarification Flow**: Unlike static forms, the conversational advisor first clarifies regulatory and operational constraints (e.g., *"Do you operate with an active GSTIN or Udyam?"*, *"How many employees and devices connect?"*) before formulating recommendations.
-* **Explainability Tags**: Every recommendation includes itemized transparency (*"Why we picked this for your business"* / *"हमने आपके व्यवसाय के लिए इसे क्यों चुना"*).
-* **Bilingual Vernacular**: Instant real-time toggle between English and Hindi across the entire interface.
+### 1. Conversational AI Advisor (Refactored Modular Architecture)
+The advisor is structured into dedicated single-responsibility modules under `app/modules/advisor/`:
+* **`nlu.py`**: Intent recognition (discovery, recommendation, downsell, remove add-on, inquiry, escalation) and multilingual entity extraction (cities, pincodes, business types, site counts, employee scale, GST status).
+* **`profile.py`**: Non-destructive profile state merging, location synchronization (city $\leftrightarrow$ benchmark pincode $\leftrightarrow$ city tier), and mandatory discovery gating.
+* **`tools.py`**: Deterministic business operations for bundle generation, progressive down-selling, add-on removal, quote computation, and human escalation.
+* **`llm_client.py`**: Google Gemini integration using structured response contracts and contextual system instructions.
+* **`scripted.py`**: Full rule-based deterministic fallback ensuring seamless operation when Gemini is unreachable.
+* **`response_guard.py`**: Output validation layer that audits product eligibility, dependency compliance, enforces base connectivity, strips removed add-ons, and calculates authoritative pricing.
+* **`service.py`**: Central orchestrator coordinating session ownership, NLU, LLM invocation, deterministic execution, and state persistence.
 
-### 2. Full-Fidelity WhatsApp Web Simulator
-* Dedicated mobile-first simulation environment (`/whatsapp_simulator.html`) mimicking official Airtel Business WhatsApp onboarding.
-* Features interactive quick reply chips, image upload for KYC certificates, bundle customization cards, and deep-link payment triggers.
+#### Key Advisor Behaviors
+* **Mandatory Location Discovery**: Recommendations are gated until both **Location** (city or 6-digit pincode) and **Employee Scale** are provided. The advisor dynamically determines city tier (Tier 1 Metro, Tier 2, Tier 3) and checks fiber vs 5G AirFiber feasibility upfront.
+* **Synchronized Cart & Add-on Removal**: Customer requests to remove discretionary items (e.g., *"remove endpoint security"*) or downsell (*"sasta plan"*) synchronously update the backend bundle, chat explanation, and frontend drawer in real-time.
+* **Bilingual Support**: Instant switching between English and Hindi across chat and storefront.
 
-### 3. Transparent 3-Bucket Catalog & Progressive Down-Sell
-* **Bucket A (Base Connectivity)**: Symmetrical enterprise fiber (100–1000 Mbps) or 5G AirFiber.
-* **Bucket B (Modular Add-ons)**: Cloud POS & Soundbox, Secure Wi-Fi with Guest Portal, Cloud Backup, Google Workspace.
-* **Bucket C (Locked/Ineligible)**: Transparently identifies products requiring formal GSTIN to safeguard non-GST micro-enterprises.
-* **4-Step Down-Sell Sequence**: Pragmatically removes discretionary add-ons when a customer clicks *"Sasta Plan"* or requests lower operational expenditure.
+### 2. Smart KYC & Document Verification Engine
+* **Preprocessing & Quality Gate**: Grayscale conversion, contrast adjustment, and OpenCV Laplacian variance blur checks to identify unreadable images before processing.
+* **Dual-Engine Support**: Native Windows Media OCR (`winocr`) with fallback to Tesseract (`pytesseract`), supporting configurable cross-platform execution.
+* **Spatial & Targeted Field Extraction**: Pattern matching and bounding-box validation for GSTIN, Udyam Registration Number, legal entity name, trade name, address, and pincode.
+* **Field-Level Confidence**: Tracks confidence at the individual field level rather than relying solely on page-level averages. Critical fields failing confidence checks trigger targeted manual review flags.
+* **DPDP Act 2023 Compliance**: Uploaded document binaries are processed in-memory or temporary storage and deleted post-verification, keeping only validated metadata.
 
-### 4. Smart KYC with DPDP Act 2023 Compliance
-* **Dual Regulatory Tracks**: Handles standard corporate GSTIN entities and informal proprietorships via **Udyam Registration Certificate**.
-* **Real OCR & Image Quality Verification**: Computes OpenCV Laplacian sharpness variance (threshold: 100.0) to flag blurry uploads before hitting statutory gateways.
-* **DPDP Data Minimization**: Complies with Section 6 of the Digital Personal Data Protection Act 2023. Raw uploaded certificate binaries are processed in-memory/temp storage and **immediately deleted post-validation**, retaining only cryptographically audited entity metadata.
+### 3. Order State Machine & Security Controls
+* **Server-Controlled KYC Verdict**: Orders cannot transition to payment or fulfillment without a server-validated KYC record with an approved verdict.
+* **Verified Payment Intents**: Client-side claims of payment success are rejected. Transactions require server-side verification and deterministic token generation (`₹499` booking token).
+* **Explicit Customer Consent**: Customer consent is not assumed; consent timestamp, purpose, and version are explicitly recorded upon affirmative user action.
+* **Ownership Enforcement**: Read and write access to orders, KYC cases, and receipts is strictly scoped to the authenticated user ID or authorized administrative roles.
+* **Hardened Authentication**: Passwords hashed with individual cryptographic salts via PBKDF2-HMAC-SHA256. Public role-switch backdoors and universal passwords have been removed; auth APIs fail closed.
 
-### 5. Strictly Sequential Order & Payment Flow
-* **Zero Premature Charges**: Customers review pricing and complete Smart KYC before any financial transaction is requested.
-* **₹499 Refundable Booking Token**: Once the order is staged, applicants can pay a ₹499 priority slot deposit via UPI AutoPay or opt for deferred *"Pay on Handover"*.
-* **B2B GST Tax Receipt**: Generates compliant tax invoices with 18% itemization under SAC 998411.
-
-### 6. Live SMTP Real Email Dispatch
-* Connected to Google Workspace SMTP (`smtp.gmail.com:587`, STARTTLS) sending real delivery updates from `vipul23600@iiitd.ac.in`.
-* Informs the business owner of:
-  1. Exact amount paid (₹499 or ₹0 deferred).
-  2. Statutory KYC validation outcome and hardware staging.
-  3. Estimated installation timeline, slot, and assigned field lead engineer.
-
-### 7. Channel Harmony & Partner Ecosystem
-* **Filtered Lead Marketplace**: Orders where the token has already been paid (`TOKEN_PAID`) are **automatically filtered out** of the Mitra feed to prevent duplicate outreach on already converted customers.
-* **Hardened RBAC & Individual Credentials**: Channel partners and Enterprise Ops Admins authenticate using individual credentials stored with salted PBKDF2 hashes; universal backdoor passwords and public role switching have been strictly purged.
-* **4-Tier Hierarchical Routing**:
-  * Level 1: Exact 6-Digit PIN Match $\rightarrow$ Local Retail Store Counter.
-  * Level 2: 3-Digit Postal District Prefix $\rightarrow$ District Mitra Hub.
+### 4. Mitra Partner Ecosystem & Channel Harmony
+* **Lead Stream Filtering**: Converted leads (where the booking token is already paid or installation is dispatched) are automatically excluded from the Mitra marketplace.
+* **Atomic Lead Claiming & Call Handling**: When a partner dials or claims a lead, the lead is atomically removed from the open pool to prevent duplicate outreach.
+* **Hierarchical Routing Engine**:
+  * Level 1: Exact 6-Digit PIN Match $\rightarrow$ Local Retail Store.
+  * Level 2: 3-Digit Postal Prefix $\rightarrow$ District Mitra Hub.
   * Level 3: City / Circle Regional Pool.
   * Level 4: Central Enterprise Operations Desk (National HQ).
-* **4-Hour Fast-Track SLA**: Unclaimed or stalled leads escalate to regional/HQ queues upon SLA expiration.
+
+### 5. Multi-Channel Simulation & Real Notifications
+* **Storefront SPA**: Modern web portal with real-time quote preview, multi-item breakdown, and bilingual support.
+* **WhatsApp Web Simulator**: Mobile-first simulation (`/whatsapp_simulator.html`) sharing the same underlying advisor state, profile engine, and catalog rules.
+* **Real SMTP Notifications**: Connected via Google Workspace SMTP (`smtp.gmail.com:587`, STARTTLS) to dispatch real booking confirmations, B2B tax receipts, and installation schedules directly to customer email addresses.
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technology |
-| :--- | :--- |
-| **Backend Framework** | Python 3.11+, FastAPI, Starlette |
-| **Server & Tunnel** | Uvicorn (ASGI), Cloudflare Tunnel (`cloudflared`) |
-| **Database & ORM** | SQLite3 (WAL mode, busy timeout 30s) |
-| **Generative AI** | Google Gemini Flash API (`generativelanguage.googleapis.com`) + Rule Engine Fallback |
-| **OCR & Computer Vision**| OpenCV (`cv2`), Native Windows Media OCR (`winocr`), Levenshtein (`thefuzz`) |
-| **Email Dispatch** | Python `smtplib`, Google Workspace SMTP (`smtp.gmail.com:587`) |
-| **Frontend** | Vanilla JavaScript SPA, Tailwind CSS (CDN), Plus Jakarta Sans |
-| **Security & Auth** | OAuth2 Bearer Tokens, PBKDF2-HMAC-SHA256 password hashing, RBAC |
+| Layer | Component | Notes / Purpose |
+| :--- | :--- | :--- |
+| **Backend** | Python 3.11+, FastAPI, Starlette | Async REST API, modular service architecture |
+| **Server** | Uvicorn (ASGI) | Local web server running on port 8000 |
+| **Persistence** | SQLite3 (WAL Mode) | Local persistence with WAL journal mode and 30s busy timeout |
+| **Conversational AI** | Google Gemini Flash API (`google-genai`) | Natural language understanding with rule-based fallback |
+| **Computer Vision / OCR** | OpenCV, WinOCR, Tesseract, TheFuzz | Image quality check, deskewing, text extraction, fuzzy matching |
+| **Email Dispatch** | Python `smtplib`, Google Workspace SMTP | Real email delivery for tax receipts and scheduling |
+| **Frontend** | Vanilla JavaScript (ES6+), Tailwind CSS | Lightweight SPA without heavyweight framework overhead |
+| **Authentication** | PBKDF2-HMAC-SHA256, OAuth2 Bearer Tokens | Individual salted credentials, role-based access control |
 
 ---
 
-## ⚡ Quickstart Guide
+## ⚡ Setup & Execution Guide
 
 ### 1. Prerequisites
-* Python 3.10 or higher installed.
-* Windows OS (for native Windows Media OCR) or compatible Tesseract setup.
+* Python 3.10+ installed on Windows (for native WinOCR) or Linux/macOS with Tesseract OCR installed.
+* An optional Google Gemini API key (the system operates fully on rule-based fallbacks if omitted).
+* An optional Gmail/Workspace App Password for live email dispatch.
 
 ### 2. Installation
 ```powershell
@@ -142,82 +162,90 @@ flowchart TD
 git clone https://github.com/vipulMadan31/Airtel-Hackathon.git
 cd Airtel-Hackathon
 
-# Install required Python dependencies
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. Environment Configuration
-Create a `.env` file in the root directory (or use `.env.example`):
+### 3. Environment Setup
+Create a `.env` file in the project root:
 ```ini
-# Gemini LLM API Key (Optional: system operates with built-in heuristic fallback if omitted)
+# Generative AI (Optional: falls back to deterministic rule engine if absent)
 GEMINI_API_KEY=your_gemini_api_key
 
-# Real Email Dispatch Configuration (Google Workspace SMTP)
+# Email Dispatcher (Optional: logs to local storage if absent)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=vipul23600@iiitd.ac.in
-SMTP_FROM=Airtel Business Enterprise <vipul23600@iiitd.ac.in>
-SMTP_PASSWORD=your_16_digit_google_app_password
+SMTP_USER=your_email@domain.com
+SMTP_FROM=Airtel Business Enterprise <your_email@domain.com>
+SMTP_PASSWORD=your_16_digit_app_password
 ```
 
-### 4. Run the Application
+### 4. Running the Server
 ```powershell
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
-### 5. Default Seeded Accounts
+Open your browser to `http://localhost:8000` for the Storefront, or `http://localhost:8000/whatsapp_simulator.html` for the WhatsApp flow.
 
-The platform is pre-seeded with individual PBKDF2-salted credentials for rapid evaluation:
+### 5. Seeded Test Credentials
+
+The prototype is pre-seeded with individual credentials for testing the different user roles:
 
 | Role | Email | Password | Access Portal |
 | :--- | :--- | :--- | :--- |
-| **Enterprise Ops Admin** | `admin@airtel.com` | `airteladmin` | Click Admin tab &rarr; Enter credentials &rarr; Opens National Ops Dashboard |
-| **Airtel Mitra Partner** | `mitra@airtel.com` | `airtelmitra` | Click Mitra tab &rarr; Enter credentials &rarr; Opens Partner Portal & Leads |
+| **Enterprise Ops Admin** | `admin@airtel.com` | `airteladmin` | Click Admin tab &rarr; Log in &rarr; National Ops Dashboard |
+| **Airtel Mitra Partner** | `mitra@airtel.com` | `airtelmitra` | Click Mitra tab &rarr; Log in &rarr; Partner Portal & Lead Stream |
 | **MSME Customer** | `customer@business.in` | `customer123` | Click Customer tab &rarr; Sign In |
 
-*(Each account verifies against its own cryptographic salt and PBKDF2 hash. New individual accounts for any role can be registered via `POST /api/auth/register`).*
+*(New user accounts can be registered via `POST /api/auth/register`).*
 
 ---
 
-## 🧪 Comprehensive Automated Test Suites
+## 🧪 Test Suites & Verification
 
-The repository contains an extensive automated test suite covering every component:
+The repository contains automated test suites verifying critical functionality:
 
 ```powershell
-# 1. Complete End-to-End Prototype Verification (All 8 Suites)
-python test_complete_prototype.py
+# 1. 9-Scenario AI Advisor Comprehensive Verification
+python tests/test_advisor_scenarios.py
 
-# 2. Interactive AI Clarification & Clinic Chat Flow
+# 2. Consultative Discovery & Location Gating Verification
+python test_gst_employee_clarification.py
+
+# 3. Pincode & City Synchronization Verification
+python test_phase2_pincode_sync.py
+
+# 4. Clinic Multi-Turn Flow & Cart Verification
 python test_clinic_chat_flow.py
 
-# 3. Post-KYC Payment, Receipt & Real SMTP Email Dispatch Test
+# 5. Multi-Site Outlets & Add-on Removal Verification
+python test_multisite_chat_flow.py
+
+# 6. Post-KYC Payment & SMTP Tax Receipt Email Dispatch Test
 python tests/test_email_quote.py
 
-# 4. Mitra Lead Filtering & Multi-Role Authentication Test
+# 7. Mitra Lead Filtering & Multi-Role Authentication Test
 python tests/test_partner_leads_and_auth.py
-
-# 5. Browser Automation & Click Flow
-python test_browser_clicks_proper.py
 ```
 
 ---
 
-## 📋 Comprehensive Flaws & Edge Cases Analysis
+## 🔍 Honest Evaluation: Prototype vs. Production Gap Analysis
 
-During exhaustive architectural examination of the prototype, the following real-world flaws, edge cases, and architectural considerations were investigated, resolved, or flagged for production hardening:
+To provide an honest and grounded engineering assessment, the table below highlights where this prototype stands today versus the architectural requirements for an enterprise-scale telco deployment:
 
-| Area | Potential Flaw / Edge Case | Prototype Resolution / Mitigation | Production Hardening Recommendation |
-| :--- | :--- | :--- | :--- |
-| **1. Order State Isolation** | Cross-account order leakage if a newly registered user had no orders. | **Resolved:** Stripped global `ORDER BY created_at DESC LIMIT 1` fallback; enforced strict `user_id` and `customer_email` matching. | Enforce JWT session claims with cryptographic claims verification on every order query. |
-| **2. Mitra Feed Contamination** | Converted orders appearing in Mitra leads feed, allowing duplicate outreach. | **Resolved:** Added multi-stage filter excluding `TOKEN_PAID` / `ORDER_CONFIRMED` leads and orders with `token_paid = 1`. | Implement distinct `leads` vs `orders` domain separation with event-driven lead retirement. |
-| **3. Pre-KYC Payment Hazard** | Users could pay ₹499 and generate receipts before identity verification. | **Resolved:** Removed the pre-KYC ₹499 button from `#quoteCard`. Payment is strictly triggered post-KYC. | Enforce backend order state validation requiring `kyc_status == 'VERIFIED'` before accepting payment intents. |
-| **4. OCR Platform Portability** | `winocr` depends on the Windows 10/11 runtime OCR API. | **Mitigated:** Wrapped OCR in try-catch with regex and Levenshtein fuzzy matching fallback. | In multi-platform Linux/Docker deployments, configure Tesseract OCR (`pytesseract`) or cloud Document AI as primary backend. |
-| **5. SMTP Authentication** | Google accounts require a 16-character App Password rather than standard password. | **Resolved:** Strips whitespace from passwords automatically, provides clear UI diagnostics and local fallback storage. | For enterprise scale, integrate AWS SES, SendGrid, or Airtel's internal transactional email gateway. |
-| **6. Database Concurrency** | SQLite file lock under high concurrent read/write transactions. | **Resolved:** Enabled Write-Ahead Logging (`PRAGMA journal_mode=WAL;`) with a 30-second busy timeout (`PRAGMA busy_timeout=30000;`). | Migrate to managed PostgreSQL or Amazon Aurora for production multi-region scaling. |
-| **7. DPDP Compliance** | Storing unencrypted customer KYC documents poses statutory liabilities. | **Resolved:** Automatic disposal of temporary document binaries immediately after OCR extraction. | Store cryptographically signed audit hashes of consent records in an immutable ledger. |
+| System Layer | Current Prototype State | Production Requirements for Scale |
+| :--- | :--- | :--- |
+| **Data Persistence** | Local SQLite database using Write-Ahead Logging (WAL) and 30-second busy timeout. | Distributed PostgreSQL or Amazon Aurora cluster with read replicas, multi-AZ failover, and connection pooling (PgBouncer). |
+| **Session Management** | In-memory session store with mutex locking. | Distributed cache (Redis / Valkey) with cluster replication and TTL-backed session persistence. |
+| **Payment Gateway** | Server-side simulated payment intent verification generating mock ₹499 transaction tokens. | Certified integration with live payment aggregators (e.g., Razorpay, Cashfree, Pine Labs) using webhook signature verification and dual-entry reconciliation. |
+| **Government Registry Lookups** | Simulated GSTIN and Udyam database validation with format & checksum checks. | Direct integration with GSTN APIs, MCA 21, and Ministry of MSME Udyam verification gateways via authorized GSP (GST Suvidha Provider) channels. |
+| **Network Feasibility** | Pincode prefix table and sample database covering benchmark metro and non-metro cities. | Real-time GIS integration with Airtel's physical fiber OSS/BSS, FTTH splitter capacity engines, and 5G AirFiber radio coverage maps. |
+| **OCR Pipeline** | Dual-engine (WinOCR / Tesseract) with OpenCV preprocessing and regex extraction. | Distributed asynchronous OCR workers (Celery/RabbitMQ) with high-accuracy document AI models (e.g., Google Cloud Document AI, AWS Textract) running on GPU nodes. |
+| **Authentication & Tokens** | PBKDF2 password hashes with local bearer tokens and role-based checks. | Enterprise SSO (OAuth2 / OIDC / SAML), hardware security module (HSM) key management, short-lived JWTs with refresh token rotation, and multi-factor authentication (MFA). |
+| **Email / SMS Notifications** | Single-threaded SMTP integration with Google Workspace for demo delivery. | Enterprise transactional communication gateways (AWS SES, SendGrid, Sinch, or Airtel IQ) with bounce handling, rate-limiting, and DLT-registered SMS/WhatsApp templates. |
 
 ---
 
-## 👥 Authors & Acknowledgments
+## 👥 Acknowledgments
 
-* **Airtel SYNC Hackathon 2026** — Enterprise Track A (Project Udyam Digital)
-* Developed for **Bharti Airtel Limited & Airtel Business Enterprise Care**.
+Developed as a reference architecture and working prototype for **Airtel SYNC Hackathon 2026** (Enterprise Track A: MSME Digital Self-Serve Acquisition & Onboarding).
