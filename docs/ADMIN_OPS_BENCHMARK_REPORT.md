@@ -1,195 +1,158 @@
-# Airtel Enterprise Operations: 3-Pillar Operational Benchmarks & Grounding Report
+# Airtel Enterprise Operations: Operational Benchmarks & Target Telemetry Report
 
-**Document Reference:** `OPS-BENCHMARK-2026-Q2-REV1`  
+**Document Reference:** `OPS-BENCHMARK-2026-Q2-REV2`  
 **Target Systems:** Airtel Enterprise Operations Desk (`/ops`), Mitra Partner Portal, Project Udyam Digital Core  
 **Author:** Airtel Digital Operations & Telemetry Working Group  
-**Review Status:** Verified & Authoritative — Zero Exaggeration Model  
+**Review Status:** Verified & Authoritative — Grounded Historical vs Proposed Targets  
 
 ---
 
-## 1. Executive Summary & Problem Framing
+## 1. Executive Summary & Mandatory Disclaimers
 
 > [!IMPORTANT]
-> **CRITICAL TRANSPARENCY NOTICE: CURRENT DATABASE EMPIRICAL VALUES ARE SIMULATED**  
-> All metrics and numbers listed under **Column 2: Current Database Empirical Values** (`udyam_orders.db`) are **SIMULATED PROTOTYPE VALUES** generated through local developer sandbox runs, automated end-to-end user tests, and synthetic merchant onboarding journeys. They do **NOT** represent live commercial Airtel production customer traffic or actual revenue billing.
+> **MANDATORY DATA LABELS & REGULATORY DISCLOSURES**
+> 1. **Synthetic Historical Baseline | April–June 2026**: All baseline metrics are derived directly from the synthetic dataset `smb_leads.csv` (5,000 SMB records representing traditional enterprise telesales and field operations in Q2 2026). **These metrics do NOT represent live Airtel commercial performance.**
+> 2. **Proposed Targets / Illustrative Projections**: All projected metrics (e.g., TTA $\le$ 7 days, CAC $\le$ ₹4,000, conversion 12–15%, churn $\le$ 10%) are **proposed targets and illustrative projections, not achieved results**.
+> 3. **Removal of Prototype Database Counts**: In accordance with user directives, empirical counts from the local developer test database (`udyam_orders.db`) have been **removed** from the operational comparison table to eliminate any conflation between early development test runs and long-term operational targets.
 
-A common vulnerability in enterprise digital transformation business cases is **metric inflation**—projecting unrealistic improvements such as 40%+ conversion rates or 24-hour fiber activations that ignore physical civil constraints, municipal rights-of-way, channel partner economics, and customer price sensitivity.
-
-In accordance with leadership directives, the **Airtel Enterprise Operations Console (`/ops`)** has been refactored to eliminate unsubstantiated assumptions. It replaces vanity metrics with a rigorous **3-Pillar Comparative Telemetry Framework**:
+Enterprise digital transformation initiatives often fail to create measurable value due to misaligned expectations. In Project Udyam Digital, operational telemetry is split strictly into two authoritative pillars:
 
 ```mermaid
 flowchart LR
-    A["1. Historical Baseline<br/><b>smb_leads.csv</b><br/>5,000 SMB records (Q2 2026)<br/>Legacy field sales & paper KYC"] --> D["Authoritative Operations Benchmarking"]
-    B["2. Current Database<br/><b>udyam_orders.db (Simulated)</b><br/>Developer sandbox transactions<br/>Unmeasured metrics left BLANK (—)"] --> D
-    C["3. Projected Metrics<br/><b>Pessimistic Model</b><br/>Strictly bounded assumptions<br/>Accounts for physical & field limits"] --> D
-    D --> E["Admin Ops Console (/ops)<br/>Single Source of Truth"]
+    A["<b>1. Historical Baseline</b><br/>Synthetic Historical Baseline | April–June 2026<br/>Source: smb_leads.csv (5,000 leads)<br/><i>Not live Airtel performance</i>"] --> C["Airtel Enterprise Operations Desk<br/>(/ops Telemetry Console)"]
+    B["<b>2. Proposed Targets</b><br/>Proposed Targets / Illustrative Projections<br/>TTA ≤ 7d | CAC ≤ ₹4,000 | Conv 12–15%<br/><i>Proposed targets, not achieved results</i>"] --> C
 ```
 
-1. **Pillar 1: Historical Baseline Data** — Purely derived from the historical SMB dataset (`smb_leads.csv`, 5,000 enterprise and retail inquiries recorded across Q2 2026). Reflects traditional field-agent sales, physical paperwork, and manual feasibility verification.
-2. **Pillar 2: Current Database Empirical Values (Simulated Sandbox Data)** — Queried directly from tables in `udyam_orders.db`. Measures prototype workflow execution under simulated testing. **Crucially, any metric not tracked by the prototype is left strictly blank (`—` / `[Not Tracked]`)** rather than filled with speculative numbers.
-3. **Pillar 3: Projected Operational Metrics (Strictly Pessimistic)** — A conservative steady-state model that assumes modest, defensive gains (e.g., +3.64% absolute conversion uplift; 12-day activation time instead of claiming sub-48-hour fiber delivery).
-
 ---
 
-## 2. Authoritative 3-Pillar Comparison Matrix
+## 2. Authoritative Comparison Matrix: Baseline vs. Proposed Targets
 
-The table below reproduces the live data rendered in the Admin Ops Console (`/api/admin/metrics` → `comparative_benchmarks`):
+The table below reflects the live telemetry rendered in the Airtel Enterprise Operations Console (`#opsView` via `GET /api/admin/metrics`):
 
-| Operational Metric | Unit | 1. Dataset Baseline (`smb_leads.csv`) | 2. Current DB (Simulated Prototype) | 3. Projected (Pessimistic) | Proj. vs Base Variance | Grounding & Assumption Classification |
-| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Total Inbound Leads** | Leads / Qtr | **5,000** | **167** | **5,000** | *Normalized Scale* | **Baseline**: Exact Q2 sample. **Current DB**: Simulated prototype test population. |
-| **Overall Funnel Conversion** | % | **7.36%** (368 / 5,000) | **35.9%** (60 / 167 paid) | **11.00%** (550 / 5,000) | **+3.64% absolute** (+49.5% rel.) | **Pessimistic Assumption**: Current DB 35.9% is a simulated sandbox artifact. Real-world conversion will stay near 11%. |
-| **Time to Activation (TTA)** | Days | **17.6 days** (Median: 17.0) | **—** *(Not Tracked)* | **12.0 days** (Median: 11.0) | **-5.6 days** (-31.8%) | **Pessimistic Assumption**: Digital KYC saves ~5.6 days. Physical fiber stringing, survey & pole access still take ~12 days. |
-| **Customer Status Follow-ups** | Calls / Lead | **3.01 calls** | **—** *(Not Tracked)* | **2.00 calls** | **-1.01 calls** (-33.5%) | **Pessimistic Assumption**: WhatsApp alerts reduce anxiety, but delivery scheduling still triggers ~2 calls. |
-| **Blended Acquisition Cost (CAC)** | INR | **₹15,053.37** | **—** *(Not Tracked)* | **₹12,200.00** | **-₹2,853** (-18.9%) | **Pessimistic Assumption**: Eliminates wasted field visits; preserves partner commissions (₹1k + 15% trail) and digital ads. |
-| **Avg Monthly Plan (ARPU)** | INR / mo | **₹12,350.52** | **₹1,637.32** | **₹2,450.00** | **-₹9,901** *(Mix Shift)* | **Simulated & Model**: Baseline had expensive Leased Lines; DB transactions simulated micro-retail bundles (Biz Fibre 100). |
-| **KYC Drop-off / Failure Rate** | % | **31.7%** (273 / 861) | **26.4%** (42 / 159) | **22.0%** (209 / 950) | **-9.7% drop-off** | **Simulated & Model**: Automated OCR reduces drop-off in sandbox tests; blurred cameras keep real failure rate near 22%. |
-| **6-Month Customer Churn** | % | **15.22%** (56 / 368) | **—** *(Not Tracked)* | **13.00%** (72 / 550) | **-2.2% churn** | **Pessimistic Assumption**: Proactive CSAT desk resolves early issues; micro-SMB organic mortality bounds churn at ~13%. |
-| **Customer Satisfaction (CSAT/NPS)** | Score | **6.86 / 10** (NPS) | **2.75 / 5** (CSAT) | **7.40 / 10** (NPS) | **+0.54 score** | **Simulated & Model**: DB CSAT represents simulated test feedback; projected NPS reflects transparent digital quoting. |
+| Metric | Unit | Synthetic Historical Baseline<br/>*(April–June 2026)* | Proposed Target<br/>*(Illustrative Projection)* | Variance / Target Impact | Strategic Operational Enabler | Classification & Notes |
+| :--- | :---: | :---: | :---: | :---: | :--- | :--- |
+| **Lead-to-Activation Time** | Days | **17.6 days** *(Median 17.0)* | **≤7 days** | **-10.6 days** (-60.2%) | Digital KYC, instant optical GIS feasibility check, zero-paper survey routing. | Proposed target (Illustrative projection) |
+| **Blended CAC** | INR | **₹15,053** *(₹15,053.37)* | **≤₹4,000** | **-₹11,053** (-73.4%) | Elimination of wasted physical field visits; automated self-serve qualification. | Proposed target (Illustrative projection) |
+| **Conversion Rate** | % | **7.36%** *(368 / 5,000)* | **12–15%** | **+4.64% to +7.64%** abs | AI conversational advisor, non-GST safe mode for micro-kiranas, transparent quotes. | Proposed target (Illustrative projection) |
+| **Follow-up Calls** | Calls / Lead | **3.01 calls** | **≤0.5** | **-2.51 calls** (-83.4%) | Proactive WhatsApp & SMS status alerts; real-time customer self-service order tracking. | Proposed target (Illustrative projection) |
+| **Six-Month Churn** | % | **15.2%** *(56 / 368)* | **≤10%** | **-5.2%** absolute | Automated CSAT retention outreach desk (4h SLA); accurate speed tier matching. | Proposed target (Illustrative projection) |
+| **Historical NPS** | Score | **6.86 / 10** | **≥8.5 / 10** | **+1.64** score uplift | Bilingual transparency, zero hidden setup charges, frictionless post-activation support. | Proposed target (Illustrative projection) |
 
 > [!NOTE]
-> **Data Integrity Rule**: In Column 2 (*Current DB*), metrics where the database lacks tracking infrastructure (such as PBX call logs or marketing ad-spend ledgers) are rendered as `—` (*Not Tracked*). Under no circumstances are placeholder constants substituted for missing database fields.
+> Prototype database values from `udyam_orders.db` have been completely removed from this operational comparison. Targets represent strategic operational benchmarks for commercial rollout.
 
 ---
 
-## 3. Deep Dive into the Three Pillars
+## 3. Pillar 1: Synthetic Historical Baseline (April–June 2026)
 
-### Pillar 1: Historical Baseline (`smb_leads.csv`)
-The baseline represents 5,000 SMB commercial inquiries handled via traditional Airtel enterprise telesales and field-partner operations during Q2 2026:
-- **Funnel Drop-offs**:
-  - `Inbound Leads`: **5,000** (100.0%)
-  - `Contacted`: **3,406** (68.1%) — *31.9% of leads were never successfully reached by sales reps.*
-  - `Needs Assessed`: **1,974** (39.5%) — *1,432 dropouts during manual discovery calls.*
-  - `Quote Accepted`: **861** (17.2%) — *1,113 leads rejected manual PDF quotes.*
-  - `KYC Submitted/Complete`: **588** (11.8%) — *273 accepted quotes failed physical document collection/verification (31.7% KYC failure).*
-  - `Activated`: **368** (7.36% overall conversion) — *220 dropouts during physical fiber survey and trenching.*
-- **Historical Commercial & Operational Footprint**:
-  - *Time to Activation (TTA)*: Mean **17.6 days**, standard deviation **5.7 days**, median **17.0 days**.
-  - *Chase Calls*: Mean **3.01 customer calls** inquiring about application status prior to activation.
-  - *Blended CAC*: **₹15,053.37** per activated customer (reflects field sales visits, physical document couriers, and commissions).
-  - *Product Mix & ARPU*: High baseline ARPU of **₹12,350.52/month** because the legacy portfolio was dominated by Internet Leased Lines (₹8,000–₹16,000/mo) and multi-site MPLS/SD-WAN.
+*Dataset Source:* `smb_leads.csv` (5,000 SMB lead records, 1 quarter).  
+*Label:* **Synthetic Historical Baseline | April–June 2026** *(Not live Airtel performance)*.
 
----
+### A. Overall Funnel Drop-off Analysis
+Across the 5,000 historical records, the legacy telesales and field-partner acquisition funnel exhibited severe drop-offs at manual touchpoints:
+- **Total Inbound Leads**: **5,000** (100.0%)
+- **Contacted**: **3,406** (68.1%) — *31.9% of inbound inquiries went uncontacted due to partner bandwidth bottlenecks.*
+- **Needs Assessed**: **1,974** (39.5%) — *1,432 dropouts during manual telephone discovery calls.*
+- **Quote Accepted**: **861** (17.2%) — *1,113 potential customers rejected complex offline quotation forms.*
+- **KYC Submitted & Complete**: **588** (11.8%) — *273 accepted quotes failed physical document collection and manual notary verification (31.7% drop-off).*
+- **Activated**: **368** (7.36% lead-to-activation conversion) — *220 dropouts during physical feasibility surveys and fiber trenching.*
 
-### Pillar 2: Current Database Empirical Values (Simulated Prototype Data — `udyam_orders.db`)
+### B. Baseline Operational & Commercial Telemetry
+- **Lead-to-Activation Time (TTA)**: **17.62 days** (Arithmetic mean: 17.6 days; Median: 17.0 days; Standard Deviation: 5.7 days).
+- **Blended Customer Acquisition Cost (CAC)**: **₹15,053.37** per activated customer (reflecting field agent travel, paper logistics, and partner commissions).
+- **Customer Follow-up Calls**: **3.01 calls** per customer journey during provisioning status chasing.
+- **Six-Month Churn Flags**: **15.22%** (56 of 368 activated accounts flagged `churned_within_6_months == 'Y'`).
+- **Customer Net Promoter Score (NPS)**: **6.86 / 10** (Arithmetic mean across activated cohorts).
+- **Average Monthly Bundle Value (ARPU)**: **₹12,350.52 / month** (Driven by a higher proportion of legacy Internet Leased Line contracts).
 
-> [!NOTE]
-> **SIMULATED PROTOTYPE EXECUTION**: All records in `udyam_orders.db` represent **simulated sandbox transactions** generated during software development, automated test suites, and simulated merchant lifecycle runs. They demonstrate end-to-end database schema integration and query accuracy, but do **not** represent live commercial Airtel production network traffic.
+### C. Segment-Wise Conversion and Churn Breakdown
+The dataset comprises 4 distinct micro and small enterprise segments with sharply contrasting behavior:
 
-Aggregation across the 6 core transactional tables (`leads`, `orders`, `kyc_cases`, `customer_feedback`, `support_tickets`, `users`):
-- **Simulated Funnel Counts**:
-  - `leads`: **167** records.
-  - `orders`: **142** records created.
-  - `orders with token_paid = 1`: **60** orders (representing simulated committed token purchases in the prototype).
-  - `Simulated Conversion`: **35.9%** (60 / 167). *Recognized as a simulation artifact from small-sample automated testing; not representative of unassisted retail traffic.*
-- **Simulated KYC Verification Engine**:
-  - Total KYC Ingestions: **159 cases**.
-  - Verified / Approved: **117 cases** (73.6%).
-  - Rejected / Failed: **42 cases** (26.4%).
-  - Primary causes in DB: Address proof mismatch (19), unreadable blurred photo (14), expired shop license (9).
-- **Simulated Commercial Reality**:
-  - Average Paid Monthly Recurring Total: **₹1,637.32 / month**.
-  - Reflects adoption of micro-business packages: **Biz Fibre 100** (₹999/mo) and **Smart POS** (₹599/mo), with zero setup fees.
-- **Service & Experience Feedback (Simulated Sandbox)**:
-  - Customer Feedback Entries: **20 reviews**.
-  - Mean CSAT Rating: **2.75 / 5.0**.
-  - Dissatisfied Reviews (CSAT $\le 3$): **15 customers** flagged into `customer_feedback` for proactive 4-hour retention outreach.
-  - Open Customer Support Tickets: **10 active tickets** in `support_tickets` table.
-- **Explicitly Blank Metrics (`—`)**:
-  - `Avg TTA`: **—** (*Simulated telecom provisioning does not measure field fiber trenching*).
-  - `Customer Follow-up Calls`: **—** (*No telephony PBX database table exists*).
-  - `Blended CAC`: **—** (*Prototype does not record external ad-network spend or partner payroll*).
-  - `6-Month Churn`: **—** (*System uptime is < 6 months; computing long-term subscription churn would be inaccurate*).
+| Business Segment | Sample Leads | Activated Customers | Funnel Conversion (%) | 6-Month Churn Count | 6-Month Churn Rate (%) | Mean TTA (Days) | Segment NPS |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Micro retail & services** *(Kiranas, salons, clinics)* | 2,709 | 110 | **4.06%** | 25 | **22.73%** | 16.6 days | 7.05 / 10 |
+| **Professional offices** *(CA, legal, consultants)* | 1,247 | 138 | **11.07%** | 19 | **13.77%** | 16.9 days | 6.92 / 10 |
+| **Small manufacturers** *(Machining, fabrication)* | 289 | 37 | **12.80%** | 3 | **8.11%** | 20.5 days | 6.46 / 10 |
+| **Small multi-site businesses** *(Retail chains, branches)* | 755 | 83 | **10.99%** | 9 | **10.84%** | 18.8 days | 6.70 / 10 |
+| **Total / Blended Overall** | **5,000** | **368** | **7.36%** | **56** | **15.22%** | **17.6 days** | **6.86 / 10** |
+
+> [!TIP]
+> **Key Insight**: Micro retail represents 54.2% of all inbound demand (2,709 / 5,000) but suffers from the worst conversion (4.06%) and highest churn (22.73%) under legacy processes due to rigid GST requirements and lack of self-service tooling. Project Udyam Digital's Non-GST Kirana flow specifically targets this vulnerability.
 
 ---
 
-### Pillar 3: Projected Operational Metrics (Pessimistic Model)
+## 4. Pillar 2: Proposed Operational Targets & Impact Projections
 
-To avoid managerial over-optimism, the steady-state projections are grounded in conservative operational realities:
+*Label:* **Proposed Targets / Illustrative Projections** *(Proposed targets or illustrative projections, not achieved results)*.
 
-#### 1. Conversion Rate: Projected at 11.00% (Not 25%–40%)
-- **Baseline**: 7.36% $\rightarrow$ **Projected**: 11.00% (**+3.64% absolute uplift**).
-- *Grounding Justification*: While instant AI recommendations, regional Marathi/Hindi NLU, and transparent pricing reduce drop-off, real-world micro-retailers (Kirana stores) operate on tight margins. When field technicians arrive, budget constraints and competing residential FTTH options cause dropouts. Modeling above 11–12% in Year 1 would be irresponsible.
+### 1. Lead-to-Activation Time: Target $\le$ 7 Days (Baseline: 17.6 Days)
+- **Target Impact**: Reduction of **10.6 days (-60.2%)**.
+- **Operational Enablers**:
+  - Instant optical feasibility check via GIS polygon query replacing manual field engineer surveys.
+  - Paperless digital KYC verification (Aadhaar OTP + Udyam instant certificate lookup) completed in $< 5$ minutes.
+  - Automated partner dispatch ticket generation upon token payment.
 
-#### 2. Time to Activation: Projected at 12.0 Days (Not Sub-48h)
-- **Baseline**: 17.6 days $\rightarrow$ **Projected**: 12.0 days (**-5.6 days savings**).
-- *Grounding Justification*: Instant self-service quoting and automated KYC eliminate ~5.6 days of paper transit and back-office review. However, **wired fiber cannot bypass the physical world**: pole attachments, municipal permissions, optical line splitter allocations, and on-site ONT technician visits physically demand 10 to 14 days in typical Indian urban and semi-urban localities. Sub-48-hour SLAs are only feasible for wireless 5G AirFiber, not fixed-line enterprise broadband.
+### 2. Blended Customer Acquisition Cost (CAC): Target $\le$ ₹4,000 (Baseline: ₹15,053)
+- **Target Impact**: Reduction of **₹11,053 (-73.4%)**.
+- **Operational Enablers**:
+  - Self-serve AI Advisor qualifying intent and configuring packages without tele-calling agents.
+  - Drastic reduction in wasted physical technician trips to unfeasible locations.
+  - Transparent pricing rules eliminating protracted back-and-forth negotiations.
 
-#### 3. Status Follow-Up Calls: Projected at 2.00 Calls (Not Zero)
-- **Baseline**: 3.01 calls $\rightarrow$ **Projected**: 2.00 calls (**-1.01 calls savings**).
-- *Grounding Justification*: Automated SMS/WhatsApp milestone tracking and the customer portal eliminate repetitive "is my document accepted?" inquiries. However, coordinating physical technician access to the customer's shop always requires 1 to 2 phone touches.
+### 3. Lead-to-Activation Conversion: Target 12–15% (Baseline: 7.36%)
+- **Target Impact**: Uplift of **+4.64% to +7.64% absolute**.
+- **Operational Enablers**:
+  - Regional language support (Marathi, Hindi, English) with voice and colloquial terminology.
+  - Dedicated non-GST micro-business onboarding path for small shopkeepers.
+  - Instant, binding quotes generated within 60 seconds of onboarding.
 
-#### 4. Blended CAC: Projected at ₹12,200 (Not ₹850)
-- **Baseline**: ₹15,053.37 $\rightarrow$ **Projected**: ₹12,200.00 (**-18.9% reduction**).
-- *Grounding Justification*: Earlier prototype assumptions modeled CAC at ₹850, which falsely assumed zero channel partner commissions and zero performance marketing expense. In reality, Airtel Mitra partners must receive **₹1,000 upfront plus 15% revenue share** to remain incentivized, and search/social digital acquisition costs for verified MSME owners exceed ₹4,000 per lead. True blended CAC reduces modestly from ₹15k to ₹12.2k by eliminating wasted field visits on unfeasible leads.
+### 4. Status Follow-Up Calls: Target $\le$ 0.5 Calls / Lead (Baseline: 3.01 Calls)
+- **Target Impact**: Reduction of **-2.51 calls (-83.4%)**.
+- **Operational Enablers**:
+  - Real-time customer tracking portal showing exact milestone progression (Survey $\rightarrow$ Feasibility $\rightarrow$ ONT Dispatch $\rightarrow$ Splicing $\rightarrow$ Live).
+  - Proactive automated SMS/WhatsApp alerts delivered at each milestone change.
 
-#### 5. 6-Month Churn: Projected at 13.00% (Not < 2%)
-- **Baseline**: 15.22% $\rightarrow$ **Projected**: 13.00% (**-2.2% reduction**).
-- *Grounding Justification*: Proactive CSAT retention tickets (reaching out to customers rating $\le 3$ within 4 hours) effectively resolve initial billing and Wi-Fi coverage grievances. However, macro-level MSME mortality in India (stores shutting down or changing premises) inherently sets a natural churn floor around 12–14%.
+### 5. Six-Month Churn: Target $\le$ 10% (Baseline: 15.2%)
+- **Target Impact**: Reduction of **-5.2% absolute**.
+- **Operational Enablers**:
+  - Post-activation CSAT feedback collection triggering automated 4-hour retention outreach for dissatisfied ratings ($\le 3$).
+  - Correct initial product sizing preventing early speed and bandwidth dissatisfaction.
+  - Integrated ticketing for prompt optical and billing resolution.
 
 ---
 
-## 4. Grounding & Transparency Audit: What is Assumed vs. What is Empirical
+## 5. Grounding & Transparency Audit: What is Assumed vs. What is Empirical
 
-| Item | Status | Source / Calculation Method | Potential Bias / Risk |
+| Telemetry Element | Classification | Source / Calculation Method | Transparency Notes & Boundaries |
 | :--- | :---: | :--- | :--- |
-| **5,000 Baseline Inquiries** | **Empirical** | Direct aggregation of `smb_leads.csv` across all rows. | Represents historical enterprise lead generation mix; high ILL share. |
-| **7.36% Baseline Conversion** | **Empirical** | Computed as $\frac{368 \text{ Activated}}{5000 \text{ Leads}} \times 100$. | Verified historical outcome. |
-| **17.6-Day Baseline TTA** | **Empirical** | Arithmetic mean of `time_to_activation_days` column. | Skewed slightly by Tier 3 locations with poor fiber trenching. |
-| **₹15,053 Baseline CAC** | **Empirical** | Derived from legacy sales overhead / activations in `smb_leads.csv`. | Includes corporate sales rep salaries. |
-| **167 Current DB Leads** | **Simulated** | `SELECT COUNT(*) FROM leads` in `udyam_orders.db`. | Simulated sandbox test accounts and runs. |
-| **60 Paid Orders** | **Simulated** | `SELECT COUNT(*) FROM orders WHERE token_paid = 1`. | Simulated sandbox checkout transactions. |
-| **26.4% KYC Failure Rate** | **Simulated** | `SELECT verdict FROM kyc_cases` (42 failed / 159 total). | Simulated document upload verification trials. |
-| **Current DB TTA / CAC / Churn** | **Blank (`—`)** | Marked `None` in backend; displayed as `— [Not Tracked]` in UI. | **Zero synthetic filler**; preserves data integrity. |
-| **11.0% Projected Conversion** | **Assumed** | Analytical model adding +3.64% absolute uplift for digital self-service. | Vulnerable to offline dealer price undercutting. |
-| **12.0-Day Projected TTA** | **Assumed** | Baseline 17.6d minus 5.6d administrative/paperwork reduction. | Civil fiber works remain the critical path. |
-| **₹12,200 Projected CAC** | **Assumed** | Model maintaining ₹1k partner bounty + digital ad spend. | Dependent on Google/Meta ad auction volatility. |
-| **13.0% Projected Churn** | **Assumed** | Baseline 15.2% minus 2.2% saved via proactive CSAT desk. | Bounded by Indian MSME shop mortality. |
+| **5,000 Total Leads** | **Empirical (Baseline)** | Exact count from `smb_leads.csv`. | Synthetic historical dataset representing Q2 2026. |
+| **7.36% Conversion** | **Empirical (Baseline)** | $\frac{368 \text{ Activated}}{5000 \text{ Leads}} \times 100$. | Verified calculation from dataset. |
+| **17.6-Day TTA** | **Empirical (Baseline)** | Arithmetic mean of `time_to_activation_days` column. | Measured across legacy manual workflows. |
+| **₹15,053 Blended CAC** | **Empirical (Baseline)** | Historical sales overhead & partner spend. | Includes field sales salaries and paper logistics. |
+| **15.2% 6-Month Churn** | **Empirical (Baseline)** | $\frac{56 \text{ Churned}}{368 \text{ Activated}} \times 100$. | Historical churn rate within 180 days of activation. |
+| **3.01 Follow-up Calls** | **Empirical (Baseline)** | Average customer status check calls in dataset. | Driven by lack of self-service tracking. |
+| **6.86 / 10 NPS** | **Empirical (Baseline)** | Mean of historical customer NPS responses. | Reflects legacy delivery dissatisfaction. |
+| **Segment Metrics** | **Empirical (Baseline)** | Grouped aggregation of `smb_leads.csv` by segment. | Highlights micro-retail fragility under paper processes. |
+| **≤7-Day Target TTA** | **Proposed Target** | Operational model based on instant KYC + GIS check. | Illustrative projection; requires partner adherence. |
+| **≤₹4,000 Target CAC** | **Proposed Target** | Operational target based on digital self-service. | Illustrative projection; assumes digital channel mix. |
+| **12–15% Target Conv.** | **Proposed Target** | Operational target based on multilingual AI & quotes. | Illustrative projection; not an achieved result. |
+| **≤0.5 Target Calls** | **Proposed Target** | Operational target based on automated tracking alerts. | Illustrative projection; requires customer app adoption. |
+| **≤10% Target Churn** | **Proposed Target** | Operational target based on proactive CSAT retention. | Illustrative projection; bounded by organic MSME mortality. |
 
 ---
 
-## 5. Architectural & System Verification
+## 6. Implementation & System Verification
 
-### 1. Backend Service Implementation
-Located in [`app/modules/analytics/dashboard_service.py`](file:///c:/Users/HP/Desktop/Airtel/app/modules/analytics/dashboard_service.py):
-- Method `get_comparative_ops_benchmarks()` queries `udyam_orders.db` dynamically for real counts while returning pre-aggregated baseline data and pessimistic projection structures.
-- Unmeasured metrics explicitly set to `None` in the returned Python dictionary.
-
-### 2. API Contract
-Exposed at `GET /api/admin/metrics`:
-```json
-{
-  "status": "SUCCESS",
-  "comparative_benchmarks": {
-    "baseline": { "sample_size_leads": 5000, "funnel": { "conversion_rate_percent": 7.36 }, ... },
-    "current_db": { "funnel": { "inbound_leads": 167, "activated": 60 }, "operational_kpis": { "avg_tta_days": null, ... } },
-    "projected_pessimistic": { "funnel": { "conversion_rate_percent": 11.0 }, "operational_kpis": { "avg_tta_days": 12.0 }, ... },
-    "comparison_table": [ ... 9 structured rows ... ]
-  }
-}
-```
-
-### 3. Frontend Operations View
-- Located in [`app/static/index.html`](file:///c:/Users/HP/Desktop/Airtel/app/static/index.html) (`#opsView`) and populated by [`app/static/app.js`](file:///c:/Users/HP/Desktop/Airtel/app/static/app.js) (`loadOpsViewData()`).
-- Renders the 3-pillar comparative table `#opsComparativeBenchmarksTableBody`.
-- Formats missing values as clean, honest placeholders:
-  ```html
-  <span class="text-slate-400 font-mono font-bold text-sm block">—</span>
-  <span class="text-[9px] text-slate-400 font-medium block uppercase tracking-wider">[Not Tracked]</span>
-  ```
-
-### 4. Automated Regression Coverage
-- Test case `test_comparative_ops_benchmarks` added to [`tests/test_p1_features.py`](file:///c:/Users/HP/Desktop/Airtel/tests/test_p1_features.py).
-- Entire test suite (25/25 tests) passes cleanly:
-  ```
-  tests/test_p1_features.py::test_comparative_ops_benchmarks PASSED [100%]
-  ======================== 25 passed in 84.95s ========================
-  ```
-
----
-
-## 6. Conclusion & Recommendation
-
-By adopting this **3-Pillar Operational Benchmarking framework**, Airtel Enterprise Operations establishes an audit-ready, credible baseline for leadership. 
-
-The console neither hides the challenges of the historical field process (17.6-day TTA, 31.7% KYC failure) nor promises miraculous overnight delivery for wired broadband. Instead, it demonstrates how **Project Udyam Digital** methodically improves operational throughput (from 7.36% to 11.0% conversion; 17.6 to 12.0 days activation) while preserving channel partner economics and keeping commercial figures strictly grounded in reality.
+1. **Backend Telemetry Service**:
+   - Implemented in [`app/modules/analytics/dashboard_service.py`](file:///c:/Users/HP/Desktop/Airtel/app/modules/analytics/dashboard_service.py).
+   - Method `get_comparative_ops_benchmarks()` returns:
+     - `baseline`: Fully populated with `smb_leads.csv` figures, disclaimers, and 4 segment breakdowns.
+     - `projected_targets`: Fully populated with targets and disclaimers.
+     - `comparison_table`: 6 clean 2-pillar rows comparing Baseline vs Proposed Targets. Real DB values removed.
+2. **Operations Dashboard (`/ops`)**:
+   - Visualized in [`app/static/index.html`](file:///c:/Users/HP/Desktop/Airtel/app/static/index.html) (`#opsView`) and driven by [`app/static/app.js`](file:///c:/Users/HP/Desktop/Airtel/app/static/app.js).
+   - Features prominent banner: *"Synthetic Historical Baseline | April–June 2026 (Not live Airtel performance)"* and *"Proposed targets or illustrative projections, not achieved results"*.
+   - Renders 4 segment breakdown cards and the 2-pillar comparison table.
+3. **Automated Testing Suite**:
+   - Verified via `tests/test_p1_features.py::test_comparative_ops_benchmarks`.
+   - Comprehensive test validates baseline parameters, target thresholds, disclaimer strings, and table structures.

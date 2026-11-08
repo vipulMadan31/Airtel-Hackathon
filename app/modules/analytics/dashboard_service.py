@@ -356,30 +356,22 @@ class DashboardService:
 
     def get_comparative_ops_benchmarks(self) -> Dict[str, Any]:
         """
-        Builds the 3-pillar comparative benchmark analysis:
-        1. Baseline Data taken directly from dataset (smb_leads.csv, 5,000 leads)
-        2. Values from the current DB (real values, unmeasured left blank)
-        3. Projected metrics (strictly pessimistic, non-exaggerated)
+        Builds the Authoritative Benchmark Telemetry comparing:
+        1) Synthetic Historical Baseline | April–June 2026 (calculated from smb_leads.csv)
+        2) Proposed Targets / Illustrative Projections (Proposed operational impact goals)
         """
-        with self._get_connection() as conn:
-            db_leads = conn.execute("SELECT COUNT(1) FROM customer_leads").fetchone()[0]
-            db_orders = conn.execute("SELECT COUNT(1) FROM orders").fetchone()[0]
-            db_paid_orders = conn.execute("SELECT COUNT(1) FROM orders WHERE token_paid = 1").fetchone()[0]
-            db_kyc_cases = conn.execute("SELECT COUNT(1) FROM kyc_cases").fetchone()[0]
-            db_kyc_approved = conn.execute("SELECT COUNT(1) FROM kyc_cases WHERE UPPER(verdict) IN ('APPROVED', 'VERIFIED')").fetchone()[0]
-            db_kyc_failed = db_kyc_cases - db_kyc_approved
-
-            paid_rows = conn.execute("SELECT monthly_total FROM orders WHERE token_paid = 1 AND monthly_total > 0").fetchall()
-            db_avg_monthly = round(sum(r["monthly_total"] for r in paid_rows) / len(paid_rows), 2) if paid_rows else None
-
-            fb_rows = conn.execute("SELECT rating, is_dissatisfied FROM customer_feedback").fetchall()
-            db_avg_csat = round(sum(r["rating"] for r in fb_rows) / len(fb_rows), 2) if fb_rows else None
-            db_dissatisfied = sum(1 for r in fb_rows if r["is_dissatisfied"] or r["rating"] <= 3)
-            db_open_tickets = conn.execute("SELECT COUNT(1) FROM support_tickets WHERE status != 'RESOLVED'").fetchone()[0]
-
         baseline = {
+            "label": "Synthetic Historical Baseline | April–June 2026",
+            "disclaimer": "Synthetic Historical Baseline | April–June 2026 (Not live Airtel performance)",
             "dataset_source": "smb_leads.csv (One quarter: Apr-Jun 2026, 5,000 leads)",
             "sample_size_leads": 5000,
+            "total_leads": 5000,
+            "conversion_rate_percent": 7.36,
+            "avg_tta_days": 17.6,
+            "blended_cac_inr": 15053.0,
+            "six_month_churn_percent": 15.2,
+            "avg_follow_up_calls": 3.01,
+            "nps_score_out_of_10": 6.86,
             "funnel": {
                 "inbound_leads": 5000,
                 "contacted": 3406,
@@ -397,167 +389,138 @@ class DashboardService:
                 "avg_tta_days": 17.6,
                 "median_tta_days": 17.0,
                 "customer_follow_up_calls": 3.01,
-                "blended_cac_inr": 15053.37,
+                "blended_cac_inr": 15053.0,
                 "avg_monthly_bundle_value_inr": 12350.52,
-                "avg_one_time_setup_inr": 13879.08,
                 "six_month_churn_percent": 15.2,
                 "nps_score_out_of_10": 6.86
-            }
-        }
-
-        current_db = {
-            "db_source": "udyam_orders.db (SQLite prototype - simulated sandbox transactions)",
-            "simulation_notice": "Current Database Empirical Values are simulated via developer sandbox runs and automated test journeys, not live commercial Airtel production traffic.",
-            "funnel": {
-                "inbound_leads": db_leads,
-                "contacted": None,  # Not tracked in DB
-                "needs_assessed": None,  # Not tracked in DB
-                "quote_accepted": db_orders,
-                "kyc_cases": db_kyc_cases,
-                "kyc_approved": db_kyc_approved,
-                "kyc_failed": db_kyc_failed,
-                "kyc_pass_rate_percent": round((db_kyc_approved / max(1, db_kyc_cases)) * 100, 1),
-                "activated": db_paid_orders,
-                "conversion_rate_percent": round((db_paid_orders / max(1, db_leads)) * 100, 1)
             },
-            "operational_kpis": {
-                "avg_tta_days": None,  # Unmeasured in prototype
-                "median_tta_days": None,
-                "customer_follow_up_calls": None,  # Unmeasured in prototype
-                "blended_cac_inr": None,  # Marketing & sales spend unmeasured in DB
-                "avg_monthly_bundle_value_inr": db_avg_monthly,
-                "avg_one_time_setup_inr": 0.0,
-                "six_month_churn_percent": None,  # Prototype duration < 6 months
-                "csat_score_out_of_5": db_avg_csat,
-                "open_support_tickets": db_open_tickets,
-                "dissatisfied_customers_count": db_dissatisfied
-            }
+            "segments": [
+                {
+                    "segment": "Micro retail & services",
+                    "leads": 2709,
+                    "activated": 110,
+                    "conversion_pct": 4.06,
+                    "churn_count": 25,
+                    "churn_pct": 22.73,
+                    "avg_tta_days": 16.6,
+                    "nps": 7.05
+                },
+                {
+                    "segment": "Professional offices",
+                    "leads": 1247,
+                    "activated": 138,
+                    "conversion_pct": 11.07,
+                    "churn_count": 19,
+                    "churn_pct": 13.77,
+                    "avg_tta_days": 16.9,
+                    "nps": 6.92
+                },
+                {
+                    "segment": "Small manufacturers",
+                    "leads": 289,
+                    "activated": 37,
+                    "conversion_pct": 12.80,
+                    "churn_count": 3,
+                    "churn_pct": 8.11,
+                    "avg_tta_days": 20.5,
+                    "nps": 6.46
+                },
+                {
+                    "segment": "Small multi-site businesses",
+                    "leads": 755,
+                    "activated": 83,
+                    "conversion_pct": 10.99,
+                    "churn_count": 9,
+                    "churn_pct": 10.84,
+                    "avg_tta_days": 18.8,
+                    "nps": 6.70
+                }
+            ]
         }
 
-        projected_pessimistic = {
-            "modeling_approach": "Pessimistic scenario: accounts for physical fiber civil constraints, channel partner economics, and MSME mortality",
+        projected_targets = {
+            "label": "Proposed Targets / Illustrative Projections",
+            "disclaimer": "Proposed targets or illustrative projections, not achieved results.",
+            "lead_to_activation_time": "≤7 days",
+            "blended_cac": "≤₹4,000",
+            "conversion": "12–15%",
+            "follow_up_calls": "≤0.5",
+            "six_month_churn": "≤10%",
+            "customer_nps": "≥8.5 / 10",
             "funnel": {
                 "inbound_leads": 5000,
-                "contacted": 4000,
-                "contacted_pct": 80.0,
-                "needs_assessed": 2750,
-                "needs_assessed_pct": 55.0,
-                "quote_accepted": 1400,
-                "quote_accepted_pct": 28.0,
-                "kyc_complete": 950,
-                "kyc_complete_pct": 19.0,
-                "activated": 550,
-                "conversion_rate_percent": 11.0
+                "conversion_rate_percent": 13.5
             },
             "operational_kpis": {
-                "avg_tta_days": 12.0,
-                "median_tta_days": 11.0,
-                "customer_follow_up_calls": 2.0,
-                "blended_cac_inr": 12200.0,
-                "avg_monthly_bundle_value_inr": 2450.0,
-                "avg_one_time_setup_inr": 0.0,
-                "six_month_churn_percent": 13.0,
-                "nps_score_out_of_10": 7.4
+                "avg_tta_days": 7.0,
+                "customer_follow_up_calls": 0.5,
+                "blended_cac_inr": 4000.0,
+                "six_month_churn_percent": 10.0,
+                "nps_score_out_of_10": 8.5
             }
         }
 
         comparison_table = [
             {
-                "metric": "Total Inbound Leads",
-                "unit": "Leads / Qtr",
-                "baseline": "5,000",
-                "current_db": str(db_leads),
-                "projected": "5,000",
-                "variance": "Normalized scale",
-                "is_assumed": False,
-                "notes": "Baseline from smb_leads.csv; current DB represents simulated prototype sandbox transactions."
-            },
-            {
-                "metric": "Overall Funnel Conversion",
-                "unit": "%",
-                "baseline": "7.36%",
-                "current_db": f"{round((db_paid_orders / max(1, db_leads)) * 100, 1)}%",
-                "projected": "11.00%",
-                "variance": "+3.64% absolute",
-                "is_assumed": True,
-                "notes": "Pessimistic projection: Assumes only modest conversion uplift due to real-world feasibility and price sensitivity."
-            },
-            {
-                "metric": "Average Time to Activation (TTA)",
+                "metric": "Lead-to-Activation Time",
                 "unit": "Days",
                 "baseline": "17.6 days",
-                "current_db": "—",
-                "projected": "12.0 days",
-                "variance": "-5.6 days (-31.8%)",
-                "is_assumed": True,
-                "notes": "Digital KYC & instant quoting save ~5.6 days; physical fiber stringing and survey still require ~12 days."
+                "projected": "≤7 days",
+                "variance": "-10.6 days (-60.2%)",
+                "enabler": "Digital KYC, instant optical GIS feasibility check, and zero-paper survey routing.",
+                "notes": "Proposed target (Illustrative projection)"
             },
             {
-                "metric": "Customer Status Follow-up Calls",
-                "unit": "Calls / lead",
-                "baseline": "3.01",
-                "current_db": "—",
-                "projected": "2.00",
-                "variance": "-1.01 calls (-33.5%)",
-                "is_assumed": True,
-                "notes": "Proactive WhatsApp status alerts and tracking reduce customer anxiety by ~1 call."
-            },
-            {
-                "metric": "Blended Acquisition Cost (CAC)",
+                "metric": "Blended CAC",
                 "unit": "INR",
                 "baseline": "₹15,053",
-                "current_db": "—",
-                "projected": "₹12,200",
-                "variance": "-₹2,853 (-18.9%)",
-                "is_assumed": True,
-                "notes": "Self-serve reduces wasted field visits on early dropouts, but partner commissions (₹1,000 + 15% trail) and ads are retained."
+                "projected": "≤₹4,000",
+                "variance": "-₹11,053 (-73.4%)",
+                "enabler": "Elimination of wasted physical field visits and automated digital self-serve qualification.",
+                "notes": "Proposed target (Illustrative projection)"
             },
             {
-                "metric": "Average Monthly Plan Value (ARPU)",
-                "unit": "INR / mo",
-                "baseline": "₹12,351",
-                "current_db": f"₹{db_avg_monthly:,.2f}" if db_avg_monthly else "—",
-                "projected": "₹2,450",
-                "variance": "-₹9,901 (Mix shift)",
-                "is_assumed": True,
-                "notes": "Baseline included expensive leased lines & SD-WAN; Project Udyam Digital targets micro-kirana segments (₹999–₹1,598/mo)."
-            },
-            {
-                "metric": "KYC Drop-off / Failure Rate",
+                "metric": "Conversion",
                 "unit": "%",
-                "baseline": "31.7%",
-                "current_db": f"{round((db_kyc_failed / max(1, db_kyc_cases)) * 100, 1)}%",
-                "projected": "22.0%",
-                "variance": "-9.7% drop-off",
-                "is_assumed": True,
-                "notes": "Smart KYC and non-GST Udyam journey reduce paperwork drop-off, but document illegibility still causes dropouts."
+                "baseline": "7.36%",
+                "projected": "12–15%",
+                "variance": "+4.64% to +7.64% absolute",
+                "enabler": "AI conversational advisor, non-GST safe mode for micro-kiranas, and upfront transparent quotes.",
+                "notes": "Proposed target (Illustrative projection)"
             },
             {
-                "metric": "6-Month Customer Churn",
+                "metric": "Follow-up Calls",
+                "unit": "Calls / lead",
+                "baseline": "3.01",
+                "projected": "≤0.5",
+                "variance": "-2.51 calls (-83.4%)",
+                "enabler": "Proactive WhatsApp & SMS status alerts and real-time customer self-service order tracking.",
+                "notes": "Proposed target (Illustrative projection)"
+            },
+            {
+                "metric": "Six-Month Churn",
                 "unit": "%",
                 "baseline": "15.2%",
-                "current_db": "—",
-                "projected": "13.0%",
-                "variance": "-2.2% churn",
-                "is_assumed": True,
-                "notes": "Proactive CSAT retention desk mitigates early frustration; high micro-business closure rates keep churn around 13%."
+                "projected": "≤10%",
+                "variance": "-5.2% absolute reduction",
+                "enabler": "Automated CSAT retention outreach desk (4h SLA) and accurate speed tier matching.",
+                "notes": "Proposed target (Illustrative projection)"
             },
             {
-                "metric": "Customer Satisfaction / NPS",
+                "metric": "Historical NPS",
                 "unit": "Score",
-                "baseline": "6.86 / 10 (NPS)",
-                "current_db": f"{db_avg_csat} / 5 (CSAT)" if db_avg_csat else "—",
-                "projected": "7.40 / 10 (NPS)",
-                "variance": "+0.54 score",
-                "is_assumed": True,
-                "notes": "Upfront transparency and bilingual self-serve yield modest NPS gains."
+                "baseline": "6.86 / 10",
+                "projected": "≥8.5 / 10",
+                "variance": "+1.64 score uplift",
+                "enabler": "Bilingual transparency, zero hidden setup charges, and frictionless post-activation support.",
+                "notes": "Proposed target (Illustrative projection)"
             }
         ]
 
         return {
             "baseline": baseline,
-            "current_db": current_db,
-            "projected_pessimistic": projected_pessimistic,
+            "projected_targets": projected_targets,
+            "projected_pessimistic": projected_targets,  # Alias for backward compatibility
             "comparison_table": comparison_table
         }
 

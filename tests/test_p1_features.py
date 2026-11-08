@@ -241,7 +241,7 @@ def test_post_activation_feedback_and_retention_flagging():
 
 
 def test_comparative_ops_benchmarks():
-    """Verify 3-pillar comparative benchmark telemetry: Baseline vs Current DB vs Pessimistic Projections."""
+    """Verify 2-pillar comparative benchmark telemetry: Synthetic Historical Baseline vs Proposed Targets."""
     admin_token = get_auth_token("admin@airtel.com", "airteladmin")
     res = requests.get(f"{BASE_URL}/api/admin/metrics", headers={"Authorization": f"Bearer {admin_token}"})
     assert res.status_code == 200
@@ -252,34 +252,42 @@ def test_comparative_ops_benchmarks():
 
     # 1. Baseline from smb_leads.csv
     base = benchmarks["baseline"]
-    assert base["sample_size_leads"] == 5000
-    assert base["funnel"]["conversion_rate_percent"] == 7.36
-    assert base["operational_kpis"]["avg_tta_days"] == 17.6
-    assert base["operational_kpis"]["blended_cac_inr"] == 15053.37
+    assert base["label"] == "Synthetic Historical Baseline | April–June 2026"
+    assert "Not live Airtel performance" in base["disclaimer"]
+    assert base["total_leads"] == 5000
+    assert base["conversion_rate_percent"] == 7.36
+    assert base["avg_tta_days"] == 17.6
+    assert base["blended_cac_inr"] == 15053.0
+    assert base["six_month_churn_percent"] == 15.2
+    assert base["avg_follow_up_calls"] == 3.01
+    assert base["nps_score_out_of_10"] == 6.86
+    assert len(base["segments"]) == 4
 
-    # 2. Real values from current DB (unmeasured fields left None/blank)
-    db_metrics = benchmarks["current_db"]
-    assert db_metrics["funnel"]["inbound_leads"] >= 0
-    assert db_metrics["operational_kpis"]["avg_tta_days"] is None  # Unmeasured in prototype
-    assert db_metrics["operational_kpis"]["blended_cac_inr"] is None  # Unmeasured in DB
-    assert db_metrics["operational_kpis"]["six_month_churn_percent"] is None
+    # 2. Proposed Targets / Illustrative Projections
+    proj = benchmarks["projected_targets"]
+    assert proj["label"] == "Proposed Targets / Illustrative Projections"
+    assert "not achieved results" in proj["disclaimer"]
+    assert proj["lead_to_activation_time"] == "≤7 days"
+    assert proj["blended_cac"] == "≤₹4,000"
+    assert proj["conversion"] == "12–15%"
+    assert proj["follow_up_calls"] == "≤0.5"
+    assert proj["six_month_churn"] == "≤10%"
+    assert proj["customer_nps"] == "≥8.5 / 10"
 
-    # 3. Pessimistic projections (strictly bounded, zero exaggeration)
-    proj = benchmarks["projected_pessimistic"]
-    assert proj["funnel"]["conversion_rate_percent"] == 11.0  # Conservative +3.64% uplift
-    assert proj["operational_kpis"]["avg_tta_days"] == 12.0  # Respects physical fiber constraints
-    assert proj["operational_kpis"]["blended_cac_inr"] == 12200.0  # Retains partner & ads spend
-
-    # 4. Comparison table structured items
+    # 3. Comparison table structured items (Real DB values removed)
     table = benchmarks["comparison_table"]
-    assert len(table) == 9
+    assert len(table) == 6
     metrics_names = [r["metric"] for r in table]
-    assert "Overall Funnel Conversion" in metrics_names
-    assert "Average Time to Activation (TTA)" in metrics_names
-    assert "Blended Acquisition Cost (CAC)" in metrics_names
-    assert "Average Monthly Plan Value (ARPU)" in metrics_names
+    assert "Lead-to-Activation Time" in metrics_names
+    assert "Blended CAC" in metrics_names
+    assert "Conversion" in metrics_names
+    assert "Follow-up Calls" in metrics_names
+    assert "Six-Month Churn" in metrics_names
+    assert "Historical NPS" in metrics_names
 
-    # Check that unmeasured DB values are presented as '—'
-    tta_row = next(r for r in table if "TTA" in r["metric"])
-    assert tta_row["current_db"] == "—"
-    assert tta_row["is_assumed"] is True
+    # Check that entries have baseline and projected targets
+    for row in table:
+        assert "baseline" in row
+        assert "projected" in row
+        assert "enabler" in row
+        assert "current_db" not in row
