@@ -242,36 +242,53 @@ pytest tests/ -v
 
 Or execute individual test suites:
 
+## 📜 Documentation, Compliance & Reports
+
+Authoritative design specifications, audit logs, and compliance blueprints are available in the [`docs/`](docs/) directory:
+
+* **[Privacy & Security Note (DPDP Act 2023 Compliance)](docs/PRIVACY_AND_SECURITY_NOTE.md)**: Full statutory data map, consent architecture (§§ 5–6), ephemeral document shredding pipeline (`dest_path.unlink()`), PII scrubbing, fail-closed RBAC, and prototype vs. enterprise production gap analysis.
+* **[Admin Operations & Benchmark Telemetry Report](docs/ADMIN_OPS_BENCHMARK_REPORT.md)**: 2-pillar operational matrix comparing the Synthetic Historical Baseline (`smb_leads.csv`, 5,000 inquiries, 7.36% conv, 17.6d TTA, ₹15,053 CAC) against Proposed Targets (TTA $\le$ 7 days, CAC $\le$ ₹4,000, conv 12–15%) with 4-segment conversion and churn telemetry.
+* **[End-to-End Merchant Lifecycle Test Report](docs/E2E_MERCHANT_LIFECYCLE_TEST_REPORT.md)**: 11-step verification trace covering merchant registration $\rightarrow$ AI discovery $\rightarrow$ authoritative quoting $\rightarrow$ DPDP affirmative consent $\rightarrow$ KYC $\rightarrow$ simulated token checkout $\rightarrow$ order tracking $\rightarrow$ support ticket $\rightarrow$ CSAT retention outreach.
+* **[P0 Security & Core Architecture Report](docs/P0_IMPROVEMENTS_REPORT.md)**: Details on fail-closed authentication, strict merchant/partner isolation, authoritative server-side pricing, and simulation labeling.
+* **[P1 Experience & Retention Report](docs/P1_IMPROVEMENTS_REPORT.md)**: Documentation on Marathi localization, non-GST micro-business onboarding, data-driven dashboards, and post-activation ticketing.
+
+---
+
+## 🧪 Automated Testing & Verification Suite
+
+The repository includes a comprehensive 26-test automated regression suite covering all P0 security boundaries, KYC integrity, authoritative pricing, and P1 retention flows:
+
 ```powershell
-# 1. P1 Experience, Retention, Marathi Localization & Data-Driven Dashboards
+# Run the complete test suite (26 passing tests)
+pytest tests/ -v
+```
+
+Or execute individual test suites:
+
+```powershell
+# 1. Complete End-to-End 11-Step Merchant Lifecycle & Dissatisfied CSAT Desk
+pytest tests/test_e2e_merchant_lifecycle.py -v
+
+# 2. P1 Experience, Retention, Marathi Localization & Data-Driven Dashboards
 pytest tests/test_p1_features.py -v
 
-# 2. Authoritative Catalogue Eligibility, Anti-Tamper Pricing & Simulation Transparency
+# 3. Authoritative Catalogue Eligibility, Anti-Tamper Pricing & Simulation Transparency
 pytest tests/test_authoritative_pricing_and_simulation.py -v
 
-# 3. P0 Security, RBAC, Partner Isolation & Secure KYC Workflow
+# 4. P0 Security, RBAC, Partner Isolation & Secure KYC Workflow
 pytest tests/test_p0_security_and_kyc.py -v
 
-# 4. 9-Scenario AI Advisor Comprehensive Verification
-python tests/test_advisor_scenarios.py
+# 5. Enterprise Security Hardening & Fail-Closed RBAC Audit
+pytest tests/test_security_audit.py -v
 
-# 5. Ownership, Server KYC, Payment Intent & DPDP Consent Audit
-python tests/test_ownership_and_integrity.py
+# 6. Multi-Scenario AI Advisor Comprehensive Verification
+pytest tests/test_advisor_scenarios.py -v
 
-# 6. Enterprise Security Hardening & Fail-Closed RBAC Audit
-python tests/test_security_audit.py
+# 7. Ownership, Server KYC, Payment Intent & DPDP Consent Audit
+pytest tests/test_ownership_and_integrity.py -v
 
-# 7. Mitra Lead Filtering & Multi-Role Authentication Test
-python tests/test_partner_leads_and_auth.py
-
-# 8. Mitra Lead Outreach Call & Atomic Removal Test
-python tests/test_lead_call_removal.py
-
-# 9. Post-KYC Payment & SMTP Tax Receipt Email Dispatch Test
-python tests/test_email_quote.py
-
-# 10. Independent KYC OCR & Document-Verification Evaluation Suite
-python tests/test_kyc_ocr_evaluation.py
+# 8. Post-KYC Payment & SMTP Tax Receipt Email Dispatch Test
+pytest tests/test_email_quote.py -v
 ```
 
 ---
