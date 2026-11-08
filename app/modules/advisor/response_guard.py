@@ -118,12 +118,18 @@ class ResponseGuard:
                     "tag": get_explainability_tag(pid, pname, profile.get("business_type"))
                 })
 
+        # Ensure any items in profile["removed_addons"] are not present in validated_bundle
+        removed_addons = set(profile.get("removed_addons", []))
+        for r_pid in removed_addons:
+            if r_pid in validated_bundle:
+                del validated_bundle[r_pid]
+
         # 7. Authoritative Pricing Calculation
         quotation = self.pricing_calculator.calculate_quote(
             validated_bundle, apply_digital_discount=True, waive_setup_fee=True
         )
 
-        return {
+        res = {
             "intent": intent,
             "message": message,
             "profile": profile,
@@ -132,3 +138,9 @@ class ResponseGuard:
             "quotation": quotation,
             "ai_engine": ai_engine
         }
+        if raw_response.get("action"):
+            res["action"] = raw_response["action"]
+        if raw_response.get("removed_product_id"):
+            res["removed_product_id"] = raw_response["removed_product_id"]
+        return res
+

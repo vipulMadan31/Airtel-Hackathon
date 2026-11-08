@@ -82,3 +82,4 @@ class SessionStore:
         with self._mutex:
             if session_id in self._sessions:
                 del self._sessions[session_id]
+

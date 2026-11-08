@@ -111,3 +111,4 @@ GEMINI_TOOLS_DECLARATIONS = [
         }
     }
 ]
+

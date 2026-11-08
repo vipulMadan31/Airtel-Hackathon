@@ -155,6 +155,7 @@ class AdvisorTools:
             bundle["P01"] = num_sites
 
         # 2. Domain-Specific Digital & SaaS Add-ons
+        removed_addons = set(profile.get("removed_addons", []))
         if any(k in biz for k in ["clinic", "dental", "doctor", "health"]):
             bundle["P22"] = 1  # Guest Wi-Fi
             bundle["P17"] = 1  # Cloud Backup 1TB
@@ -174,6 +175,11 @@ class AdvisorTools:
             # Retail / General merchant
             bundle["P19"] = 1  # Cloud POS & Soundbox
             bundle["P20"] = min(5, max(1, num_sites))  # Endpoint Security
+
+        # Strip any add-ons explicitly removed by customer
+        for r_pid in removed_addons:
+            if r_pid in bundle:
+                del bundle[r_pid]
 
         # 3. Apply Statutory & Feasibility Filters
         validated_bundle: Dict[str, int] = {}
@@ -295,3 +301,4 @@ class AdvisorTools:
             "contact_phone": phone or profile.get("phone") or "+91 95181 06076",
             "message": "Thanks for your time! An Airtel Business executive will reach out to you shortly on this number to assist you further. 🙏"
         }
+

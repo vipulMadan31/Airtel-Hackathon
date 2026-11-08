@@ -96,16 +96,36 @@ CURRENT PROFILE STATE:
 - Active Bundle: {active_bundle or 'None'}
 
 MANDATORY DISCOVERY POLICY:
-1. Scale / Headcount Discovery: If the user has NOT provided their employee count, staff numbers, or connected devices (e.g., "I need wifi", "I run 2 shops in rohtak and need a wifi", "I run a dental clinic in Pune and need wifi"), set intent="clarification", recommended_bundle=null!
-Acknowledge known details warmly, and ask the clarifying questions:
-   1. Do you have an active registered GST (GSTIN) for your business, or do you operate under sole-proprietorship (Non-GST / Udyam mode)?
-   2. Approximately how many employees, billing devices, or customer connections will be using the network?
-2. When the user specifies their headcount/scale (e.g., "6 staff", "10 employees", "25 employees"), or has provided scale with their business type (e.g., "dental clinic in Pune with 6 staff"), set intent="recommendation" and output the tailored bundle!
-3. NEVER assume employee scale or location!
-4. If customer says "mehenga", "expensive", or "sasta plan", set intent="downsell_request" and trigger down-sell.
-5. If customer asks about plans, speeds, or options in general, set intent="inquiry", recommended_bundle=null.
-6. Multi-site (2+ locations): ask for scale at each location if missing, then bundle base lines for each location.
-7. Village/Rural: if physical wire feasibility is unstated, ask clarification between Biz 5G AirFiber 100 (₹899) and Biz Fibre 100 (₹999).
+1. MANDATORY LOCATION & TIER DISCOVERY:
+   Location (City or 6-digit Pincode) is strictly REQUIRED to determine City Tier (Tier 1 Metro, Tier 2, or Tier 3) and check network feasibility.
+   Whenever asking clarifying questions, you MUST ask for:
+   1) What type of business do you run, and in which CITY or 6-DIGIT PINCODE is it located?
+   2) Do you have an active registered GST (GSTIN) for your business, or do you operate under sole-proprietorship (Non-GST / Udyam mode)?
+   3) Approximately how many employees, billing devices, or customer connections will be using the network?
+
+2. IF LOCATION IS UNKNOWN:
+   If City / Pincode is NOT yet known (e.g. user says "i have a kirana store, i dont have a gst registration, i have 3 employees"):
+   DO NOT OUTPUT A BUNDLE YET!
+   Set intent="clarification", recommended_bundle=null!
+   Acknowledge the known business type and staff count warmly, and ask:
+   "Which city or 6-digit pincode is your business located in? This allows us to determine your city tier, confirm fiber/AirFiber feasibility, and calculate your exact quotation."
+
+3. SCALE / HEADCOUNT DISCOVERY:
+   If scale/employee count is missing, set intent="clarification", recommended_bundle=null.
+
+4. FULL RECOMMENDATION:
+   ONLY when Location (City or Pincode) AND Scale (Employees/devices) are known, set intent="recommendation" and output the tailored bundle!
+
+5. ADD-ON REMOVAL:
+   If user asks to remove an add-on (e.g. "remove endpoint security", "remove soundbox", "remove backup"):
+   Set intent="recommendation", action="remove_addon", removed_product_id="<Product ID, e.g. P20 or P19>".
+   Remove that item from recommended_bundle and acknowledge the removal politely.
+
+6. NEVER assume employee scale or location!
+7. If customer says "mehenga", "expensive", or "sasta plan", set intent="downsell_request" and trigger down-sell.
+8. If customer asks about plans, speeds, or options in general, set intent="inquiry", recommended_bundle=null.
+9. Multi-site (2+ locations): ask for scale at each location if missing, then bundle base lines for each location.
+10. Village/Rural: if physical wire feasibility is unstated, ask clarification between Biz 5G AirFiber 100 (₹899) and Biz Fibre 100 (₹999).
 """
 
         # Build turn contents
@@ -124,6 +144,8 @@ RESPONSE FORMAT:
 Return a JSON object matching this schema:
 {
   "intent": "clarification" | "recommendation" | "downsell_request" | "inquiry" | "escalation",
+  "action": "remove_addon" | null,
+  "removed_product_id": string | null,
   "message": "Polite conversational reply in requested language",
   "profile": {
     "business_type": string | null,

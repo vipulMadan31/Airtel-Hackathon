@@ -159,18 +159,22 @@ class NLUParser:
                     entities["employee_count"] = int(helper_match.group(1)) + 1
 
         # 6. GST Status
-        gst_positive = [
-            "yes we have gst", "have gst", "active gst", "with gst", "gstin hai",
-            "gst registered", "registered gst", "gst number hai", "gst hai", "जीएसटी है"
+        gst_negative_patterns = [
+            r"\b(dont|don't|do not|no)\s+(have\s+)?(a\s+)?gst\b",
+            r"\b(without|non-?gst|udyam only)\b",
+            r"\bsole\s*proprietorship\b",
+            r"gst\s*nahi",
+            r"जीएसटी\s*नहीं"
         ]
-        gst_negative = [
-            "no gst", "without gst", "sole proprietorship", "non-gst", "non gst",
-            "gst nahi", "gst nahi hai", "udyam only", "जीएसटी नहीं है"
+        gst_positive_patterns = [
+            r"\b(yes\s*we\s*have\s*gst|have\s*gst|active\s*gst|with\s*gst|gstin\s*hai|gst\s*registered|registered\s*gst|gst\s*number\s*hai|gst\s*hai)\b",
+            r"जीएसटी\s*है"
         ]
-        if any(k in t_lower for k in gst_positive):
-            entities["has_gstin"] = True
-        elif any(k in t_lower for k in gst_negative):
+
+        if any(re.search(p, t_lower) for p in gst_negative_patterns):
             entities["has_gstin"] = False
+        elif any(re.search(p, t_lower) for p in gst_positive_patterns):
+            entities["has_gstin"] = True
 
         # 7. Rural & Taar status
         rural_cues = ["village", "rural", "gaon", "gao", "देहात", "गाँव", "गांव", "gram panchayat", "dumra dehat"]
@@ -187,19 +191,29 @@ class NLUParser:
         # 8. Add-on Removal Target (only if removal intent detected)
         remove_keywords = ["remove", "hata", "hatao", "delete", "hata do", "nahi chahiye", "cancel", "drop", "don't need", "dont need"]
         if any(w in t_lower for w in remove_keywords):
-            if "soundbox" in t_lower or "pos" in t_lower or "upi" in t_lower:
-                entities["remove_target"] = "P19"
-            elif "backup" in t_lower:
-                entities["remove_target"] = "P17"
-            elif "cctv" in t_lower or "camera" in t_lower:
-                entities["remove_target"] = "P23"
-            elif "wifi" in t_lower or "guest" in t_lower:
-                entities["remove_target"] = "P22"
-            elif "email" in t_lower:
-                entities["remove_target"] = "P16"
-            elif "security" in t_lower or "antivirus" in t_lower or "endpoint" in t_lower:
+            if any(k in t_lower for k in ["security", "antivirus", "endpoint", "p20"]):
                 entities["remove_target"] = "P20"
-            elif "p19" in t_lower:
+            elif any(k in t_lower for k in ["soundbox", "pos", "upi", "qr", "p19"]):
                 entities["remove_target"] = "P19"
+            elif any(k in t_lower for k in ["backup", "tally", "p17"]):
+                entities["remove_target"] = "P17"
+            elif any(k in t_lower for k in ["cctv", "camera", "p23"]):
+                entities["remove_target"] = "P23"
+            elif any(k in t_lower for k in ["guest wifi", "guest network", "p22"]):
+                entities["remove_target"] = "P22"
+            elif any(k in t_lower for k in ["email", "workspace", "m365", "mail", "p16"]):
+                entities["remove_target"] = "P16"
+            elif any(k in t_lower for k in ["static ip", "public ip", "ip", "p11"]):
+                entities["remove_target"] = "P11"
+            elif any(k in t_lower for k in ["firewall", "p21"]):
+                entities["remove_target"] = "P21"
+            elif any(k in t_lower for k in ["sd-wan", "sdwan", "p10"]):
+                entities["remove_target"] = "P10"
+            elif any(k in t_lower for k in ["toll", "1800", "p13"]):
+                entities["remove_target"] = "P13"
+            elif any(k in t_lower for k in ["sms", "p14"]):
+                entities["remove_target"] = "P14"
+            elif any(k in t_lower for k in ["whatsapp", "p15"]):
+                entities["remove_target"] = "P15"
 
         return entities

@@ -5,7 +5,7 @@ deterministic fallback execution, and response guardrails.
 """
 
 from typing import Dict, Any, List, Optional
-from app.modules.advisor.profile import merge_profiles, get_missing_mandatory_fields
+from app.modules.advisor.profile import merge_profiles, get_missing_mandatory_fields, is_ready_for_recommendation
 from app.modules.advisor.tools import AdvisorTools
 from app.modules.advisor.nlu import NLUParser
 from app.modules.advisor.session import SessionStore
@@ -65,13 +65,12 @@ class AdvisorService:
         merged_profile = merge_profiles(effective_profile, extracted_entities)
 
         # 4. Mandatory consultative discovery check
-        # If employee scale is missing and query is not downsell, remove_addon, escalation, inquiry, or rural feasibility:
+        # If employee scale or location is missing and query is not downsell, remove_addon, escalation, inquiry, or rural feasibility:
         # We must trigger progressive clarification!
         missing_fields = get_missing_mandatory_fields(merged_profile)
         is_rural_airfiber_resolved = bool(merged_profile.get("rural_location") and merged_profile.get("taar_present") is False)
-        if "employee_count" in missing_fields and detected_intent not in ["downsell_request", "remove_addon", "escalation", "inquiry", "rural_feasibility"] and not is_rural_airfiber_resolved:
-            # If the user specified multi-site with headcounts (handled in entities), employee_count is known.
-            if not merged_profile.get("employee_count") and not merged_profile.get("site_headcounts"):
+        if ("employee_count" in missing_fields or "location" in missing_fields) and detected_intent not in ["downsell_request", "remove_addon", "escalation", "inquiry", "rural_feasibility"] and not is_rural_airfiber_resolved:
+            if not is_ready_for_recommendation(merged_profile):
                 detected_intent = "clarification"
 
         # 5. Process through Scripted or LLM
@@ -131,10 +130,24 @@ class AdvisorService:
 
         # 6. For recommendations, enforce deterministic backend bundle and pricing authority
         if response_data and response_data.get("intent") == "recommendation":
-            backend_res = self.tools.generate_bundle(merged_profile)
-            response_data["recommended_bundle"] = backend_res["bundle"]
-            response_data["explainability_tags"] = backend_res["tags"]
-            response_data["quotation"] = backend_res["quotation"]
+            is_remove_addon = (detected_intent == "remove_addon" or response_data.get("action") == "remove_addon")
+            is_downsell = (detected_intent == "downsell_request" or response_data.get("intent") == "downsell_request")
+
+            if is_remove_addon:
+                removed_id = response_data.get("removed_product_id")
+                if removed_id:
+                    removed_list = list(merged_profile.get("removed_addons", []))
+                    if removed_id not in removed_list:
+                        removed_list.append(removed_id)
+                    merged_profile["removed_addons"] = removed_list
+                if response_data.get("recommended_bundle"):
+                    merged_profile["current_bundle"] = response_data["recommended_bundle"]
+            elif not is_downsell:
+                backend_res = self.tools.generate_bundle(merged_profile)
+                response_data["recommended_bundle"] = backend_res["bundle"]
+                response_data["explainability_tags"] = backend_res["tags"]
+                response_data["quotation"] = backend_res["quotation"]
+                merged_profile["current_bundle"] = backend_res["bundle"]
 
         # 7. Apply statutory guardrails & authoritative pricing engine
         guarded_result = self.response_guard.validate_and_guard(

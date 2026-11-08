@@ -222,11 +222,14 @@ def get_missing_mandatory_fields(profile: Dict[str, Any]) -> List[str]:
     """
     Tracks which mandatory discovery fields are missing before a compliant
     telecom recommendation can be finalized:
-    1. employee_count (scale of operation)
-    2. has_gstin (statutory eligibility)
+    1. location (city or pincode - required to determine city tier & feasibility)
+    2. employee_count (scale of operation)
+    3. has_gstin (statutory eligibility)
     """
     missing = []
-    if profile.get("employee_count") is None:
+    if not profile.get("city") and not profile.get("pincode"):
+        missing.append("location")
+    if profile.get("employee_count") is None and not profile.get("site_headcounts"):
         missing.append("employee_count")
     if profile.get("has_gstin") is None:
         missing.append("has_gstin")
@@ -235,10 +238,12 @@ def get_missing_mandatory_fields(profile: Dict[str, Any]) -> List[str]:
 def is_ready_for_recommendation(profile: Dict[str, Any]) -> bool:
     """
     Determines if sufficient consultative discovery has been gathered
-    to produce a tailored product bundle. Scale (employee_count or site_headcounts)
-    is the critical mandatory dimension, or resolved rural AirFiber feasibility.
+    to produce a tailored product bundle.
+    Location (city or pincode) AND Scale (employee_count or site_headcounts)
+    are strictly required to determine city tier and feasibility.
     """
     if profile.get("rural_location") and profile.get("taar_present") is not None:
         return True
+    has_location = bool(profile.get("city") or profile.get("pincode"))
     has_scale = (profile.get("employee_count") is not None) or bool(profile.get("site_headcounts"))
-    return has_scale
+    return has_location and has_scale

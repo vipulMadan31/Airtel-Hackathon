@@ -1989,14 +1989,16 @@ async function handleChatSubmit() {
         }
       }
     }
-    if (data.action === "remove_addon" && data.removed_product_id) {
-      delete STATE.selectedBundle[data.removed_product_id];
-      if (data.recommended_bundle) {
-        STATE.selectedBundle = data.recommended_bundle;
+    if (data.action === "remove_addon" || data.removed_product_id) {
+      if (data.recommended_bundle && Object.keys(data.recommended_bundle).length > 0) {
+        STATE.selectedBundle = Object.assign({}, data.recommended_bundle);
+      }
+      if (data.removed_product_id) {
+        delete STATE.selectedBundle[data.removed_product_id];
       }
       recalculateQuote();
     } else if (data.recommended_bundle && Object.keys(data.recommended_bundle).length > 0) {
-      STATE.selectedBundle = data.recommended_bundle;
+      STATE.selectedBundle = Object.assign({}, data.recommended_bundle);
       recalculateQuote();
     }
 

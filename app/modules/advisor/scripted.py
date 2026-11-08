@@ -166,6 +166,7 @@ class ScriptedAdvisor:
             res = self.tools.remove_addon(bundle, target)
             profile["current_bundle"] = res["bundle"]
             q = res["quotation"]
+            removed_id = res.get("removed_id") or target
 
             if is_hindi:
                 msg = f"समझ गया! हमने आपके बंडल से ऐड-ऑन को हटा दिया है। आपका नया मासिक किराया ₹{q.get('monthly_subtotal_inr', 0):,.2f} + GST अपडेट कर दिया गया है।"
@@ -174,6 +175,8 @@ class ScriptedAdvisor:
 
             return {
                 "intent": "recommendation",
+                "action": "remove_addon",
+                "removed_product_id": removed_id,
                 "message": msg,
                 "profile": profile,
                 "recommended_bundle": res["bundle"],
@@ -183,26 +186,46 @@ class ScriptedAdvisor:
             }
 
         # 7. Mandatory Consultative Discovery & Clarification
-        # Check if user has provided both employee count AND GST status
+        # Check if user has provided both location (city/pincode) AND scale
         ready = is_ready_for_recommendation(profile)
         # Exception: if user specified multi-site with headcounts (e.g. 10 and 100), or user provided clear scale in this turn
         if not ready and not profile.get("site_headcounts"):
-            loc_str = f" in {city}" if city else ""
-            shop_str = f" across your {num_sites} shops" if num_sites > 1 else ""
-            if is_hindi:
-                msg = (
-                    f"बहुत बढ़िया!{loc_str} में आपके व्यवसाय के लिए Airtel Business में सर्वोत्तम समाधान उपलब्ध हैं।\n\n"
-                    f"सटीक और उपयुक्त प्लान की सिफारिश करने के लिए, कृपया दो विवरण स्पष्ट करें:\n"
-                    f"1. क्या आपके पास अपनी दुकान/फर्म के लिए सक्रिय जीएसटी (GSTIN) है, या आप बिना जीएसटी (Non-GST / Udyam) चलाते हैं?\n"
-                    f"2. कुल कितने कर्मचारी, बिलिंग कंप्यूटर, या ग्राहक डिवाइस वाई-फाई से कनेक्ट होंगे?"
-                )
+            has_location = bool(profile.get("city") or profile.get("pincode"))
+            has_scale = (profile.get("employee_count") is not None)
+
+            if not has_location and has_scale:
+                # User gave scale and business, but location is missing
+                if is_hindi:
+                    msg = (
+                        f"धन्यवाद! आपके {biz_name} के विवरण नोट कर लिए गए हैं।\n\n"
+                        f"सटीक सिटी टियर (Tier 1/2/3) निर्धारित करने और नेटवर्क फिजिबिलिटी (ऑप्टिकल फाइबर बनाम 5G AirFiber) की पुष्टि करने के लिए, "
+                        f"कृपया बताएं कि आपकी दुकान/व्यवसाय किस **शहर या 6-अंकों के पिनकोड** में स्थित है?"
+                    )
+                else:
+                    msg = (
+                        f"Thank you for sharing those details! To determine your city tier (Tier 1/2/3), "
+                        f"confirm network feasibility (optical fibre vs 5G AirFiber), and calculate your exact quotation, "
+                        f"could you please share which **city or 6-digit pincode** your {biz_name} is located in?"
+                    )
             else:
-                msg = (
-                    f"That's great! Setting up high-speed Wi-Fi{shop_str}{loc_str} is easy with Airtel Business.\n\n"
-                    f"To recommend the most suitable plan and speed for your {biz_name}, could you please clarify:\n"
-                    f"1. Do you have an active registered GST (GSTIN) for your business, or do you operate under sole-proprietorship (Non-GST / Udyam mode)?\n"
-                    f"2. Approximately how many employees, billing devices, or customer connections will be using the Wi-Fi at each shop/location?"
-                )
+                loc_str = f" in {city}" if city else ""
+                shop_str = f" across your {num_sites} shops" if num_sites > 1 else ""
+                if is_hindi:
+                    msg = (
+                        f"बहुत बढ़िया!{loc_str} में आपके व्यवसाय के लिए Airtel Business में सर्वोत्तम समाधान उपलब्ध हैं।\n\n"
+                        f"सटीक और उपयुक्त प्लान की सिफारिश करने के लिए, कृपया तीन विवरण स्पष्ट करें:\n"
+                        f"1. आप किस प्रकार का व्यवसाय चलाते हैं और यह किस **शहर या 6-अंकों के पिनकोड** में स्थित है?\n"
+                        f"2. क्या आपके पास अपनी दुकान/फर्म के लिए सक्रिय जीएसटी (GSTIN) है, या आप बिना जीएसटी (Non-GST / Udyam) चलाते हैं?\n"
+                        f"3. कुल कितने कर्मचारी, बिलिंग कंप्यूटर, या ग्राहक डिवाइस वाई-फाई से कनेक्ट होंगे?"
+                    )
+                else:
+                    msg = (
+                        f"That's great! Setting up high-speed business Wi-Fi{shop_str}{loc_str} is easy with Airtel Business.\n\n"
+                        f"To recommend the most suitable plan and speed for your {biz_name}, could you please clarify:\n"
+                        f"1. What type of business do you run, and in which **city or 6-digit pincode** is it located?\n"
+                        f"2. Do you have an active registered GST (GSTIN) for your business, or do you operate under sole-proprietorship (Non-GST / Udyam mode)?\n"
+                        f"3. Approximately how many employees, billing devices, or customer connections will be using the Wi-Fi at each location?"
+                    )
             return {
                 "intent": "clarification",
                 "message": msg,
@@ -259,3 +282,4 @@ class ScriptedAdvisor:
             "quotation": q,
             "ai_engine": "Udyam Deterministic Rule Engine"
         }
+
