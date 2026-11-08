@@ -84,8 +84,20 @@ class NLUParser:
 
         # 2. Add-on removal
         remove_cues = ["remove ", "hata do", "hatao", "don't need ", "dont need ", "cancel ", "delete ", "काढा", "काढून टाका", "नको", "हटवा", "काढून घ्या"]
-        if any(c in t for c in remove_cues):
-            return "remove_addon"
+        has_remove_cue = any(c in t for c in remove_cues)
+        if has_remove_cue:
+            # If the user is currently completing mandatory discovery inputs (e.g., stating employee count, GST, city, business type)
+            # or if no active bundle has been generated yet, this is discovery preference (e.g. "dont need cctv"), NOT an active cart modification.
+            has_active_bundle = bool(current_bundle and any(current_bundle.values()))
+            has_discovery_content = bool(
+                re.search(r"\b(\d+)\s*(employees|employee|staff|workers|people|chairs|seats|shops|stores)\b", t) or
+                re.search(r"\b(have\s*(a\s+)?gst|with\s*(a\s+)?gst|active\s*gst|gstin|non-?gst|sole\s*proprietorship)\b", t) or
+                re.search(r"\b(shop|clinic|office|store|firm|hospital|restaurant)\b", t)
+            )
+            if has_active_bundle and not has_discovery_content:
+                return "remove_addon"
+            elif not has_active_bundle and not has_discovery_content:
+                return "remove_addon"
 
         # 3. Escalation / Human Agent requests
         escalation_cues = [
@@ -183,7 +195,7 @@ class NLUParser:
             r"जीएसटी\s*नहीं"
         ]
         gst_positive_patterns = [
-            r"\b(yes\s*we\s*have\s*gst|have\s*gst|active\s*gst|with\s*gst|gstin\s*hai|gst\s*registered|registered\s*gst|gst\s*number\s*hai|gst\s*hai)\b",
+            r"\b(yes\s*(we\s*)?have\s*(a\s+)?gst|have\s*(a\s+)?gst|with\s*(a\s+)?gst|active\s*gst|gstin\s*hai|gst\s*registered|registered\s*gst|gst\s*number\s*(hai)?|gst\s*hai|yes\s*gst|got\s*(a\s+)?gst|gst\s*available|gst\s*is\s*there)\b",
             r"जीएसटी\s*है"
         ]
 
@@ -207,29 +219,34 @@ class NLUParser:
         # 8. Add-on Removal Target (only if removal intent detected)
         remove_keywords = ["remove", "hata", "hatao", "delete", "hata do", "nahi chahiye", "cancel", "drop", "don't need", "dont need"]
         if any(w in t_lower for w in remove_keywords):
+            target_pid = None
             if any(k in t_lower for k in ["security", "antivirus", "endpoint", "p20"]):
-                entities["remove_target"] = "P20"
+                target_pid = "P20"
             elif any(k in t_lower for k in ["soundbox", "pos", "upi", "qr", "p19"]):
-                entities["remove_target"] = "P19"
+                target_pid = "P19"
             elif any(k in t_lower for k in ["backup", "tally", "p17"]):
-                entities["remove_target"] = "P17"
+                target_pid = "P17"
             elif any(k in t_lower for k in ["cctv", "camera", "p23"]):
-                entities["remove_target"] = "P23"
+                target_pid = "P23"
             elif any(k in t_lower for k in ["guest wifi", "guest network", "p22"]):
-                entities["remove_target"] = "P22"
+                target_pid = "P22"
             elif any(k in t_lower for k in ["email", "workspace", "m365", "mail", "p16"]):
-                entities["remove_target"] = "P16"
+                target_pid = "P16"
             elif any(k in t_lower for k in ["static ip", "public ip", "ip", "p11"]):
-                entities["remove_target"] = "P11"
+                target_pid = "P11"
             elif any(k in t_lower for k in ["firewall", "p21"]):
-                entities["remove_target"] = "P21"
+                target_pid = "P21"
             elif any(k in t_lower for k in ["sd-wan", "sdwan", "p10"]):
-                entities["remove_target"] = "P10"
+                target_pid = "P10"
             elif any(k in t_lower for k in ["toll", "1800", "p13"]):
-                entities["remove_target"] = "P13"
+                target_pid = "P13"
             elif any(k in t_lower for k in ["sms", "p14"]):
-                entities["remove_target"] = "P14"
+                target_pid = "P14"
             elif any(k in t_lower for k in ["whatsapp", "p15"]):
-                entities["remove_target"] = "P15"
+                target_pid = "P15"
+
+            if target_pid:
+                entities["remove_target"] = target_pid
+                entities["removed_addons"] = [target_pid]
 
         return entities

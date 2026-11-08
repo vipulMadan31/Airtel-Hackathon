@@ -209,8 +209,27 @@ def test_all_scenarios():
     assert len(wa_history) >= 2, f"WhatsApp session did not record dialogue history: {wa_history}"
     print(f"✔ [PASS] Scenario 9 WhatsApp Continuity: City='{wa_prof['city']}', PIN='{wa_prof['pincode']}', Turns={len(wa_history)}")
 
+    # -------------------------------------------------------------
+    # Scenario 10: Negative Add-on Preference During Consultative Discovery
+    # -------------------------------------------------------------
+    print("\n--- Scenario 10: Negative Add-on Preference During Discovery (Zero-Price Prevention) ---")
+    r10a = advisor.process_user_message("I need a wifi , i have a shop in noida", language="en")
+    assert r10a["intent"] == "clarification", "Turn 1 must clarify scale and tax registration"
+
+    r10b = advisor.process_user_message(
+        "i have a gst, 10 employees work under me, i dont need a cctv",
+        current_profile=r10a["profile"],
+        language="en"
+    )
+    assert r10b["intent"] == "recommendation", f"Expected recommendation intent, got {r10b['intent']}"
+    assert r10b["recommended_bundle"], "Bundle must not be empty"
+    assert "P23" not in r10b["recommended_bundle"], "Must exclude CCTV (P23) as requested"
+    assert r10b["quotation"]["monthly_subtotal_inr"] > 0, "Subtotal must be positive"
+    assert "₹0.00" not in r10b["message"], "Message must never state ₹0.00 for active bundle"
+    print(f"✔ [PASS] Scenario 10 Discovery with Negative Preference: Bundle={r10b['recommended_bundle']}, Subtotal=₹{r10b['quotation']['monthly_subtotal_inr']}")
+
     print("\n" + "=" * 70)
-    print("ALL 9 AI ADVISOR SCENARIOS VALIDATED 100% GREEN!")
+    print("ALL 10 AI ADVISOR SCENARIOS VALIDATED 100% GREEN!")
     print("=" * 70)
 
 if __name__ == "__main__":

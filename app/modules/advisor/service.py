@@ -65,6 +65,13 @@ class AdvisorService:
         merged_profile = merge_profiles(effective_profile, extracted_entities)
 
         # 4. Mandatory consultative discovery check
+        # If user has no active bundle yet, they cannot be removing an add-on from an existing cart!
+        if detected_intent == "remove_addon" and (not active_bundle or not any(active_bundle.values())):
+            if is_ready_for_recommendation(merged_profile):
+                detected_intent = "recommendation"
+            else:
+                detected_intent = "clarification"
+
         # If employee scale or location is missing and query is not downsell, remove_addon, escalation, inquiry, or rural feasibility:
         # We must trigger progressive clarification!
         missing_fields = get_missing_mandatory_fields(merged_profile)
@@ -83,7 +90,7 @@ class AdvisorService:
                 user_message,
                 merged_profile,
                 language=language,
-                detected_intent="recommendation" if merged_profile.get("site_headcounts") else detected_intent,
+                detected_intent="recommendation" if (merged_profile.get("site_headcounts") or (detected_intent == "remove_addon" and (not active_bundle or not any(active_bundle.values())))) else detected_intent,
                 active_bundle=active_bundle,
                 entities=extracted_entities
             )

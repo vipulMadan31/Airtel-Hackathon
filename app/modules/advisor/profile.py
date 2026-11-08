@@ -205,6 +205,18 @@ def merge_profiles(existing: Optional[Dict[str, Any]], updates: Optional[Dict[st
                 merged["downsell_level"] = int(val)
             except (ValueError, TypeError):
                 pass
+        elif key == "removed_addons":
+            existing_removed = list(merged.get("removed_addons", []))
+            for item in (val if isinstance(val, list) else [val]):
+                if item and item not in existing_removed:
+                    existing_removed.append(item)
+            merged["removed_addons"] = existing_removed
+        elif key == "remove_target" and val:
+            existing_removed = list(merged.get("removed_addons", []))
+            if val not in existing_removed:
+                existing_removed.append(val)
+            merged["removed_addons"] = existing_removed
+            merged["remove_target"] = val
         else:
             merged[key] = val
 

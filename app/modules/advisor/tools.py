@@ -275,6 +275,11 @@ class AdvisorTools:
                     if not any(r in new_bundle for r in reqs):
                         del new_bundle[pid]
 
+        # Always guarantee base connectivity remains in bundle
+        base_pids = {"P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08"}
+        if not any(p in new_bundle for p in base_pids):
+            new_bundle["P01"] = 1
+
         tags = []
         for pid in new_bundle.keys():
             prod_info = self.loader.get_product(pid)

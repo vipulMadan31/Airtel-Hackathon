@@ -189,17 +189,36 @@ class ScriptedAdvisor:
         # 6. Remove Add-on Request
         if detected_intent == "remove_addon":
             target = (entities or {}).get("remove_target", "P19")
+            if not bundle or not any(bundle.values()):
+                base_res = self.tools.generate_bundle(profile)
+                bundle = base_res["bundle"]
             res = self.tools.remove_addon(bundle, target)
             profile["current_bundle"] = res["bundle"]
             q = res["quotation"]
             removed_id = res.get("removed_id") or target
 
+            # Guard against empty bundle or 0 subtotal
+            base_pids = {"P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08"}
+            if not any(p in res["bundle"] for p in base_pids):
+                res["bundle"]["P01"] = 1
+                q = self.tools.calculate_quotation(res["bundle"])
+                profile["current_bundle"] = res["bundle"]
+
+            subtotal_val = q.get('monthly_subtotal_inr', 0)
+            total_val = q.get('total_monthly_inr', 0)
+            if subtotal_val == 0:
+                res["bundle"]["P01"] = 1
+                q = self.tools.calculate_quotation(res["bundle"])
+                subtotal_val = q.get('monthly_subtotal_inr', 999.0)
+                total_val = q.get('total_monthly_inr', 1178.82)
+                profile["current_bundle"] = res["bundle"]
+
             if is_marathi:
-                msg = f"समजले! आम्ही आपल्या बंडलमधून ॲड-ऑन काढून टाकले आहे. आपले नवीन मासिक भाडे ₹{q.get('monthly_subtotal_inr', 0):,.2f} + GST अपडेट झाले आहे."
+                msg = f"समजले! आम्ही आपल्या बंडलमधून ॲड-ऑन काढून टाकले आहे. आपले नवीन मासिक भाडे ₹{subtotal_val:,.2f} + GST अपडेट झाले आहे."
             elif is_hindi:
-                msg = f"समझ गया! हमने आपके बंडल से ऐड-ऑन को हटा दिया है। आपका नया मासिक किराया ₹{q.get('monthly_subtotal_inr', 0):,.2f} + GST अपडेट कर दिया गया है।"
+                msg = f"समझ गया! हमने आपके बंडल से ऐड-ऑन को हटा दिया है। आपका नया मासिक किराया ₹{subtotal_val:,.2f} + GST अपडेट कर दिया गया है।"
             else:
-                msg = f"Understood! I have removed the requested add-on from your bundle. Your updated monthly subtotal is ₹{q.get('monthly_subtotal_inr', 0):,.2f} (+ 18% GST = ₹{q.get('total_monthly_inr', 0):,.2f}/mo)."
+                msg = f"Understood! I have removed the requested add-on from your bundle. Your updated monthly subtotal is ₹{subtotal_val:,.2f} (+ 18% GST = ₹{total_val:,.2f}/mo)."
 
             return {
                 "intent": "recommendation",

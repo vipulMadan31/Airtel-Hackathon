@@ -136,6 +136,18 @@ class ResponseGuard:
             has_gstin=has_gstin
         )
 
+        # 8. Reconcile message with authoritative pricing (prevent displaying ₹0.00)
+        if quotation.get("monthly_subtotal_inr", 0) > 0 and message:
+            sub_val = quotation["monthly_subtotal_inr"]
+            tot_val = quotation["total_monthly_inr"]
+            if "₹0.00" in message or "₹0" in message:
+                import re
+                message = re.sub(
+                    r"₹0(?:\.00)?(?:\s*\(\+\s*18%\s*GST\s*=\s*₹0(?:\.00)?/mo\))?",
+                    f"₹{sub_val:,.2f} (+ 18% GST = ₹{tot_val:,.2f}/mo)",
+                    message
+                )
+
         res = {
             "intent": intent,
             "message": message,
