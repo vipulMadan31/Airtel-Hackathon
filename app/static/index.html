@@ -991,20 +991,26 @@
               <span class="text-xs font-bold uppercase tracking-wider text-purple-700">Authoritative Operations Benchmarking</span>
               <span class="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">Zero Exaggeration Model</span>
             </div>
-            <h3 class="text-base font-extrabold text-slate-900 mt-0.5">1) Dataset Baseline vs. 2) Current DB (Real) vs. 3) Pessimistic Projections</h3>
-            <p class="text-slate-500 text-xs">Direct comparison across historical baseline (smb_leads.csv), empirical prototype database (udyam_orders.db), and defensive operational forecasts.</p>
+            <h3 class="text-base font-extrabold text-slate-900 mt-0.5">1) Dataset Baseline vs. 2) Current DB (Simulated) vs. 3) Pessimistic Projections</h3>
+            <p class="text-slate-500 text-xs">Direct comparison across historical baseline (smb_leads.csv), simulated prototype database (udyam_orders.db), and defensive operational forecasts.</p>
           </div>
           <div class="flex flex-wrap items-center gap-2 shrink-0">
             <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
               📊 1. smb_leads.csv (5k Baseline)
             </span>
             <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-              🟢 2. Current DB (Real Values)
+              🟢 2. Current DB (Simulated Sandbox)
             </span>
             <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold bg-purple-50 text-purple-800 border border-purple-200">
               🎯 3. Pessimistic Projection
             </span>
           </div>
+        </div>
+
+        <!-- Simulation Transparency Callout Banner -->
+        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-center space-x-2.5">
+          <span class="text-base shrink-0">⚠️</span>
+          <span class="leading-relaxed"><strong>Simulation Notice:</strong> Current Database Empirical Values are <strong>simulated prototype values</strong> generated via developer sandbox test runs and automated workflows in <code class="font-mono bg-white px-1.5 py-0.5 rounded border border-amber-300 text-[11px] text-amber-950 font-bold">udyam_orders.db</code>, <em>not</em> live commercial Airtel production network traffic.</span>
         </div>
 
         <!-- Comparative Benchmarks Table -->
@@ -1014,7 +1020,7 @@
               <tr>
                 <th class="p-3 w-1/4">Metric & Definition</th>
                 <th class="p-3 w-1/8 bg-blue-50/70 text-blue-950 font-extrabold border-l border-blue-100">1. Baseline (Dataset)</th>
-                <th class="p-3 w-1/8 bg-emerald-50/70 text-emerald-950 font-extrabold border-l border-emerald-100">2. Current DB (Real)</th>
+                <th class="p-3 w-1/8 bg-emerald-50/70 text-emerald-950 font-extrabold border-l border-emerald-100">2. Current DB (Simulated)</th>
                 <th class="p-3 w-1/8 bg-purple-50/70 text-purple-950 font-extrabold border-l border-purple-100">3. Projected (Pessimistic)</th>
                 <th class="p-3 w-1/8">Variance (Proj vs Base)</th>
                 <th class="p-3 w-1/4">Empirical Grounding & Notes</th>
@@ -1038,9 +1044,9 @@
           <div class="space-y-1">
             <span class="font-bold text-slate-900 flex items-center space-x-1.5">
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span>
-              <span>2. Current DB (Real Values Only)</span>
+              <span>2. Current DB (Simulated Values)</span>
             </span>
-            <p class="text-slate-600 text-[11px] leading-relaxed">Directly queried from <code class="bg-white px-1 py-0.5 rounded border border-slate-200 text-[10px] font-mono">udyam_orders.db</code>. Displays empirical counts for leads, orders, KYC verdicts, and CSAT ratings. <strong>Unmeasured operational metrics are left blank (<span class="font-mono text-slate-400 font-bold">—</span>)</strong> with zero synthetic filler.</p>
+            <p class="text-slate-600 text-[11px] leading-relaxed">Queried from <code class="bg-white px-1 py-0.5 rounded border border-slate-200 text-[10px] font-mono">udyam_orders.db</code>. <strong>Note: Current DB values are simulated prototype transactions</strong> from sandbox testing. <strong>Unmeasured operational metrics are left blank (<span class="font-mono text-slate-400 font-bold">—</span>)</strong> with zero synthetic filler.</p>
           </div>
           <div class="space-y-1">
             <span class="font-bold text-slate-900 flex items-center space-x-1.5">

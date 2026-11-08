@@ -919,7 +919,7 @@ async function loadOpsViewData() {
           const isBlank = !val || val === "—" || val === "null" || val === "-" || val === "None";
           const currentDbDisplay = isBlank 
             ? `<span class="text-slate-400 font-mono font-bold text-sm block">—</span><span class="text-[9px] text-slate-400 font-medium block uppercase tracking-wider">[Not Tracked]</span>`
-            : `<span class="font-black text-emerald-950 font-mono text-sm block">${val}</span><span class="text-[9px] text-emerald-700 font-semibold block uppercase tracking-wider">Live DB Verified</span>`;
+            : `<span class="font-black text-emerald-950 font-mono text-sm block">${val}</span><span class="text-[9px] text-emerald-700 font-semibold block uppercase tracking-wider">Simulated DB</span>`;
 
           return `
             <tr class="hover:bg-slate-50/80 transition">

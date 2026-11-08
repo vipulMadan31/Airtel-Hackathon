@@ -406,7 +406,8 @@ class DashboardService:
         }
 
         current_db = {
-            "db_source": "udyam_orders.db (SQLite live prototype)",
+            "db_source": "udyam_orders.db (SQLite prototype - simulated sandbox transactions)",
+            "simulation_notice": "Current Database Empirical Values are simulated via developer sandbox runs and automated test journeys, not live commercial Airtel production traffic.",
             "funnel": {
                 "inbound_leads": db_leads,
                 "contacted": None,  # Not tracked in DB
@@ -469,7 +470,7 @@ class DashboardService:
                 "projected": "5,000",
                 "variance": "Normalized scale",
                 "is_assumed": False,
-                "notes": "Baseline from smb_leads.csv; current DB represents prototype test population."
+                "notes": "Baseline from smb_leads.csv; current DB represents simulated prototype sandbox transactions."
             },
             {
                 "metric": "Overall Funnel Conversion",
