@@ -56,7 +56,12 @@ def test_ownership_and_integrity():
     r_fraud_order = requests.post(f"{base}/api/orders/create", json={
         "business_name": "Fraud Attempt Store",
         "contact_phone": user_a_phone,
-        "bundle_data": {"items": [{"name": "Airtel Biz Fibre", "price_inr": 899.0}], "total_monthly_inr": 1060.0},
+        "bundle_data": {
+            "product_quantities": {"P01": 1},
+            "monthly_recurring_total": 999.0,
+            "total_monthly_inr": 1178.82,
+            "setup_charges_total": 0.0
+        },
         "kyc_status": "VERIFIED",  # Client-asserted bypass attempt
         "consent": {"granted": True, "version": "v1.0"}
     }, headers=headers_a)
@@ -69,7 +74,14 @@ def test_ownership_and_integrity():
         "udyam_number": "UDYAM-TN-00-3866196",
         "entity_name": "Star Electronics",
         "is_non_gst_mode": True,
-        "customer_email": user_a_email
+        "customer_email": user_a_email,
+        "consent_granted": True,
+        "consent": {
+            "granted": True,
+            "version": "v1.0",
+            "purpose": "Statutory Udyam Verification",
+            "timestamp": "2026-07-01T10:00:00Z"
+        }
     }, headers=headers_a)
     assert r_kyc_case.status_code == 200
     kyc_case_data = r_kyc_case.json()
@@ -86,7 +98,12 @@ def test_ownership_and_integrity():
     r_no_consent = requests.post(f"{base}/api/orders/create", json={
         "business_name": "User A Business",
         "contact_phone": user_a_phone,
-        "bundle_data": {"items": [{"name": "Airtel Biz Fibre", "price_inr": 899.0}], "total_monthly_inr": 1060.0},
+        "bundle_data": {
+            "product_quantities": {"P01": 1},
+            "monthly_recurring_total": 999.0,
+            "total_monthly_inr": 1178.82,
+            "setup_charges_total": 0.0
+        },
         "case_id": case_a_id,
         "consent": {"granted": False}
     }, headers=headers_a)
@@ -98,7 +115,12 @@ def test_ownership_and_integrity():
     r_valid_order_a = requests.post(f"{base}/api/orders/create", json={
         "business_name": "User A Business",
         "contact_phone": user_a_phone,
-        "bundle_data": {"items": [{"name": "Airtel Biz Fibre", "price_inr": 899.0}], "total_monthly_inr": 1060.0},
+        "bundle_data": {
+            "product_quantities": {"P01": 1},
+            "monthly_recurring_total": 999.0,
+            "total_monthly_inr": 1178.82,
+            "setup_charges_total": 0.0
+        },
         "case_id": case_a_id,
         "consent": {
             "granted": True,

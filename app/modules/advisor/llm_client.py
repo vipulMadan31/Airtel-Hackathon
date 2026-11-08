@@ -92,7 +92,7 @@ CURRENT PROFILE STATE:
 - Sites: {current_profile.get('num_sites', 1)}
 - GST Registered: {current_profile.get('has_gstin') if current_profile.get('has_gstin') is not None else 'UNKNOWN'}
 - Rural Location: {current_profile.get('rural_location') if current_profile.get('rural_location') is not None else 'UNKNOWN'}
-- Language: {'Hindi' if language == 'hi' else 'English'}
+- Language: {'Marathi' if language == 'mr' else ('Hindi' if language == 'hi' else 'English')}
 - Active Bundle: {active_bundle or 'None'}
 
 MANDATORY DISCOVERY POLICY:

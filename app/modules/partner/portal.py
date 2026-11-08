@@ -434,7 +434,13 @@ class PartnerPortal:
 
         return min(score, 100)
 
-    def get_stalled_leads_with_propensity(self, limit: int = 15) -> List[Dict[str, Any]]:
+    def get_stalled_leads_with_propensity(
+        self,
+        limit: int = 15,
+        partner_id: Optional[str] = None,
+        partner_pincode: Optional[str] = None,
+        is_admin: bool = False
+    ) -> List[Dict[str, Any]]:
         results = []
 
         # 1. Fetch Real Live Customer Leads from SQLite Database
@@ -472,12 +478,31 @@ class PartnerPortal:
             p_score = int(r.get("propensity_score", 35))
 
             city_val = r.get("city") or "Rohtak"
-            pin_val = r.get("pincode") or "124001"
+            pin_val = str(r.get("pincode") or "124001").strip()
             routing = self.resolve_partner_for_lead(
                 pincode=pin_val,
                 city=city_val,
                 tier=2
             )
+
+            # Partner Territory & Assignment Isolation
+            # Non-admin partners only see leads assigned to them or in their authorized territory
+            if not is_admin and (partner_id or partner_pincode):
+                is_assigned_to_me = (routing.get("partner_id") == partner_id) or (r.get("claimed_by") == partner_id)
+                clean_partner_pin = str(partner_pincode or "").strip()
+                in_my_territory = False
+                if clean_partner_pin and clean_partner_pin != "ALL":
+                    if pin_val == clean_partner_pin:
+                        in_my_territory = True
+                    elif len(clean_partner_pin) >= 3 and pin_val.startswith(clean_partner_pin[:3]):
+                        in_my_territory = True
+
+                # If claimed by someone else, exclude from feed
+                if is_claimed and r.get("claimed_by") and r.get("claimed_by") != partner_id:
+                    continue
+
+                if not is_assigned_to_me and not in_my_territory:
+                    continue
 
             # Fast-Track 4-Hour SLA Computation
             if is_claimed:
@@ -520,25 +545,70 @@ class PartnerPortal:
         # Only return genuine live customer leads, sorted by propensity score DESC
         return sorted(results, key=lambda x: -x["propensity_score"])[:limit]
 
-    def claim_stalled_lead(self, lead_id: str, partner_id: str = "PTR-IND-882") -> Dict[str, Any]:
-        self.claimed_leads[lead_id] = {
-            "partner_id": partner_id,
-            "claimed_at": datetime.now().isoformat(),
-            "bounty_inr": 1000,
-            "status": "CLAIMED"
-        }
-
-        # Update SQLite if it is a real customer lead
+    def claim_stalled_lead(
+        self,
+        lead_id: str,
+        partner_id: str = "PTR-IND-882",
+        partner_pincode: Optional[str] = None,
+        is_admin: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Atomically claims a lead at the database level.
+        Enforces partner territory isolation and rejects concurrent claims.
+        """
         conn = self._get_connection()
         try:
             with conn:
-                conn.execute("""
+                # 1. Fetch lead details to verify territory
+                cursor = conn.execute("SELECT * FROM customer_leads WHERE lead_id = ?", (lead_id,))
+                lead_row = cursor.fetchone()
+                if not lead_row:
+                    raise ValueError(f"Lead '{lead_id}' not found.")
+
+                lead_dict = dict(lead_row)
+                pin_val = str(lead_dict.get("pincode") or "").strip()
+                clean_partner_pin = str(partner_pincode or "").strip()
+
+                if not is_admin and clean_partner_pin and clean_partner_pin != "ALL":
+                    routing = self.resolve_partner_for_lead(pincode=pin_val, city=lead_dict.get("city"))
+                    in_territory = (pin_val == clean_partner_pin) or (len(clean_partner_pin) >= 3 and pin_val.startswith(clean_partner_pin[:3]))
+                    is_routed = (routing.get("partner_id") == partner_id)
+                    if not in_territory and not is_routed:
+                        raise PermissionError(f"Access denied: Lead '{lead_id}' (Pincode: {pin_val}) is outside your authorized territory ({clean_partner_pin}).")
+
+                # 2. Atomic Database Update (prevents race conditions)
+                now_iso = datetime.now().isoformat()
+                upd_cursor = conn.execute("""
                     UPDATE customer_leads 
                     SET is_claimed = 1, claimed_by = ?, claimed_at = ?
-                    WHERE lead_id = ?
-                """, (partner_id, datetime.now().isoformat(), lead_id))
-        except Exception:
-            pass
+                    WHERE lead_id = ? AND (is_claimed = 0 OR is_claimed IS NULL)
+                """, (partner_id, now_iso, lead_id))
+
+                if upd_cursor.rowcount == 0:
+                    # Lead was already claimed
+                    c_cursor = conn.execute("SELECT claimed_by FROM customer_leads WHERE lead_id = ?", (lead_id,))
+                    c_row = c_cursor.fetchone()
+                    claimed_by = c_row["claimed_by"] if c_row else "another partner"
+                    if claimed_by == partner_id:
+                        return {
+                            "status": "ALREADY_CLAIMED",
+                            "claim_status": "CLAIMED",
+                            "message": f"Lead {lead_id} is already claimed by you.",
+                            "lead_id": lead_id,
+                            "partner_id": partner_id,
+                            "bounty_inr": 1000,
+                            "recovery_sla_hours": 24
+                        }
+                    raise RuntimeError(f"Conflict: Lead '{lead_id}' has already been claimed by partner '{claimed_by}'.")
+
+                # 3. Synchronize in-memory cache upon successful database update
+                self.claimed_leads[lead_id] = {
+                    "partner_id": partner_id,
+                    "claimed_at": now_iso,
+                    "bounty_inr": 1000,
+                    "status": "CLAIMED"
+                }
+
         finally:
             conn.close()
 
@@ -552,10 +622,11 @@ class PartnerPortal:
             "recovery_sla_hours": 24
         }
 
-    def call_lead(self, lead_id: str, partner_id: str = "PTR-IND-882") -> Dict[str, Any]:
+    def call_lead(self, lead_id: str, partner_id: str = "PTR-IND-882", is_admin: bool = False) -> Dict[str, Any]:
         """
         Atomically removes a lead from the active leads pool upon partner outreach call,
         archiving the contact event in called_leads table.
+        Enforces partner ownership/claim isolation.
         """
         conn = self._get_connection()
         try:
@@ -582,6 +653,9 @@ class PartnerPortal:
                     }
 
                 lead_data = dict(row)
+                if not is_admin and lead_data.get("is_claimed") and lead_data.get("claimed_by") and lead_data.get("claimed_by") != partner_id:
+                    raise PermissionError(f"Access denied: Lead '{lead_id}' has been claimed by partner '{lead_data.get('claimed_by')}'.")
+
                 now_iso = datetime.now().isoformat()
                 conn.execute("""
                     INSERT OR REPLACE INTO called_leads (

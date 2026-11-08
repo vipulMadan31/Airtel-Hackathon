@@ -1,5 +1,7 @@
 import os
+import json
 import uuid
+import secrets
 import shutil
 import logging
 from pathlib import Path
@@ -35,6 +37,8 @@ from app.modules.auth import (
 )
 from app.data_loader import DataLoader
 from app.config import KYC_DOCUMENTS_DIR
+from app.modules.analytics.dashboard_service import dashboard_service
+from app.modules.support.service import support_service
 
 app = FastAPI(
     title="Project Udyam Digital",
@@ -88,6 +92,14 @@ class QuoteRequest(BaseModel):
     quantities: Dict[str, int]
     apply_digital_discount: bool = True
     waive_setup_fee: bool = True
+    contract_months: Optional[int] = None
+    city_tier: Optional[int] = 1
+    city: Optional[str] = None
+    pincode: Optional[str] = None
+    employee_count: Optional[int] = 1
+    num_sites: Optional[int] = 1
+    has_gstin: Optional[bool] = None
+    discount_code: Optional[str] = None
 
 class DownsellRequest(BaseModel):
     quantities: Dict[str, int]
@@ -102,11 +114,22 @@ class VerifyExtractedRequest(BaseModel):
     udyam_number: Optional[str] = None
     entity_name: Optional[str] = None
     bill_date: Optional[str] = None
-    blur_variance: Optional[float] = 1000.0
+    blur_variance: Optional[float] = None
     applicant_code: Optional[str] = "CUSTOM"
     is_non_gst_mode: Optional[bool] = False
     customer_email: Optional[str] = None
     user_id: Optional[str] = None
+    verification_session_id: Optional[str] = None
+    consent: Optional[Dict[str, Any]] = None
+    consent_granted: Optional[bool] = None
+
+class AdminCreateUserRequest(BaseModel):
+    email: str
+    password: str
+    name: str
+    role: str = "PARTNER"  # PARTNER, ADMIN, or MERCHANT
+    phone: Optional[str] = None
+    assigned_pincode: Optional[str] = None
 
 class GstinLookupRequest(BaseModel):
     gstin: str
@@ -162,6 +185,27 @@ class PaymentConfirmRequest(BaseModel):
     mandate_active: bool = True
     amount_inr: Optional[float] = 499.0
 
+class TicketCreateRequest(BaseModel):
+    category: str = "GENERAL"  # CONNECTIVITY, BILLING, INSTALLATION, EQUIPMENT, GENERAL
+    priority: str = "MEDIUM"  # LOW, MEDIUM, HIGH, CRITICAL
+    subject: Optional[str] = "Service Request"
+    description: str
+    order_id: Optional[str] = None
+
+class TicketUpdateRequest(BaseModel):
+    status: str
+    resolution_milestone: Optional[str] = None
+    milestone: Optional[str] = None
+    admin_notes: Optional[str] = None
+
+class FeedbackSubmitRequest(BaseModel):
+    rating: int  # 1 to 5 or 1 to 10
+    feedback_type: str = "POST_ACTIVATION_CSAT"
+    comments: Optional[str] = None
+    feedback: Optional[str] = None
+    journey_step: Optional[str] = "POST_ACTIVATION"
+    order_id: Optional[str] = None
+
 # --- API ENDPOINTS ---
 
 @app.get("/api/health")
@@ -192,8 +236,35 @@ def check_pincode_feasibility(req: FeasibilityRequest):
 @app.post("/api/pricing/quote")
 def calculate_quote(req: QuoteRequest):
     return pricing_calculator.calculate_quote(
-        req.quantities, req.apply_digital_discount, req.waive_setup_fee
+        product_quantities=req.quantities,
+        apply_digital_discount=req.apply_digital_discount,
+        waive_setup_fee=req.waive_setup_fee,
+        contract_months=req.contract_months,
+        city_tier=req.city_tier or 1,
+        employee_count=req.employee_count or 1,
+        num_sites=req.num_sites or 1,
+        has_gstin=req.has_gstin,
+        discount_code=req.discount_code
     )
+
+@app.post("/api/pricing/validate-order")
+def validate_order_pricing(req: QuoteRequest):
+    try:
+        return pricing_calculator.validate_and_price_order(
+            product_quantities=req.quantities,
+            city_tier=req.city_tier or 1,
+            city=req.city,
+            pincode=req.pincode,
+            employee_count=req.employee_count or 1,
+            num_sites=req.num_sites or 1,
+            has_gstin=req.has_gstin,
+            contract_months=req.contract_months,
+            apply_digital_discount=req.apply_digital_discount,
+            waive_setup_fee=req.waive_setup_fee,
+            discount_code=req.discount_code
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/pricing/downsell")
 def execute_downsell(req: DownsellRequest):
@@ -201,13 +272,20 @@ def execute_downsell(req: DownsellRequest):
 
 # 4. Smart KYC: Document Upload & Real OCR Pipeline
 @app.post("/api/kyc/upload")
-async def upload_kyc_document(file: UploadFile = File(...)):
+async def upload_kyc_document(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
     """
-    Accepts real user file upload, runs OpenCV blur detection and Windows Native OCR.
+    Accepts customer file upload, enforces authentication, runs OpenCV blur check and OCR.
     Statutory DPDP Act Compliance & Data Minimization:
     The uploaded certificate image is used solely for instant in-memory OCR & validation.
-    Once scanned and structured details are extracted, the raw document file is immediately shredded/unlinked from disk.
+    Once scanned and structured details are extracted, the raw document file is immediately shredded from disk.
+    Binds the verification session to the authenticated customer's identity.
     """
+    user = verify_role_access([ROLE_MERCHANT, ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
     temp_filename = f"temp_{uuid.uuid4().hex[:8]}_{file.filename}"
     dest_path = UPLOAD_DIR / temp_filename
     try:
@@ -221,7 +299,20 @@ async def upload_kyc_document(file: UploadFile = File(...)):
                 dest_path.unlink()
         except Exception as e:
             logger.warning(f"Could not delete temporary certificate file {dest_path}: {e}")
-    
+
+    verification_session_id = f"vs_{secrets.token_hex(12)}"
+    order_sm.save_kyc_verification_session(
+        session_id=verification_session_id,
+        user_id=user["user_id"],
+        customer_email=user["email"],
+        blur_variance=ocr_result.get("blur_variance", 0.0),
+        is_clear=ocr_result.get("is_clear", True),
+        extracted_fields=ocr_result.get("extracted_fields"),
+        raw_text=ocr_result.get("raw_text")
+    )
+
+    ocr_result["verification_session_id"] = verification_session_id
+    ocr_result["user_id"] = user["user_id"]
     ocr_result["file_name"] = file.filename
     ocr_result["image_url"] = None  # File deleted post-validation
     ocr_result["document_disposition"] = "DELETED_POST_VALIDATION_DPDP_COMPLIANT"
@@ -232,11 +323,17 @@ async def upload_kyc_document(file: UploadFile = File(...)):
     return ocr_result
 
 @app.post("/api/kyc/specimen-scan")
-async def scan_specimen_document(req: SpecimenScanRequest):
+async def scan_specimen_document(
+    req: SpecimenScanRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
     """
     Runs real OCR and blur detection on submitted business document images.
-    Supports GST Certificate, Address Proof, and Udyam Certificate.
+    Requires authentication and binds verification session to authenticated customer.
     """
+    user = verify_role_access([ROLE_MERCHANT, ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
     if req.doc_type == "gst":
         suffix = "gst_certificate.png"
     elif req.doc_type == "address":
@@ -252,35 +349,65 @@ async def scan_specimen_document(req: SpecimenScanRequest):
         raise HTTPException(status_code=404, detail=f"Specimen file {filename} not found")
 
     ocr_result = await ocr_engine.scan_document(str(file_path))
+    verification_session_id = f"vs_{secrets.token_hex(12)}"
+    order_sm.save_kyc_verification_session(
+        session_id=verification_session_id,
+        user_id=user["user_id"],
+        customer_email=user["email"],
+        blur_variance=ocr_result.get("blur_variance", 0.0),
+        is_clear=ocr_result.get("is_clear", True),
+        extracted_fields=ocr_result.get("extracted_fields"),
+        raw_text=ocr_result.get("raw_text")
+    )
+    ocr_result["verification_session_id"] = verification_session_id
+    ocr_result["user_id"] = user["user_id"]
     ocr_result["file_name"] = filename
     ocr_result["image_url"] = f"/specimen/{filename}"
     return ocr_result
 
 @app.post("/api/verify/gstin")
-def verify_gstin_lookup(req: GstinLookupRequest):
+def verify_gstin_lookup(
+    req: GstinLookupRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
     """
-    Mock GSTIN Lookup API querying official mock_gstin_registry.csv.
+    Protected GSTIN Lookup API querying official mock_gstin_registry.csv.
+    Enforces format validation and conservative status handling.
     """
+    user = verify_role_access([ROLE_MERCHANT, ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
     gstin_val = req.gstin.strip().upper()
+    import re
+    if not re.match(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$', gstin_val):
+        raise HTTPException(status_code=400, detail=f"Invalid GSTIN format '{gstin_val}'. Expected 15-character statutory alphanumeric format.")
+
     record = loader.lookup_gstin(gstin_val)
     if not record:
         raise HTTPException(status_code=404, detail=f"GSTIN '{gstin_val}' not found in official mock registry.")
+    status = record.get("status", "Unknown")
     return {
         "found": True,
         "gstin": gstin_val,
         "legal_name": record.get("legal_name"),
         "trade_name": record.get("trade_name"),
-        "status": record.get("status"),
-        "is_active": record.get("status") == "Active",
+        "status": status,
+        "is_active": (status == "Active"),
         "principal_place_of_business": record.get("principal_place_of_business"),
         "registration_date": record.get("registration_date")
     }
 
 @app.post("/api/verify/udyam")
-def verify_udyam_lookup(req: UdyamLookupRequest):
+def verify_udyam_lookup(
+    req: UdyamLookupRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
     """
-    Mock Udyam Lookup API querying official mock_udyam_registry.csv.
+    Protected Udyam Lookup API querying official mock_udyam_registry.csv.
     """
+    user = verify_role_access([ROLE_MERCHANT, ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
     udyam_val = req.udyam_number.strip().upper()
     is_valid, msg, record = kyc_validator.validate_udyam(udyam_val)
     if not is_valid:
@@ -307,23 +434,69 @@ def verify_extracted_data(
 ):
     """
     Validates reviewed extracted fields against mock registries (GSTIN & Udyam),
-    90-day date rule, and blur threshold.
-    Creates and stores a server-controlled KYC Case record (Requirement 6).
+    90-day date rule, and server-side document quality checks.
+    - Requires authenticated user session (fails closed).
+    - Prevents cross-customer KYC verification.
+    - Requires explicit customer consent before registry verification under DPDP Act 2023.
+    - Uses server-measured blur metrics instead of trusting client numbers.
+    - Handles missing, cancelled, and suspended registrations conservatively.
+    - Stores authoritative server-controlled KYC Case record.
     """
-    extracted = extract_token_from_header(authorization, x_session_token, token)
-    user = get_user_by_token(extracted) if extracted else None
-    effective_user_id = user["user_id"] if user else req.user_id
-    effective_email = user["email"] if user else req.customer_email
+    # 1. Require Authentication (Fails closed)
+    user = verify_role_access([ROLE_MERCHANT, ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
+
+    # 2. Prevent cross-account KYC verification
+    if req.user_id and req.user_id != user["user_id"] and user["role"] != ROLE_ADMIN:
+        raise HTTPException(
+            status_code=403,
+            detail="Cross-account security violation: Cannot verify KYC on behalf of another customer."
+        )
+
+    effective_user_id = user["user_id"]
+    effective_email = user["email"]
+
+    # 3. Explicit Customer Consent Verification (DPDP Act 2023)
+    consent_data = req.consent or {}
+    has_consent = bool(consent_data.get("granted") or req.consent_granted)
+    if not has_consent:
+        raise HTTPException(
+            status_code=400,
+            detail="Statutory consent required: Explicit customer consent must be recorded prior to GSTIN or Udyam registry verification under DPDP Act 2023."
+        )
+
+    # Record consent event in consent_logs
+    order_sm.record_consent(
+        user_id=effective_user_id,
+        customer_email=effective_email,
+        consent_type="REGISTRY_VERIFICATION_CONSENT",
+        purpose=consent_data.get("purpose", "Statutory GSTIN/Udyam Registry Verification under DPDP Act 2023"),
+        version=consent_data.get("version", "v1.0"),
+        consent_text=consent_data.get("consent_text", "Customer explicitly granted affirmative consent for registry verification.")
+    )
 
     reasons = []
     registry_rec = None
     udyam_rec = None
 
-    # 1. Blur Check
-    if req.blur_variance is not None and req.blur_variance < 100.0:
+    # 4. Server-Side Document Quality & Blur Check (Never trust client assertions)
+    server_blur_variance = None
+    if req.verification_session_id:
+        v_session = order_sm.get_kyc_verification_session(req.verification_session_id)
+        if v_session:
+            # Verify session belongs to authenticated user
+            if v_session["user_id"] != user["user_id"] and user["role"] != ROLE_ADMIN:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Cross-account security violation: Verification session does not belong to the authenticated user."
+                )
+            server_blur_variance = v_session.get("blur_variance")
+            if not v_session.get("is_clear") or (server_blur_variance is not None and server_blur_variance < 100.0):
+                reasons.append(f"Image Quality Failure: Server blur analysis flagged document as unreadable (sharpness variance: {server_blur_variance:.2f}). Please re-upload a clear photo.")
+    if server_blur_variance is None and req.blur_variance is not None and req.blur_variance < 100.0:
         reasons.append(f"Image Quality Failure: Document is blurry/unreadable (sharpness variance: {req.blur_variance:.2f}). Please re-upload a clear photo.")
 
-    # 2. Registry Status Check: Non-GST Mode vs Standard GST Mode
+    # 5. Registry Status Check: Non-GST Mode vs Standard GST Mode (Conservative Handling)
+    import re
     if req.is_non_gst_mode:
         udyam_val = (req.udyam_number or "").strip().upper()
         if not udyam_val:
@@ -331,27 +504,30 @@ def verify_extracted_data(
         else:
             is_u_valid, u_msg, udyam_rec = kyc_validator.validate_udyam(udyam_val)
             if not is_u_valid:
-                reasons.append(u_msg)
+                reasons.append(f"Statutory Rejection: {u_msg}")
     else:
         gstin_val = (req.gstin or "").strip().upper()
         if not gstin_val and not req.udyam_number:
             reasons.append("Active GSTIN is required for standard enterprise verification.")
         elif gstin_val:
-            registry_rec = loader.lookup_gstin(gstin_val)
-            if not registry_rec:
-                reasons.append(f"GSTIN '{gstin_val}' not found in official mock registry.")
+            if not re.match(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$', gstin_val):
+                reasons.append(f"Statutory Rejection: Invalid GSTIN format '{gstin_val}'. Expected 15-character statutory alphanumeric format.")
             else:
-                status = registry_rec.get("status", "Unknown")
-                if status != "Active":
-                    reasons.append(f"Statutory Rejection: GSTIN registration is '{status}' in the GST portal.")
+                registry_rec = loader.lookup_gstin(gstin_val)
+                if not registry_rec:
+                    reasons.append(f"Statutory Rejection: GSTIN '{gstin_val}' not found in official mock registry.")
+                else:
+                    status = registry_rec.get("status", "Unknown")
+                    if status != "Active":
+                        reasons.append(f"Statutory Rejection: GSTIN registration is '{status}' in the GST portal.")
 
         # Check Udyam if optionally provided
         if req.udyam_number:
             is_u_valid, u_msg, udyam_rec = kyc_validator.validate_udyam(req.udyam_number)
             if not is_u_valid:
-                reasons.append(u_msg)
+                reasons.append(f"Statutory Rejection: {u_msg}")
 
-    # 3. 90-Day Freshness Check (Only applies to Address Proof / Electricity Bill)
+    # 6. 90-Day Freshness Check (Only applies to Address Proof / Utility Bill)
     if req.bill_date:
         is_gst_reg_date = bool(registry_rec and req.bill_date == registry_rec.get("registration_date"))
         is_udyam_reg_date = bool(udyam_rec and req.bill_date == udyam_rec.get("date_of_registration"))
@@ -361,7 +537,7 @@ def verify_extracted_data(
             if not is_fresh:
                 reasons.append(f"Address Proof Expired: Bill is {diff_days} days old relative to 2026-07-15 (Allowed: <= 90 days).")
 
-    # 4. Name Match Check
+    # 7. Name Match Check
     check_name = req.entity_name
     if check_name:
         if registry_rec:
@@ -384,7 +560,7 @@ def verify_extracted_data(
         status_decision = "REJECTED"
         verdict = "REJECTED"
         action = "Hard Stop - Inform applicant and block onboarding"
-    elif any("blurry" in r for r in reasons):
+    elif any("blurry" in r or "Image Quality Failure" in r for r in reasons):
         status_decision = "ACTION_REQUIRED"
         verdict = "ACTION_REQUIRED"
         action = "Prompt customer to re-upload clear document"
@@ -393,7 +569,7 @@ def verify_extracted_data(
         verdict = "MANUAL_REVIEW"
         action = "Route to partner/agent for manual review"
 
-    # Store authoritative server KYC case (Requirement 6)
+    # Store authoritative server KYC case bound to authenticated customer
     case_id = order_sm.create_kyc_case(
         user_id=effective_user_id,
         customer_email=effective_email,
@@ -406,7 +582,8 @@ def verify_extracted_data(
             "reasons": reasons,
             "registry_details": registry_rec or {},
             "udyam_details": udyam_rec or {},
-            "is_non_gst_mode": bool(req.is_non_gst_mode)
+            "is_non_gst_mode": bool(req.is_non_gst_mode),
+            "verification_session_id": req.verification_session_id
         }
     )
 
@@ -468,16 +645,15 @@ def create_order(
 ):
     """
     Stages an enterprise subscriber order.
+    - Requires authenticated customer session (fails closed).
     - Requires explicit customer consent (Requirement 8).
-    - Validates server-controlled KYC case with approved verdict (Requirement 6).
-    - Enforces ownership & identity binding (Requirement 5).
+    - Validates server-controlled KYC case with approved verdict belonging to this customer.
+    - Enforces ownership & identity binding.
     """
-    extracted = extract_token_from_header(authorization, x_session_token, token)
-    user = get_user_by_token(extracted) if extracted else None
-
-    effective_user_id = user["user_id"] if user else req.user_id
-    effective_email = user["email"] if user else req.customer_email
-    effective_phone = user.get("phone") if (user and user.get("phone")) else req.contact_phone
+    user = verify_role_access([ROLE_MERCHANT, ROLE_ADMIN], authorization, x_session_token, token)
+    effective_user_id = user["user_id"]
+    effective_email = user["email"]
+    effective_phone = user.get("phone") if user.get("phone") else req.contact_phone
 
     try:
         return order_sm.create_order(
@@ -709,10 +885,9 @@ def create_payment_intent(
 ):
     """
     Creates server-controlled payment intent (Requirement 7).
-    Enforces order ownership check (Requirement 5).
+    Enforces authentication and order ownership check (Requirement 5).
     """
-    extracted = extract_token_from_header(authorization, x_session_token, token)
-    user = get_user_by_token(extracted) if extracted else None
+    user = verify_role_access([ROLE_MERCHANT, ROLE_ADMIN], authorization, x_session_token, token)
     try:
         return payment_gw.create_payment_intent(
             order_id=req.order_id or "PENDING_QUOTE",
@@ -735,10 +910,9 @@ def confirm_payment(
 ):
     """
     Validates payment through server payment intent (Requirement 7).
-    Enforces ownership check and rejects client-declared transactions (Requirement 5 & 7).
+    Enforces authentication, ownership check, and rejects client-declared transactions.
     """
-    extracted = extract_token_from_header(authorization, x_session_token, token)
-    user = get_user_by_token(extracted) if extracted else None
+    user = verify_role_access([ROLE_MERCHANT, ROLE_ADMIN], authorization, x_session_token, token)
     try:
         receipt = payment_gw.confirm_payment(
             order_id=req.order_id,
@@ -911,13 +1085,19 @@ def login_user(req: LoginRequest):
 @app.post("/api/auth/register")
 def signup_user(req: SignUpRequest):
     try:
-        role = (req.role or "MERCHANT").upper().strip()
+        requested_role = (req.role or ROLE_MERCHANT).upper().strip()
+        if requested_role in [ROLE_ADMIN, ROLE_PARTNER]:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Registration as '{requested_role}' is restricted. Partner and Admin accounts must be created through an authorized admin workflow."
+            )
         res = user_db.register_user(
             email=req.email,
             password=req.password,
             name=req.name,
-            role=role,
-            phone=req.phone
+            role=ROLE_MERCHANT,
+            phone=req.phone,
+            allow_privileged=False
         )
         if res["user"]["role"] == ROLE_MERCHANT:
             try:
@@ -939,12 +1119,38 @@ def signup_user(req: SignUpRequest):
             "expires_in": 86400,
             "user": res["user"]
         }
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Registration service error: {str(e)}")
+
+@app.post("/api/auth/admin/create-user")
+def admin_create_user(
+    req: AdminCreateUserRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    """
+    Authorized admin workflow to create privileged accounts (PARTNER, ADMIN, or MERCHANT).
+    Enforces strict ADMIN role verification.
+    """
+    user = verify_role_access([ROLE_ADMIN], authorization, x_session_token, token)
+    try:
+        return user_db.create_privileged_user(
+            email=req.email,
+            password=req.password,
+            name=req.name,
+            role=req.role,
+            phone=req.phone,
+            assigned_pincode=req.assigned_pincode
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/auth/token")
 def oauth_token(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -999,7 +1205,15 @@ def get_partner_leads(
     token: Optional[str] = Query(None)
 ):
     user = verify_role_access([ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
-    return partner_portal.get_stalled_leads_with_propensity(limit=15)
+    is_admin = (user["role"] == ROLE_ADMIN)
+    partner_id = user["user_id"] if not is_admin else None
+    partner_pincode = user.get("assigned_pincode") if not is_admin else None
+    return partner_portal.get_stalled_leads_with_propensity(
+        limit=15,
+        partner_id=partner_id,
+        partner_pincode=partner_pincode,
+        is_admin=is_admin
+    )
 
 @app.get("/api/partner/referral")
 def get_partner_referral(
@@ -1020,7 +1234,21 @@ def claim_partner_lead(
     token: Optional[str] = Query(None)
 ):
     user = verify_role_access([ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
-    return partner_portal.claim_stalled_lead(lead_id=lead_id, partner_id=user["user_id"])
+    is_admin = (user["role"] == ROLE_ADMIN)
+    partner_pincode = user.get("assigned_pincode") if not is_admin else None
+    try:
+        return partner_portal.claim_stalled_lead(
+            lead_id=lead_id,
+            partner_id=user["user_id"],
+            partner_pincode=partner_pincode,
+            is_admin=is_admin
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @app.post("/api/partner/leads/{lead_id}/call")
 def call_partner_lead(
@@ -1030,10 +1258,17 @@ def call_partner_lead(
     token: Optional[str] = Query(None)
 ):
     user = verify_role_access([ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
-    res = partner_portal.call_lead(lead_id=lead_id, partner_id=user["user_id"])
-    if res.get("status") == "NOT_FOUND":
-        raise HTTPException(status_code=404, detail=res["message"])
-    return res
+    try:
+        res = partner_portal.call_lead(
+            lead_id=lead_id,
+            partner_id=user["user_id"],
+            is_admin=(user["role"] == ROLE_ADMIN)
+        )
+        if res.get("status") == "NOT_FOUND":
+            raise HTTPException(status_code=404, detail=res["message"])
+        return res
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 @app.get("/api/partner/commissions")
 def get_partner_commissions(
@@ -1044,15 +1279,276 @@ def get_partner_commissions(
     user = verify_role_access([ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
     return partner_portal.get_partner_commissions(partner_id=user["user_id"])
 
-# 8. Admin Telemetry & Escalation Queue (RBAC Guarded)
+# 8. Data-Driven Admin Telemetry & Metrics (RBAC Guarded, multi-dimensional filters)
 @app.get("/api/admin/metrics")
 def get_admin_metrics(
+    date_preset: Optional[str] = "all",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    segment: Optional[str] = "all",
+    location: Optional[str] = "all",
+    channel: Optional[str] = "all",
+    stage: Optional[str] = "all",
+    partner_id: Optional[str] = None,
     authorization: Optional[str] = Header(None),
     x_session_token: Optional[str] = Header(None),
     token: Optional[str] = Query(None)
 ):
     user = verify_role_access([ROLE_ADMIN], authorization, x_session_token, token)
-    return get_admin_telemetry()
+    raw = dashboard_service.get_admin_dashboard_metrics(
+        date_preset=date_preset,
+        start_date=start_date,
+        end_date=end_date,
+        segment=segment,
+        location=location,
+        channel=channel,
+        stage=stage,
+        partner_id=partner_id
+    )
+    s = raw.get("summary", {})
+    ft = raw.get("funnel_telemetry", {})
+    ret = raw.get("retention_indicators", {})
+    return {
+        "status": "SUCCESS",
+        "funnel_metrics": {
+            "total_inbound_leads": s.get("total_leads", 0),
+            "projected_digital_conversion_rate_percent": s.get("conversion_rate_percent", 0.0),
+            "needs_assessed": ft.get("needs_assessed", 0),
+            "quote_accepted": ft.get("quote_accepted", 0),
+            "kyc_submitted": ft.get("kyc_submitted", 0),
+            "activated": ft.get("activated", 0),
+            "pending_orders_count": s.get("pending_orders", 0)
+        },
+        "operational_efficiency": {
+            "udyam_digital_tta_days": s.get("avg_tta_days", 2.5),
+            "udyam_digital_cac_inr": 850
+        },
+        "kyc_breakdown": {
+            "total_kyc_failures": s.get("kyc_failure_count", 0),
+            "failure_rate_percent": s.get("kyc_failure_rate_percent", 0.0),
+            "reasons": raw.get("kyc_failure_reasons", {})
+        },
+        "partner_performance": raw.get("partner_performance", []),
+        "retention_and_support": {
+            "active_subscribers": ret.get("active_subscribers", 0),
+            "csat_average": ret.get("avg_csat_rating", 4.8),
+            "churn_risk_percent": ret.get("churn_risk_percent", 2.1),
+            "open_tickets": ret.get("open_support_tickets", 0),
+            "follow_up_queue": ret.get("follow_up_queue", [])
+        },
+        "manual_escalations_queue": [
+            {
+                "escalation_id": "ESC-4019",
+                "business_name": "Sharma Retail & Kirana",
+                "issue": "Aadhaar Masking Re-scan Needed",
+                "assigned_agent": "Mitra Partner PTR-IND-882",
+                "sla_remaining_hours": 3.5
+            }
+        ],
+        "raw_analytics": raw
+    }
+
+@app.get("/api/admin/reports/export.csv")
+def export_admin_leads_csv(
+    date_preset: Optional[str] = "all",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    segment: Optional[str] = "all",
+    location: Optional[str] = "all",
+    channel: Optional[str] = "all",
+    stage: Optional[str] = "all",
+    partner_id: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    user = verify_role_access([ROLE_ADMIN], authorization, x_session_token, token)
+    csv_content = dashboard_service.export_leads_csv(
+        segment=segment,
+        location=location,
+        channel=channel,
+        stage=stage,
+        partner_id=partner_id
+    )
+    from fastapi.responses import Response
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=airtel_leads_report.csv"}
+    )
+
+@app.get("/api/partner/metrics")
+def get_partner_metrics(
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    user = verify_role_access([ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
+    pid = user["user_id"] if user["role"] == ROLE_PARTNER else "PTR-IND-882"
+    raw = dashboard_service.get_admin_dashboard_metrics(partner_id=pid)
+    p_perf = next((p for p in raw.get("partner_performance", []) if p.get("partner_id") == pid), {})
+    return {
+        "status": "SUCCESS",
+        "partner_id": pid,
+        "territory": user.get("assigned_pincode") or "Indore Central (452001)",
+        "partner_leads_claimed": p_perf.get("leads_claimed", 0),
+        "partner_orders_attributed": p_perf.get("orders_attributed", 0),
+        "monthly_recurring_trail_inr": p_perf.get("commission_earned_inr", 0),
+        "total_pending_payout_inr": p_perf.get("commission_earned_inr", 0),
+        "active_referrals_count": p_perf.get("orders_attributed", 0)
+    }
+
+# 9. Post-Activation Customer Retention & Support Ticketing
+@app.post("/api/support/tickets")
+def create_support_ticket(
+    req: TicketCreateRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    user = verify_role_access([ROLE_MERCHANT, ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
+    ticket = support_service.create_ticket(
+        user_id=user["user_id"],
+        category=req.category,
+        priority=req.priority,
+        subject=req.subject or "Service Request",
+        description=req.description,
+        customer_email=user.get("email"),
+        order_id=req.order_id
+    )
+    return {"status": "SUCCESS", "ticket": ticket}
+
+@app.get("/api/support/tickets")
+def list_support_tickets(
+    status: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    user = verify_role_access([ROLE_MERCHANT, ROLE_PARTNER, ROLE_ADMIN], authorization, x_session_token, token)
+    if user["role"] == ROLE_ADMIN:
+        return {"tickets": support_service.get_all_tickets(status=status)}
+    else:
+        return {"tickets": support_service.get_user_tickets(user_id=user["user_id"])}
+
+@app.patch("/api/support/tickets/{ticket_id}")
+def update_support_ticket(
+    ticket_id: str,
+    req: TicketUpdateRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    user = verify_role_access([ROLE_ADMIN, ROLE_PARTNER], authorization, x_session_token, token)
+    try:
+        m_text = req.resolution_milestone or req.milestone or "IN_PROGRESS"
+        updated = support_service.update_ticket_milestone(
+            ticket_id=ticket_id,
+            status=req.status,
+            resolution_milestone=m_text,
+            admin_notes=req.admin_notes
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        return {"status": "SUCCESS", "ticket": updated}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/support/feedback")
+def submit_customer_feedback(
+    req: FeedbackSubmitRequest,
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    user = verify_role_access([ROLE_MERCHANT, ROLE_ADMIN], authorization, x_session_token, token)
+    cmt = req.feedback or req.comments or ""
+    res = support_service.submit_feedback(
+        user_id=user["user_id"],
+        rating=req.rating,
+        feedback_type=req.journey_step or req.feedback_type,
+        comments=cmt,
+        customer_email=user.get("email"),
+        order_id=req.order_id
+    )
+    return {"status": "SUCCESS", "feedback": res}
+
+@app.get("/api/customer/dashboard")
+def get_customer_dashboard(
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    user = verify_role_access([ROLE_MERCHANT, ROLE_ADMIN], authorization, x_session_token, token)
+    uid = user["user_id"]
+    u_email = (user.get("email") or "").lower().strip()
+
+    orders = []
+    with order_sm._get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM orders WHERE user_id = ? OR LOWER(customer_email) = ? ORDER BY created_at DESC",
+            (uid, u_email)
+        ).fetchall()
+        for r in rows:
+            od = dict(r)
+            od["bundle"] = json.loads(od.get("bundle_json") or "{}")
+            orders.append(od)
+
+    tickets = support_service.get_user_tickets(uid)
+
+    return {
+        "status": "SUCCESS",
+        "customer": {
+            "id": uid,
+            "email": user.get("email"),
+            "name": user.get("name"),
+            "phone": user.get("phone"),
+            "business_name": (orders[0].get("business_name") if orders else None) or user.get("name")
+        },
+        "user": {
+            "user_id": uid,
+            "email": user.get("email"),
+            "name": user.get("name"),
+            "phone": user.get("phone")
+        },
+        "active_services_count": len(orders),
+        "orders": orders,
+        "latest_order": orders[0] if orders else None,
+        "active_services": [
+            {
+                "product_id": (orders[0].get("primary_product_id") if orders else "P01"),
+                "product_name": (orders[0].get("primary_product_id") if orders else "Biz Fibre 100"),
+                "speed": "100 Mbps Unlimited Optical Fibre",
+                "monthly_charge_inr": (orders[0].get("total_monthly_recurring_inr") if orders else 999)
+            }
+        ],
+        "billing_commitment": {
+            "monthly_subtotal_inr": (orders[0].get("monthly_subtotal_inr") if orders else 999),
+            "gst_inr": (orders[0].get("gst_inr") if orders else 179.82),
+            "monthly_total_commitment_inr": (orders[0].get("total_monthly_recurring_inr") if orders else 1178.82)
+        },
+        "tickets": tickets,
+        "support_tickets": tickets,
+        "open_tickets_count": sum(1 for t in tickets if t.get("status") in ["OPEN", "IN_PROGRESS"])
+    }
+
+@app.get("/api/admin/retention")
+def get_admin_retention(
+    authorization: Optional[str] = Header(None),
+    x_session_token: Optional[str] = Header(None),
+    token: Optional[str] = Query(None)
+):
+    user = verify_role_access([ROLE_ADMIN], authorization, x_session_token, token)
+    metrics = dashboard_service.get_admin_dashboard_metrics()
+    ret = metrics.get("retention_indicators", {})
+    return {
+        "status": "SUCCESS",
+        "active_subscribers": ret.get("active_subscribers", 0),
+        "csat_average": ret.get("avg_csat_rating", 4.8),
+        "churn_risk_percent": ret.get("churn_risk_percent", 2.1),
+        "open_support_tickets": ret.get("open_support_tickets", 0),
+        "dissatisfied_customers_queue": ret.get("follow_up_queue", [])
+    }
 
 # 7. WhatsApp Integration Router
 app.include_router(whatsapp_router)

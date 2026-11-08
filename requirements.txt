@@ -9,4 +9,7 @@ requests>=2.31.0
 websockets>=12.0
 winocr>=0.0.15; sys_platform == 'win32'
 python-multipart>=0.0.9
+pytest>=8.0.0
+pytesseract>=0.3.10
+
 

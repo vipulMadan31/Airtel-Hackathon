@@ -131,7 +131,7 @@ class AdvisorTools:
             for hc in site_headcounts:
                 if is_airfiber_needed:
                     bundle["P04"] = bundle.get("P04", 0) + 1
-                elif hc >= 50 and city_tier == 1:
+                elif hc >= 50 and city_tier == 1 and has_gstin is True:
                     bundle["P03"] = bundle.get("P03", 0) + 1
                 elif hc >= 5:
                     bundle["P02"] = bundle.get("P02", 0) + 1
@@ -140,7 +140,7 @@ class AdvisorTools:
         elif is_airfiber_needed:
             bundle["P04"] = num_sites
         elif any(k in biz for k in ["tech", "startup", "software", "agency", "it"]):
-            if city_tier == 1 and emp_count >= 20:
+            if city_tier == 1 and emp_count >= 20 and has_gstin is True:
                 bundle["P03"] = num_sites
             else:
                 bundle["P02"] = num_sites
@@ -192,8 +192,8 @@ class AdvisorTools:
             )
             if eligible:
                 validated_bundle[pid] = qty
-            elif pid == "P03" and city_tier > 1:
-                # Downgrade 1G to 300M in non-Tier-1 cities
+            elif pid == "P03" and (city_tier > 1 or has_gstin is not True):
+                # Downgrade 1G to 300M in non-Tier-1 cities or when GSTIN is not confirmed
                 validated_bundle["P02"] = bundle.get("P02", 0) + qty
 
         # 4. Generate Explainability Tags

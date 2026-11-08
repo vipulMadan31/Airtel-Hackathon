@@ -38,12 +38,29 @@
         </div>
       </div>
 
+      <!-- Navigation Tabs across Portals -->
+      <nav class="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+        <button id="navTabCustomer" type="button" class="px-3 py-1.5 rounded-lg bg-white shadow-xs text-slate-900 transition cursor-pointer">
+          🛒 <span id="t-nav-customer">Customer Self-Serve</span>
+        </button>
+        <button id="navTabDashboard" type="button" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
+          📦 <span id="t-nav-services">My Services & Support</span>
+        </button>
+        <button id="navTabPartner" type="button" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
+          🤝 <span id="t-nav-partner">Airtel Mitra Partner</span>
+        </button>
+        <button id="navTabAdmin" type="button" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
+          🛡️ <span id="t-nav-admin">Enterprise Ops Admin</span>
+        </button>
+      </nav>
+
       <!-- Controls: Language, WhatsApp, Active Role Badge -->
       <div class="flex items-center space-x-2 sm:space-x-3">
-        <!-- Language Switcher -->
+        <!-- Language Switcher (Extensible: EN, HI, MR) -->
         <div class="flex rounded-full bg-slate-100 p-0.5 border border-slate-200 text-xs font-bold">
-          <button id="langEn" class="px-2.5 py-1 rounded-full bg-white shadow-sm text-slate-900">EN</button>
-          <button id="langHi" class="px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900">हिंदी</button>
+          <button id="langEn" type="button" class="px-2.5 py-1 rounded-full bg-white shadow-sm text-slate-900 cursor-pointer">EN</button>
+          <button id="langHi" type="button" class="px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900 cursor-pointer">हिंदी</button>
+          <button id="langMr" type="button" class="px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900 cursor-pointer">मराठी</button>
         </div>
 
         <!-- WhatsApp Bot Link -->
@@ -91,6 +108,56 @@
     <!-- VIEW 1: CUSTOMER SELF-SERVE MODE (AI Advisor, Pricing, KYC, Tracker) -->
     <div id="customerView" class="max-w-6xl mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
 
+      <!-- DEDICATED MICRO-BUSINESS & NON-GST ONBOARDING HERO BANNER -->
+      <div class="lg:col-span-12 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-4 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center text-2xl shadow-inner shrink-0">
+            🏪
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-amber-100" id="t-micro-mode-btn">Kirana & Micro Business Mode</span>
+              <span class="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Zero GST Required</span>
+            </div>
+            <h2 class="text-base font-extrabold text-white">Kirana, Salon & Small Shop Digital Onboarding</h2>
+            <p class="text-xs text-amber-100" id="t-micro-journey-desc">Simplified setup for grocery shops, parlours, pharmacies & sole proprietors.</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="startMicroTourBtn" type="button" class="bg-white text-slate-900 hover:bg-amber-50 font-bold px-3.5 py-1.5 rounded-xl text-xs transition shadow-sm cursor-pointer whitespace-nowrap">
+            💡 How it Works (Guide)
+          </button>
+          <button id="activateMicroModeBtn" type="button" class="bg-slate-900 text-white hover:bg-black font-extrabold px-4 py-1.5 rounded-xl text-xs transition shadow-sm cursor-pointer whitespace-nowrap">
+            ⚡ Quick Setup
+          </button>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE MICRO-BUSINESS GUIDANCE WALKTHROUGH -->
+      <div id="microGuidanceCard" class="hidden lg:col-span-12 bg-white border-2 border-amber-300 rounded-2xl p-4 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-black uppercase tracking-wider text-amber-800 flex items-center space-x-1.5">
+            <span>💡</span>
+            <span id="t-micro-tour-title">Quick 3-Step Setup for Small Shops</span>
+          </span>
+          <button id="closeMicroGuideBtn" type="button" class="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer">&times; Close</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1">
+            <span class="font-extrabold text-amber-950 block">1. 🤖 AI Chat Assistant (Left)</span>
+            <p class="text-[11px] text-slate-600">Type or tap your shop details below. Ask any question in Hindi, Marathi, or English!</p>
+          </div>
+          <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
+            <span class="font-extrabold text-emerald-950 block">2. 📦 Simple Wi-Fi Plan (Right)</span>
+            <p class="text-[11px] text-slate-600">Pre-configured Biz Fibre 100 plan (₹999/mo). Guaranteed zero GST registration required.</p>
+          </div>
+          <div class="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1">
+            <span class="font-extrabold text-blue-950 block">3. 📄 Upload Documents (Below)</span>
+            <p class="text-[11px] text-slate-600">Scroll to Smart KYC card. Just snap a photo of your Electricity Bill or Udyam certificate.</p>
+          </div>
+        </div>
+      </div>
+
     <!-- LEFT COLUMN: CONVERSATIONAL ADVISOR (5 cols on lg) -->
     <section class="lg:col-span-5 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[640px]">
       <div class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
@@ -108,11 +175,12 @@
 
       <!-- Quick Reply Chips -->
       <div class="p-2.5 bg-white border-t border-slate-100 flex flex-wrap gap-1.5 text-xs">
-        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="I run a Kirana / Retail store with 2 staff in Indore." data-msg-hi="मेरी इंदौर में 2 कर्मचारियों के साथ किराना दुकान है।" id="t-chip-retail">Kirana / Retail</button>
-        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="I run a dental clinic in Pune with 6 staff. Need wifi and email." data-msg-hi="मेरा पुणे में 6 स्टाफ का डेंटल क्लिनिक है। वाईफाई और सुरक्षित ईमेल चाहिए।" id="t-chip-clinic">Dental Clinic</button>
-        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="CA Office in Jaipur, 8 employees, need high uptime & secure storage." data-msg-hi="जयपुर में सीए ऑफिस है, 8 लोग काम करते हैं, हाई अपटाइम और सुरक्षित स्टोरेज चाहिए।" id="t-chip-ca">CA / Legal Office</button>
-        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="Restaurant chain in Mumbai, 3 locations, need CCTV and central billing." data-msg-hi="मुंबई में 3 शाखाओं का रेस्टोरेंट है, सीसीटीवी और सेंट्रलाइज्ड बिलिंग चाहिए।" id="t-chip-restaurant">Restaurant (Multi-site)</button>
-        <button class="chip-btn bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-full font-bold transition" data-msg-en="Yeh thoda mehenga hai, sasta plan dikhao." data-msg-hi="यह थोड़ा महंगा है, कोई सस्ता प्लान दिखाओ।" id="t-chip-sasta">Sasta Plan / Cheaper</button>
+        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="I run a Kirana / Retail store with 2 staff in Indore." data-msg-hi="मेरी इंदौर में 2 कर्मचारियों के साथ किराना दुकान है।" data-msg-mr="माझे इंदूरमध्ये 2 कर्मचाऱ्यांसह किराणा दुकान आहे." id="t-chip-retail">Kirana / Retail</button>
+        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="I run a salon / beauty parlour with 3 staff in Pune." data-msg-hi="मेरा पुणे में 3 स्टाफ का ब्यूटी पार्लर / सैलून है।" data-msg-mr="माझे पुण्यात 3 कर्मचाऱ्यांचे सलून / ब्युटी पार्लर आहे." id="t-chip-salon">Salon / Parlour</button>
+        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="Chemist / Medical shop in Mumbai with 2 counters, need reliable Wi-Fi." data-msg-hi="मुंबई में 2 काउंटरों की मेडिकल दुकान / केमिस्ट है, वाई-फाई चाहिए।" data-msg-mr="मुंबईत 2 काउन्टर्सचे मेडिकल स्टोअर / फार्मसी आहे, वाय-फाय हवे आहे." id="t-chip-pharmacy">Pharmacy / Chemist</button>
+        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="I run a dental clinic in Pune with 6 staff. Need wifi and email." data-msg-hi="मेरा पुणे में 6 स्टाफ का डेंटल क्लिनिक है। वाईफाई और सुरक्षित ईमेल चाहिए।" data-msg-mr="माझे पुण्यात 6 कर्मचाऱ्यांचे डेंटल क्लिनिक आहे. वाय-फाय हवे आहे." id="t-chip-clinic">Dental Clinic</button>
+        <button class="chip-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium transition" data-msg-en="CA Office in Jaipur, 8 employees, need high uptime & secure storage." data-msg-hi="जयपुर में सीए ऑफिस है, 8 लोग काम करते हैं, हाई अपटाइम और सुरक्षित स्टोरेज चाहिए।" data-msg-mr="माझे जयपूरमध्ये 8 कर्मचाऱ्यांचे सीए कार्यालय आहे." id="t-chip-ca">CA / Legal Office</button>
+        <button class="chip-btn bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-full font-bold transition" data-msg-en="Yeh thoda mehenga hai, sasta plan dikhao." data-msg-hi="यह थोड़ा महंगा है, कोई सस्ता प्लान दिखाओ।" data-msg-mr="हे थोडे महाग आहे, कृपया स्वस्त प्लॅन दाखवा." id="t-chip-sasta">Sasta Plan / Cheaper</button>
       </div>
 
       <!-- Chat Input -->
@@ -433,13 +501,16 @@
           <!-- Populated dynamically -->
         </div>
 
-        <!-- Assigned Engineer Card -->
+        <!-- Assigned Engineer Card (Simulated Demo) -->
         <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
           <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-700">RS</div>
+            <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-xs">DEMO</div>
             <div>
-              <span class="font-bold text-slate-900 block" id="engName">Ramesh Sharma (Field Lead)</span>
-              <span class="text-slate-500">Installation Date: <strong id="installDateText" class="text-slate-800"></strong></span>
+              <div class="flex items-center space-x-2">
+                <span class="font-bold text-slate-900 block" id="engName">Airtel Field Operations Team</span>
+                <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Simulated Demo</span>
+              </div>
+              <span class="text-slate-500">Estimated Slot: <strong id="installDateText" class="text-slate-800"></strong> <span class="text-slate-400 text-[10px]">(Pending physical survey)</span></span>
             </div>
           </div>
           <button id="rescheduleBtn" class="bg-white hover:bg-slate-100 border border-slate-300 px-3 py-1.5 rounded-lg font-bold text-slate-700 transition">
@@ -495,6 +566,191 @@
     </section>
     </div>
     <!-- END OF VIEW 1: CUSTOMER SELF-SERVE MODE -->
+
+    <!-- VIEW 4: DEDICATED CUSTOMER POST-ACTIVATION DASHBOARD & SUPPORT -->
+    <div id="customerDashboardView" class="hidden max-w-6xl mx-auto px-4 py-6 w-full space-y-6">
+      <!-- Customer Top Header Card -->
+      <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-5 text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center text-2xl shadow-inner">
+            📦
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-indigo-300">Airtel Business Customer Portal</span>
+              <span id="custDashStatusBadge" class="bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 text-[10px] font-bold px-2 py-0.5 rounded-full">Active Customer</span>
+            </div>
+            <h2 id="custDashBusinessName" class="text-xl font-extrabold text-white">My Airtel Business Services</h2>
+            <p id="custDashContactSub" class="text-indigo-200 text-xs">Customer Account &bull; Active Commercial Subscriptions &bull; 24x7 Priority Support Desk</p>
+          </div>
+        </div>
+        <div class="hidden sm:flex items-center space-x-2 bg-white/10 px-3 py-2 rounded-xl border border-white/20 shrink-0">
+          <img src="/airtel_logo.png" alt="Airtel Logo" class="h-9 w-9 rounded-lg object-contain shadow">
+        </div>
+      </div>
+
+      <!-- Active Services & Commercial Commitment Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <!-- Active Base Connection -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-2">
+          <span class="text-slate-400 font-bold uppercase tracking-wider text-[10px] block">Active Primary Service</span>
+          <div class="flex items-center space-x-2">
+            <span class="text-2xl">🌐</span>
+            <div>
+              <h3 id="custDashPlanName" class="text-base font-extrabold text-slate-900">Biz Fibre 100</h3>
+              <p class="text-[11px] text-slate-500" id="custDashPlanSpeed">100 Mbps Unlimited High-Speed Optical Fibre</p>
+            </div>
+          </div>
+          <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-[11px]">
+            <span class="text-slate-500">Service Line Status:</span>
+            <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">ACTIVE &bull; 99.9% Uptime SLA</span>
+          </div>
+        </div>
+
+        <!-- Subscribed Add-ons & Bundles -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-2">
+          <span class="text-slate-400 font-bold uppercase tracking-wider text-[10px] block">Active Add-Ons & Hardware</span>
+          <div id="custDashAddonsList" class="space-y-1.5 pt-1">
+            <div class="flex items-center justify-between text-slate-700 bg-slate-50 p-2 rounded-lg">
+              <span class="font-medium">Static IP Address (/32)</span>
+              <span class="font-bold text-slate-900">₹300/mo</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-700 bg-slate-50 p-2 rounded-lg">
+              <span class="font-medium">Secure Wi-Fi 6 Router</span>
+              <span class="font-bold text-emerald-700">Included</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly Commitment & Billing Hub -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-2 flex flex-col justify-between">
+          <div>
+            <span class="text-slate-400 font-bold uppercase tracking-wider text-[10px] block">Billing Commitment</span>
+            <div class="flex items-baseline space-x-1.5 mt-1">
+              <span id="custDashMonthlyTotal" class="text-2xl font-black text-slate-900">₹1,178.82</span>
+              <span class="text-xs text-slate-500 font-medium">/ month (incl. GST)</span>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">Next auto-debit cycle on 1st of next month.</p>
+          </div>
+          <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-[11px] text-slate-500">Invoice: <strong class="font-mono text-slate-800">AIRTEL-INV-LATEST</strong></span>
+            <button type="button" onclick="alert('Digital Tax Invoice downloaded.')" class="text-xs font-bold text-airtel-red hover:underline">Download Tax Invoice</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Support & Issue Reporting Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left: Issue Ticket Creator -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
+            <span class="text-lg">🛠️</span>
+            <div>
+              <h3 class="font-extrabold text-slate-900 text-sm">Report a Service Issue</h3>
+              <p class="text-slate-500 text-xs">Direct dispatch to Airtel Technical Operations</p>
+            </div>
+          </div>
+
+          <form id="customerTicketForm" class="space-y-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Issue Category</label>
+              <select id="ticketCategoryInput" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 font-medium focus:ring-2 focus:ring-airtel-red outline-none">
+                <option value="CONNECTIVITY">Connectivity / Speed Degradation</option>
+                <option value="BILLING">Billing, Charges or Invoice Dispute</option>
+                <option value="INSTALLATION">Physical Installation or Line Relocation</option>
+                <option value="EQUIPMENT">Router / ONT Equipment Malfunction</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Priority Level</label>
+              <select id="ticketPriorityInput" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800 font-medium focus:ring-2 focus:ring-airtel-red outline-none">
+                <option value="MEDIUM">Normal Business Operation (24h SLA)</option>
+                <option value="HIGH">Business Disrupted (4h SLA)</option>
+                <option value="CRITICAL">Store POS / Billing Halt (2h SLA)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Detailed Description</label>
+              <textarea id="ticketDescriptionInput" rows="3" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-800 outline-none focus:ring-2 focus:ring-airtel-red placeholder-slate-400" placeholder="Please describe what you are observing (e.g. Red light on router, speed below 20Mbps, error on POS)..."></textarea>
+            </div>
+
+            <button id="submitTicketBtn" type="button" class="w-full bg-airtel-red hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
+              <span>🚀</span>
+              <span>Submit Priority Ticket</span>
+            </button>
+            <div id="ticketSubmitSuccessMsg" class="hidden text-xs text-emerald-700 font-bold text-center bg-emerald-50 border border-emerald-200 p-2 rounded-xl">
+              Ticket successfully created! Airtel support engineer assigned.
+            </div>
+          </form>
+        </div>
+
+        <!-- Right: Real-time Tickets List & CSAT Feedback -->
+        <div class="lg:col-span-7 space-y-6">
+          <!-- Tickets Queue -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 class="font-extrabold text-slate-900 text-sm">Your Open & Past Tickets</h3>
+              <span id="custOpenTicketsBadge" class="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">0 Active</span>
+            </div>
+
+            <div class="border border-slate-200 rounded-xl overflow-hidden">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                  <tr>
+                    <th class="p-2.5">Ticket ID</th>
+                    <th class="p-2.5">Category</th>
+                    <th class="p-2.5">Description</th>
+                    <th class="p-2.5">Status</th>
+                    <th class="p-2.5">Milestone</th>
+                  </tr>
+                </thead>
+                <tbody id="custTicketsTableBody" class="divide-y divide-slate-100">
+                  <tr>
+                    <td colspan="5" class="p-4 text-center text-slate-400">No support tickets reported. Your connection is running smoothly.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Post-Activation Customer Satisfaction (CSAT / NPS) -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-extrabold text-slate-900 text-sm">Post-Activation Feedback & CSAT Rating</h3>
+                <p class="text-slate-500 text-xs">How satisfied are you with your Airtel Business digital onboarding and internet speed?</p>
+              </div>
+              <span class="text-[11px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">Direct to Leadership</span>
+            </div>
+
+            <div class="flex items-center space-x-2 pt-1" id="csatRatingContainer">
+              <button type="button" data-rating="1" class="csatStarBtn px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-amber-100 font-bold text-xs transition">⭐ 1 (Poor)</button>
+              <button type="button" data-rating="2" class="csatStarBtn px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-amber-100 font-bold text-xs transition">⭐ 2 (Fair)</button>
+              <button type="button" data-rating="3" class="csatStarBtn px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-amber-100 font-bold text-xs transition">⭐ 3 (Average)</button>
+              <button type="button" data-rating="4" class="csatStarBtn px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-amber-100 font-bold text-xs transition">⭐ 4 (Good)</button>
+              <button type="button" data-rating="5" class="csatStarBtn px-3 py-1.5 rounded-lg border border-slate-200 bg-amber-400 text-slate-900 font-bold text-xs transition">⭐ 5 (Excellent)</button>
+            </div>
+
+            <div>
+              <input type="text" id="csatCommentsInput" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-airtel-red placeholder-slate-400" placeholder="Optional comments, engineer feedback or suggestions...">
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-[11px] text-slate-400">Ratings &le; 3 automatically trigger an executive retention callback within 4 hours.</span>
+              <button id="submitCsatFeedbackBtn" type="button" class="bg-slate-900 hover:bg-black text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow-xs">
+                Submit CSAT Feedback
+              </button>
+            </div>
+            <div id="csatSuccessBanner" class="hidden text-xs text-emerald-800 font-bold text-center bg-emerald-50 border border-emerald-200 p-2 rounded-xl">
+              Thank you for your feedback! Your rating has been logged.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- END OF VIEW 4: CUSTOMER DASHBOARD & RETENTION SUPPORT -->
 
     <!-- VIEW 2: DEDICATED AIRTEL MITRA PARTNER PORTAL -->
     <div id="mitraView" class="hidden max-w-6xl mx-auto px-4 py-6 w-full space-y-6">
@@ -636,27 +892,94 @@
         </div>
       </div>
 
-      <!-- KPI Telemetry Grid -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-        <div class="p-4 bg-purple-50 border border-purple-200 rounded-2xl">
-          <span class="text-purple-700 block font-semibold text-[11px]">Total Inbound Leads</span>
-          <span class="text-2xl font-black text-purple-950" id="opsViewTotalLeads">-</span>
-          <span class="text-[10px] text-purple-600 block mt-0.5">Live Database Leads</span>
+      <!-- Ops Filter Bar & CSV Export -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+        <div class="flex flex-wrap items-center gap-2.5">
+          <div class="flex items-center space-x-1.5">
+            <span class="text-slate-500 font-bold">Date:</span>
+            <select id="opsFilterDate" class="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 outline-none">
+              <option value="all">All Time</option>
+              <option value="today">Today</option>
+              <option value="7d">Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="90d">Last 90 Days</option>
+            </select>
+          </div>
+
+          <div class="flex items-center space-x-1.5">
+            <span class="text-slate-500 font-bold">Segment:</span>
+            <select id="opsFilterSegment" class="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 outline-none">
+              <option value="all">All Segments</option>
+              <option value="kirana">Kirana / Micro Retail</option>
+              <option value="office">Professional Offices</option>
+              <option value="multisite">Small Multi-Site</option>
+              <option value="mfg">Small Manufacturers</option>
+            </select>
+          </div>
+
+          <div class="flex items-center space-x-1.5">
+            <span class="text-slate-500 font-bold">Circle:</span>
+            <select id="opsFilterLocation" class="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 outline-none">
+              <option value="all">All Circles</option>
+              <option value="indore">Indore Hub</option>
+              <option value="pune">Pune Circle</option>
+              <option value="nagpur">Nagpur Circle</option>
+              <option value="delhi">Delhi NCR</option>
+            </select>
+          </div>
+
+          <div class="flex items-center space-x-1.5">
+            <span class="text-slate-500 font-bold">Funnel Stage:</span>
+            <select id="opsFilterStage" class="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 outline-none">
+              <option value="all">All Funnel Stages</option>
+              <option value="NEEDS_ASSESSED">Needs Assessed</option>
+              <option value="QUOTE_ACCEPTED">Quote Accepted</option>
+              <option value="FEASIBILITY_CONFIRMED">Feasibility Confirmed</option>
+              <option value="KYC_SUBMITTED">KYC Submitted</option>
+              <option value="ACTIVE">Activated</option>
+            </select>
+          </div>
         </div>
-        <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
-          <span class="text-emerald-700 block font-semibold text-[11px]">Digital Conversion Rate</span>
-          <span class="text-2xl font-black text-emerald-950" id="opsViewConvRate">-</span>
+
+        <div class="flex items-center space-x-2 shrink-0">
+          <button id="opsExportCsvBtn" type="button" class="bg-purple-900 hover:bg-purple-950 text-white font-bold px-3.5 py-2 rounded-xl transition shadow-xs flex items-center space-x-1.5">
+            <span>📊</span>
+            <span>Export Leads (CSV)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Telemetry Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-6 gap-3 text-xs">
+        <div class="p-3.5 bg-purple-50 border border-purple-200 rounded-2xl">
+          <span class="text-purple-700 block font-semibold text-[11px]">Inbound Leads</span>
+          <span class="text-xl font-black text-purple-950" id="opsViewTotalLeads">-</span>
+          <span class="text-[10px] text-purple-600 block mt-0.5">Live DB Leads</span>
+        </div>
+        <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl">
+          <span class="text-emerald-700 block font-semibold text-[11px]">Conversion Rate</span>
+          <span class="text-xl font-black text-emerald-950" id="opsViewConvRate">-</span>
           <span class="text-[10px] text-emerald-600 block mt-0.5">Fulfilled Orders</span>
         </div>
-        <div class="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
-          <span class="text-blue-700 block font-semibold text-[11px]">Avg Time to Activation (TTA)</span>
-          <span class="text-2xl font-black text-blue-950" id="opsViewTta">-</span>
-          <span class="text-[10px] text-blue-600 block mt-0.5">Self-Serve Target &lt;48h</span>
+        <div class="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl">
+          <span class="text-blue-700 block font-semibold text-[11px]">Avg TTA</span>
+          <span class="text-xl font-black text-blue-950" id="opsViewTta">-</span>
+          <span class="text-[10px] text-blue-600 block mt-0.5">&lt;48h Target</span>
         </div>
-        <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-          <span class="text-amber-700 block font-semibold text-[11px]">Blended CAC</span>
-          <span class="text-2xl font-black text-amber-950" id="opsViewCac">-</span>
-          <span class="text-[10px] text-amber-600 block mt-0.5">Blended Channel Cost</span>
+        <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl">
+          <span class="text-amber-700 block font-semibold text-[11px]">Pending Orders</span>
+          <span class="text-xl font-black text-amber-950" id="opsViewPendingOrders">-</span>
+          <span class="text-[10px] text-amber-600 block mt-0.5">In Progress</span>
+        </div>
+        <div class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl">
+          <span class="text-rose-700 block font-semibold text-[11px]">KYC Failures</span>
+          <span class="text-xl font-black text-rose-950" id="opsViewKycFailures">-</span>
+          <span class="text-[10px] text-rose-600 block mt-0.5" id="opsViewKycFailureRate">0.0% failure rate</span>
+        </div>
+        <div class="p-3.5 bg-indigo-50 border border-indigo-200 rounded-2xl">
+          <span class="text-indigo-700 block font-semibold text-[11px]">CSAT / Churn Risk</span>
+          <span class="text-xl font-black text-indigo-950" id="opsViewRetentionMetrics">-</span>
+          <span class="text-[10px] text-indigo-600 block mt-0.5" id="opsViewRetentionSub">Retention Metric</span>
         </div>
       </div>
 
@@ -761,6 +1084,62 @@
             </thead>
             <tbody id="opsViewEscalationTableBody" class="divide-y divide-slate-100">
               <!-- Dynamically populated from /api/admin/metrics -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Partner Distribution & Performance Telemetry -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-sm">Airtel Mitra Partner Distribution & Isolation Performance</h3>
+            <p class="text-slate-500 text-xs">Tracking leads claimed, conversions, and commercial payouts by partner.</p>
+          </div>
+          <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">Partner Isolation Enforced</span>
+        </div>
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="p-3">Partner ID</th>
+                <th class="p-3">Territory / Hub</th>
+                <th class="p-3">Leads Claimed</th>
+                <th class="p-3">Orders Attributed</th>
+                <th class="p-3">Total Commission Earned</th>
+                <th class="p-3">Partner Status</th>
+              </tr>
+            </thead>
+            <tbody id="opsPartnerPerformanceTableBody" class="divide-y divide-slate-100">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Retention Desk: Dissatisfied Customer Follow-up Queue (CSAT <= 3) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-sm">Post-Activation Retention Desk: Dissatisfied Customers (CSAT &le; 3)</h3>
+            <p class="text-slate-500 text-xs">Proactive 4-hour SLA retention outreach queue to prevent churn.</p>
+          </div>
+          <span id="opsDissatisfiedBadge" class="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full">0 Requiring Outreach</span>
+        </div>
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="p-3">Customer ID / Contact</th>
+                <th class="p-3">Business Name</th>
+                <th class="p-3">CSAT Score</th>
+                <th class="p-3">Customer Feedback</th>
+                <th class="p-3">Follow-up Status</th>
+                <th class="p-3">Retention Action</th>
+              </tr>
+            </thead>
+            <tbody id="opsDissatisfiedTableBody" class="divide-y divide-slate-100">
+              <!-- Dynamically populated -->
             </tbody>
           </table>
         </div>

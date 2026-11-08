@@ -26,6 +26,7 @@ class ScriptedAdvisor:
         entities: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         is_hindi = (language == "hi")
+        is_marathi = (language == "mr")
         biz_name = profile.get("business_type") or "business"
         city = profile.get("city")
         pincode = profile.get("pincode")
@@ -38,7 +39,9 @@ class ScriptedAdvisor:
 
         # 1. Greetings
         if detected_intent == "greeting":
-            if is_hindi:
+            if is_marathi:
+                msg = "नमस्कार! एअरटेल बिझनेस एआय सल्लागारामध्ये आपले स्वागत आहे. आपल्या व्यवसायाबद्दल (दुकान/क्लिनिक/कार्यालय, शहर आणि कर्मचारी/डिव्हाइस संख्या) सांगा, आणि मी आपल्यासाठी सर्वोत्तम डिजिटल प्लॅन तयार करेन."
+            elif is_hindi:
                 msg = "नमस्ते! एयरटेल बिजनेस एआई एडवाइजर में आपका स्वागत है। अपने व्यवसाय (दुकान/क्लीनिक/ऑफिस, शहर, और कर्मचारियों की संख्या) के बारे में बताएं, और मैं आपके लिए सबसे उपयुक्त डिजिटल प्लान तैयार करूंगा।"
             else:
                 msg = "Namaste! Welcome to Airtel Business Advisor. Tell me about your business (type, location, employees/devices) and I will craft the ideal digital bundle for you."
@@ -53,15 +56,23 @@ class ScriptedAdvisor:
 
         # 2. Informational Catalog Overview / Inquiries
         if detected_intent == "inquiry":
-            if is_hindi:
+            if is_marathi:
+                msg = (
+                    "Airtel Business मध्ये आपल्या व्यवसायासाठी मुख्य प्लॅन्स उपलब्ध आहेत:\n\n"
+                    "1. **Biz 5G AirFiber 100 (₹899/महिना)**: विना-केबल प्लग-अँड-प्ले 5G वायरलेस वाय-फाय (त्वरित सुरू, केबल ओढण्याची गरज नाही).\n"
+                    "2. **Biz Fibre 100 (₹999/महिना)**: 100 Mbps सिमेट्रिक ऑप्टिकल फायबर, किरकोळ दुकाने आणि UPI साउंडबॉक्ससाठी सर्वोत्तम.\n"
+                    "3. **Biz Fibre 300 (₹1,599/महिना)**: क्लिनिक्स आणि मध्यम कार्यालयांसाठी हाय-स्पीड फायबर.\n"
+                    "4. **Biz Fibre 1G (₹3,999/महिना)**: आयटी फर्म्स आणि कॉर्पोरेट्ससाठी 1 Gbps अल्ट्रा-फास्ट ब्रॉडबँड.\n\n"
+                    "आपल्या व्यवसायाचा प्रकार, शहर आणि कर्मचारी संख्या सांगा, मी थेट योग्य प्लॅन शिफारस करेन."
+                )
+            elif is_hindi:
                 msg = (
                     "Airtel Business में आपके व्यवसाय के लिए मुख्य प्लान्स उपलब्ध हैं:\n\n"
                     "1. **Biz 5G AirFiber 100 (₹899/माह)**: बिना तार वाला प्लग-एंड-प्ले 5G वायरलेस वाई-फाई (तुरंत चालू, बिना केबल)।\n"
                     "2. **Biz Fibre 100 (₹999/माह)**: 100 Mbps सिमेट्रिक ऑप्टिकल फाइबर, रिटेल दुकानों और UPI साउंडबॉक्स के लिए आदर्श।\n"
-                    "3. **Biz Fibre 300 (₹1,499/माह)**: 300 Mbps हाई-स्पीड फाइबर, क्लीनिक, सीए ऑफिस, और 5-20 कर्मचारियों के लिए।\n"
-                    "4. **Biz Fibre 1G (₹3,999/माह)**: 1 Gbps गीगाबिट फाइबर, टेक स्टार्टअप्स और भारी डाटा टीमों के लिए (टियर-1 शहर)।\n"
-                    "5. **इंटरनेट लीज्ड लाइन (ILL 20M @ ₹8,000/माह)**: 99.9% अपटाइम SLA के साथ 1:1 डेडिकेटेड लाइन।\n\n"
-                    "ऐड-ऑन्स: क्लाउड ईमेल (₹125/यूजर), क्लाउड बैकअप 1TB (₹499), UPI साउंडबॉक्स (₹599), स्टेटिक आईपी (₹200)।"
+                    "3. **Biz Fibre 300 (₹1,599/माह)**: क्लीनिक्स और मध्यम दफ्तरों के लिए हाई-स्पीड फाइबर।\n"
+                    "4. **Biz Fibre 1G (₹3,999/माह)**: टेक स्टार्टअप्स और कॉर्पोरेट्स के लिए 1 Gbps अल्ट्रा-फास्ट ब्रॉडबैंड।\n\n"
+                    "कृपया अपने व्यवसाय का प्रकार, शहर और कर्मचारियों की संख्या बताएं, ताकि मैं आपको सटीक कोटेशन दे सकूं।"
                 )
             else:
                 msg = (
@@ -96,7 +107,14 @@ class ScriptedAdvisor:
 
         # 4. Rural Feasibility Clarification
         if rural and taar_present is None:
-            if is_hindi:
+            if is_marathi:
+                msg = (
+                    "ग्रामीण/खेडूत भागातील आपल्या दुकानासाठी Airtel Business मध्ये दोन पर्याय उपलब्ध आहेत:\n"
+                    "1) **Biz 5G AirFiber 100 (₹899/महिना)**: विना-केबल प्लग-अँड-प्ले वायरलेस वाय-फाय (केबल न ओढता त्वरित सुरू).\n"
+                    "2) **Biz Fibre 100 (₹999/महिना)**: जर आपल्या बाजारात/दुकानापर्यंत एअरटेलची ऑप्टिकल फायबर केबल पोहोचलेली असेल.\n\n"
+                    "आपल्या दुकानापर्यंत एअरटेल फायबरची केबल पोहोचली आहे का, की आपल्याला वायरलेस 5G AirFiber हवे आहे?"
+                )
+            elif is_hindi:
                 msg = (
                     "गांव/देहात क्षेत्र में आपकी दुकान के लिए Airtel Business में दो विकल्प उपलब्ध हैं:\n"
                     "1) **Biz 5G AirFiber 100 (₹899/माह)**: बिना तार वाला प्लग-एंड-प्ले वायरलेस वाई-फाई (तुरंत चालू, बिना तार खींचे)।\n"
@@ -133,7 +151,15 @@ class ScriptedAdvisor:
             gst = q.get("gst_18_inr", 0)
             total = q.get("total_monthly_inr", 0)
 
-            if is_hindi:
+            if is_marathi:
+                msg = (
+                    f"समजले! आम्ही आपल्या बजेटनुसार प्लॅन कमी (डाउन-सेल) केला आहे:\n\n"
+                    f"- {downsell_res['explanation']}\n"
+                    f"- **नवीन मासिक भाडे:** ₹{subtotal:,.2f}/महिना (+ 18% GST = ₹{total:,.2f}/महिना)\n"
+                    f"- **सेटअप शुल्क:** ₹2,500 (100% मोफत / Waived)\n\n"
+                    f"हा आपल्या व्यवसायासाठी सर्वोत्तम आवश्यक floor price प्लॅन आहे."
+                )
+            elif is_hindi:
                 msg = (
                     f"समझ गया! हमने आपके बजट के अनुसार प्लान को डाउन-सेल कर दिया है:\n\n"
                     f"- {downsell_res['explanation']}\n"
@@ -168,7 +194,9 @@ class ScriptedAdvisor:
             q = res["quotation"]
             removed_id = res.get("removed_id") or target
 
-            if is_hindi:
+            if is_marathi:
+                msg = f"समजले! आम्ही आपल्या बंडलमधून ॲड-ऑन काढून टाकले आहे. आपले नवीन मासिक भाडे ₹{q.get('monthly_subtotal_inr', 0):,.2f} + GST अपडेट झाले आहे."
+            elif is_hindi:
                 msg = f"समझ गया! हमने आपके बंडल से ऐड-ऑन को हटा दिया है। आपका नया मासिक किराया ₹{q.get('monthly_subtotal_inr', 0):,.2f} + GST अपडेट कर दिया गया है।"
             else:
                 msg = f"Understood! I have removed the requested add-on from your bundle. Your updated monthly subtotal is ₹{q.get('monthly_subtotal_inr', 0):,.2f} (+ 18% GST = ₹{q.get('total_monthly_inr', 0):,.2f}/mo)."
@@ -195,7 +223,13 @@ class ScriptedAdvisor:
 
             if not has_location and has_scale:
                 # User gave scale and business, but location is missing
-                if is_hindi:
+                if is_marathi:
+                    msg = (
+                        f"धन्यवाद! आपल्या {biz_name} चे तपशील नोंदवले आहेत.\n\n"
+                        f"अचूक शहर टियर (Tier 1/2/3) निश्चित करण्यासाठी आणि नेटवर्क व्यवहार्यता (ऑप्टिकल फायबर विरुद्ध 5G AirFiber) तपासण्यासाठी, "
+                        f"कृपया सांगा की आपले दुकान/व्यवसाय कोणत्या **शहरात किंवा 6-अंकी पिनकोड** मध्ये आहे?"
+                    )
+                elif is_hindi:
                     msg = (
                         f"धन्यवाद! आपके {biz_name} के विवरण नोट कर लिए गए हैं।\n\n"
                         f"सटीक सिटी टियर (Tier 1/2/3) निर्धारित करने और नेटवर्क फिजिबिलिटी (ऑप्टिकल फाइबर बनाम 5G AirFiber) की पुष्टि करने के लिए, "
@@ -210,7 +244,15 @@ class ScriptedAdvisor:
             else:
                 loc_str = f" in {city}" if city else ""
                 shop_str = f" across your {num_sites} shops" if num_sites > 1 else ""
-                if is_hindi:
+                if is_marathi:
+                    msg = (
+                        f"खूप छान!{loc_str} मध्ये आपल्या व्यवसायासाठी Airtel Business कडे सर्वोत्तम सोल्यूशन्स उपलब्ध आहेत.\n\n"
+                        f"अचूक आणि योग्य प्लॅनची शिफारस करण्यासाठी, कृपया तीन बाबी स्पष्ट करा:\n"
+                        f"1. आपण कोणता व्यवसाय चालवता आणि तो कोणत्या **शहरात किंवा 6-अंकी पिनकोड** मध्ये आहे?\n"
+                        f"2. आपल्याकडे दुकानासाठी सक्रिय जीएसटी (GSTIN) आहे की आपण विना-जीएसटी (Non-GST / Udyam) चालवता?\n"
+                        f"3. दुकानात अंदाजे किती कर्मचारी, बिलिंग कम्प्युटर्स किंवा ग्राहक वाय-फाय वापरतील?"
+                    )
+                elif is_hindi:
                     msg = (
                         f"बहुत बढ़िया!{loc_str} में आपके व्यवसाय के लिए Airtel Business में सर्वोत्तम समाधान उपलब्ध हैं।\n\n"
                         f"सटीक और उपयुक्त प्लान की सिफारिश करने के लिए, कृपया तीन विवरण स्पष्ट करें:\n"
@@ -250,7 +292,18 @@ class ScriptedAdvisor:
         items_summary_str = "\n".join(items_desc)
 
         loc_mention = f" in {city}" if city else ""
-        if is_hindi:
+        if is_marathi:
+            msg = (
+                f"धन्यवाद! आपल्या तपशिलानुसार{loc_mention}, हे आहे आपले शिफारस केलेले Airtel Business बंडल:\n\n"
+                f"{items_summary_str}\n\n"
+                f"**आर्थिक सारांश:**\n"
+                f"- **एकूण मासिक भाडे:** ₹{subtotal:,.2f}/महिना\n"
+                f"- **जीएसटी (18%):** ₹{gst:,.2f}\n"
+                f"- **एकूण मासिक बांधिलकी:** ₹{total:,.2f}/महिना\n"
+                f"- **सेटअप आणि इन्स्टॉलेशन शुल्क:** ₹2,500 (100% मोफत / Waived)\n\n"
+                f"*टीप: आपल्याला यातील कोणतेही ॲड-ऑन नको असल्यास, फक्त मला सांगा (उदा. 'soundbox काढा').*"
+            )
+        elif is_hindi:
             msg = (
                 f"धन्यवाद! आपके विवरण के अनुसार{loc_mention}, यहाँ आपका अनुशंसित Airtel Business बंडल है:\n\n"
                 f"{items_summary_str}\n\n"

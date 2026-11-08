@@ -50,7 +50,8 @@ class ResponseGuard:
         city_tier = int(profile.get("city_tier") or (infer_tier_from_city(city) if city else 2))
         emp_count = int(profile.get("employee_count") or 3)
         num_sites = int(profile.get("num_sites") or 1)
-        has_gstin = profile.get("has_gstin") is not False
+        # An unknown GST status must never be treated as confirmed GST eligibility
+        has_gstin = profile.get("has_gstin") is True
 
         # 3. Filter valid products and evaluate statutory eligibility
         validated_bundle: Dict[str, int] = {}
@@ -70,16 +71,16 @@ class ResponseGuard:
 
             if eligible:
                 validated_bundle[pid] = qty_int
-            elif pid == "P03" and city_tier > 1:
-                # Downgrade 1G to 300M in non-Tier-1 cities
+            elif pid == "P03" and (city_tier > 1 or has_gstin is not True):
+                # Downgrade 1G to 300M in non-Tier-1 cities or when GSTIN is not confirmed
                 validated_bundle["P02"] = max(1, qty_int)
 
-        # 4. Guarantee base connectivity
+        # 4. Guarantee base connectivity without inserting ineligible products
         base_pids = {"P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08"}
         has_base = any(pid in validated_bundle for pid in base_pids)
         if not has_base:
             biz = (profile.get("business_type") or "").lower()
-            if city_tier == 1 and ("startup" in biz or "tech" in biz) and emp_count >= 20:
+            if city_tier == 1 and ("startup" in biz or "tech" in biz) and emp_count >= 20 and has_gstin is True:
                 validated_bundle["P03"] = num_sites
             elif "clinic" in biz or "dental" in biz or "office" in biz or "ca" in biz:
                 validated_bundle["P02"] = num_sites
@@ -126,7 +127,13 @@ class ResponseGuard:
 
         # 7. Authoritative Pricing Calculation
         quotation = self.pricing_calculator.calculate_quote(
-            validated_bundle, apply_digital_discount=True, waive_setup_fee=True
+            validated_bundle,
+            apply_digital_discount=True,
+            waive_setup_fee=True,
+            city_tier=city_tier,
+            employee_count=emp_count,
+            num_sites=num_sites,
+            has_gstin=has_gstin
         )
 
         res = {

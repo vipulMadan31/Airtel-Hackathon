@@ -35,14 +35,29 @@ HINDI_CITY_MAP: Dict[str, str] = {
     "वाराणसी": "Varanasi",
     "पटना": "Patna",
     "सूरत": "Surat",
-    "नागपुर": "Nagpur"
+    "नागपुर": "Nagpur",
+    "नागपूर": "Nagpur",
+    "नाशिक": "Nashik",
+    "औरंगाबाद": "Aurangabad",
+    "छत्रपती संभाजीनगर": "Aurangabad",
+    "कोल्हापूर": "Kolhapur",
+    "ठाणे": "Thane",
+    "ठाण्यात": "Thane",
+    "पुणे": "Pune",
+    "पुण्यात": "Pune",
+    "पुण्यामध्ये": "Pune",
+    "मुंबई": "Mumbai",
+    "मुंबईत": "Mumbai",
+    "इंदूर": "Indore"
 }
 
 BUSINESS_TYPE_PATTERNS = [
-    (r"\b(dental\s+clinic|dental|clinic|doctor|physician|dentist|hospital|healthcare|medical)\b", "clinic"),
-    (r"\b(kirana|retail|store|grocery|general\s+store|shop|provision|bakery|dookan|dukan|दुकान|किराना)\b", "retail"),
-    (r"\b(restaurant|cafe|dhaba|bistro|food\s+court|canteen|hotel|sweets|mithai)\b", "restaurant"),
-    (r"\b(ca\s+firm|accounting|chartered\s+accountant|auditor|auditors|audit|legal|law\s+firm|advocate|consultancy|consulting|office)\b", "office"),
+    (r"\b(dental\s+clinic|dental|clinic|doctor|physician|dentist|hospital|healthcare|medical|दवाखाना|क्लिनिक)\b", "clinic"),
+    (r"\b(kirana|retail|store|grocery|general\s+store|shop|provision|bakery|dookan|dukan|दुकान|किराना|किराणा|स्टोअर)\b", "retail"),
+    (r"\b(salon|beauty\s+parlour|parlor|spa|सैलून|सलून|पार्लर)\b", "salon"),
+    (r"\b(pharmacy|chemist|medical\s+store|druggist|फार्मसी|औषध)\b", "pharmacy"),
+    (r"\b(restaurant|cafe|dhaba|bistro|food\s+court|canteen|hotel|sweets|mithai|हॉटेल|कॅफे|धाबा)\b", "restaurant"),
+    (r"\b(ca\s+firm|accounting|chartered\s+accountant|auditor|auditors|audit|legal|law\s+firm|advocate|consultancy|consulting|office|कार्यालय)\b", "office"),
     (r"\b(tech\s+startup|software|it\s+firm|development\s+startup|startup|developer|agency|saas|fintech)\b", "startup"),
     (r"\b(factory|manufacturing|plant|workshop|warehouse|godown|karkhana|कारखाना)\b", "factory"),
     (r"\b(logistics|courier|transport|fleet|delivery)\b", "logistics"),
@@ -62,13 +77,13 @@ class NLUParser:
         downsell_cues = [
             "sasta", "सस्ता", "सस्ते", "mehenga", "महंगा", "expensive", "cheaper",
             "too costly", "budget is low", "reduce price", "kam budget", "कम बजट",
-            "kam daam", "low price", "affordable", "discount"
+            "kam daam", "low price", "affordable", "discount", "स्वस्त", "कमी करा", "कमी", "जास्त किंमत"
         ]
         if any(c in t for c in downsell_cues):
             return "downsell_request"
 
         # 2. Add-on removal
-        remove_cues = ["remove ", "hata do", "hatao", "don't need ", "dont need ", "cancel ", "delete "]
+        remove_cues = ["remove ", "hata do", "hatao", "don't need ", "dont need ", "cancel ", "delete ", "काढा", "काढून टाका", "नको", "हटवा", "काढून घ्या"]
         if any(c in t for c in remove_cues):
             return "remove_addon"
 
@@ -76,14 +91,14 @@ class NLUParser:
         escalation_cues = [
             "talk to agent", "talk to human", "speak to an executive", "executive callback",
             "call me", "customer care", "human support", "representative", "contact sales",
-            "agent se baat", "executive se baat"
+            "agent se baat", "executive se baat", "एजंटशी बोला", "कॉल करा", "मदत हवी"
         ]
         if any(c in t for c in escalation_cues):
             return "escalation"
 
         # 4. Rural feasibility check
-        rural_cues = ["village", "rural", "gaon", "gao", "देहात", "गाँव", "गांव", "gram panchayat", "dumra dehat"]
-        taar_cues = ["taar nahi", "no wire", "no cable", "bina taar", "wireless"]
+        rural_cues = ["village", "rural", "gaon", "gao", "देहात", "गाँव", "गांव", "gram panchayat", "dumra dehat", "गाव", "खेडेगाव"]
+        taar_cues = ["taar nahi", "no wire", "no cable", "bina taar", "wireless", "वायर नाही", "केबल नाही"]
         if any(c in t for c in rural_cues) or any(c in t for c in taar_cues):
             return "rural_feasibility"
 
@@ -91,13 +106,14 @@ class NLUParser:
         inquiry_cues = [
             "what plans do you have", "what are the other plans", "tell me about different plans",
             "show plans", "list plans", "what speeds", "speed options", "compare plans",
-            "what is airfiber", "tell me about 1g", "what is ill", "pricing plans", "all plans"
+            "what is airfiber", "tell me about 1g", "what is ill", "pricing plans", "all plans",
+            "प्लॅन दाखवा", "कोणते प्लॅन आहेत"
         ]
         if any(c in t for c in inquiry_cues) and not any(k in t for k in ["recommend", "my clinic", "my shop", "for us"]):
             return "inquiry"
 
         # 6. General greetings
-        if t in ["hi", "hello", "hey", "namaste", "नमस्ते", "pranam", "good morning", "good evening"]:
+        if t in ["hi", "hello", "hey", "namaste", "नमस्ते", "नमस्कार", "pranam", "good morning", "good evening", "शुभ प्रभात", "शुभ सकाळ"]:
             return "greeting"
 
         # Default: could be clarification response or recommendation request
@@ -149,7 +165,7 @@ class NLUParser:
         else:
             # 5. Single / Total Employee Count
             # English & Hindi patterns: "10 staff", "25 employees", "2 कर्मचारियों", "4 chairs"
-            emp_match = re.search(r"\b(\d+)\s*(employees|employee|staff|workers|people|chairs|seats|auditors|log|kamgar|karmchari|karmchariyon|कर्मचारियों|कर्मचारी|स्टाफ)\b", t_lower)
+            emp_match = re.search(r"(?:^|[^\w\u0900-\u097F])(\d+)\s*(?:employees|employee|staff|workers|people|chairs|seats|auditors|log|kamgar|karmchari|karmchariyon|कर्मचारियों|कर्मचारी|स्टाफ|कामगार)(?:$|[^\w\u0900-\u097F])", t_lower)
             if emp_match:
                 entities["employee_count"] = int(emp_match.group(1))
             else:

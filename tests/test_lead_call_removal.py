@@ -11,20 +11,36 @@ base = "http://127.0.0.1:8000"
 
 print("--- 1. Testing Mitra Partner Lead Calling & Atomic Removal ---")
 
-# Step 1: Register an individual Mitra Partner
+# Step 1: Login as Admin and provision an individual Mitra Partner
+r_admin = requests.post(f"{base}/api/auth/login", json={
+    "email": "admin@airtel.com",
+    "password": "airteladmin",
+    "role": "ADMIN"
+})
+assert r_admin.status_code == 200
+admin_token = r_admin.json()["access_token"]
+
 partner_email = f"mitra_call_{uuid.uuid4().hex[:6]}@airtelpartner.in"
 partner_pwd = "PartnerCallSecure123!"
-r_reg_mitra = requests.post(f"{base}/api/auth/register", json={
+r_reg_mitra = requests.post(f"{base}/api/auth/admin/create-user", json={
     "email": partner_email,
     "password": partner_pwd,
     "name": "Rohtak Central Mitra Lead Caller",
     "role": "PARTNER",
-    "phone": "+91 98110 99887"
-})
+    "phone": "+91 98110 99887",
+    "assigned_pincode": "124001"
+}, headers={"Authorization": f"Bearer {admin_token}"})
 assert r_reg_mitra.status_code == 200, f"Registration failed: {r_reg_mitra.text}"
-mitra_token = r_reg_mitra.json()["access_token"]
-partner_id = r_reg_mitra.json()["user"]["user_id"]
-print(f"Mitra Partner registered: {partner_email} (ID: {partner_id})")
+
+r_mitra_login = requests.post(f"{base}/api/auth/login", json={
+    "email": partner_email,
+    "password": partner_pwd,
+    "role": "PARTNER"
+})
+assert r_mitra_login.status_code == 200
+mitra_token = r_mitra_login.json()["access_token"]
+partner_id = r_mitra_login.json()["user"]["user_id"]
+print(f"Mitra Partner provisioned & logged in: {partner_email} (ID: {partner_id})")
 
 # Step 2: Register a customer
 cust_email = f"lead_caller_{uuid.uuid4().hex[:6]}@custbiz.in"

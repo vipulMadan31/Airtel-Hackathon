@@ -83,6 +83,11 @@ class UserDatabase:
         return secrets.compare_digest(computed_hash, expected_hash)
 
     def _seed_default_accounts(self):
+        from app.config import IS_PRODUCTION, DEMO_MODE
+        if IS_PRODUCTION and not DEMO_MODE:
+            # Restrict demo credentials to non-production environments
+            return
+
         # 1. Admin Initial Account (individual salted PBKDF2 credentials)
         admin = self.get_user_by_email("admin@airtel.com")
         if not admin:
@@ -194,11 +199,21 @@ class UserDatabase:
         name: str,
         role: str = "MERCHANT",
         phone: Optional[str] = None,
-        assigned_pincode: Optional[str] = "452001"
+        assigned_pincode: Optional[str] = "452001",
+        allow_privileged: bool = False
     ) -> Dict[str, Any]:
         clean_email = (email or "").lower().strip()
         clean_role = (role or "MERCHANT").upper().strip()
+
+        if not allow_privileged and clean_role in ["PARTNER", "ADMIN"]:
+            raise ValueError(
+                f"Public registration only allows the MERCHANT role. Partner and Admin accounts require an authorized admin workflow."
+            )
+
         if clean_role not in ["MERCHANT", "PARTNER", "ADMIN"]:
+            clean_role = "MERCHANT"
+
+        if not allow_privileged:
             clean_role = "MERCHANT"
 
         if not clean_email or "@" not in clean_email:
@@ -258,7 +273,33 @@ class UserDatabase:
             name=name,
             role="MERCHANT",
             phone=phone,
-            assigned_pincode=assigned_pincode
+            assigned_pincode=assigned_pincode,
+            allow_privileged=False
+        )
+
+    def create_privileged_user(
+        self,
+        email: str,
+        password: str,
+        name: str,
+        role: str,
+        phone: Optional[str] = None,
+        assigned_pincode: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Creates an administrative or partner user through an authorized admin workflow.
+        """
+        clean_role = (role or "").upper().strip()
+        if clean_role not in ["PARTNER", "ADMIN", "MERCHANT"]:
+            raise ValueError(f"Invalid role '{clean_role}'. Must be PARTNER, ADMIN, or MERCHANT.")
+        return self.register_user(
+            email=email,
+            password=password,
+            name=name,
+            role=clean_role,
+            phone=phone,
+            assigned_pincode=assigned_pincode or ("ALL" if clean_role == "ADMIN" else "452001"),
+            allow_privileged=True
         )
 
     def authenticate(

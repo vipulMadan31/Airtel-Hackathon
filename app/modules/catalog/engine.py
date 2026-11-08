@@ -11,34 +11,52 @@ class CatalogEngine:
         city_tier: int,
         employee_count: int,
         num_sites: int,
-        has_gstin: bool
+        has_gstin: Optional[bool] = None,
+        contract_months: Optional[int] = None,
+        quantity: Optional[int] = None
     ) -> (bool, str):
         """
-        Evaluates whether a product is eligible for a given business profile.
+        Evaluates whether a product is eligible for a given business profile against catalogue truth.
         Returns (is_eligible, reason_if_ineligible).
         """
-        # 1. City Tier check
+        # 1. City Tier check (single source of truth in product catalogue)
         allowed_tiers = [t.strip() for t in str(product["available_city_tiers"]).split(";")]
         tier_str = str(city_tier)
         if "2" in allowed_tiers and city_tier >= 2:
             pass  # Standard pan-India non-metro availability across Tier 2, Tier 3, and Tier 4 towns
         elif tier_str not in allowed_tiers:
-            return False, f"Available only in Tier-{','.join(allowed_tiers)} cities"
+            return False, f"Available only in Tier-{','.join(allowed_tiers)} cities (current location is Tier-{city_tier})"
 
         # 2. Minimum Employees check
-        if employee_count < int(product["min_employees"]):
-            return False, f"Requires at least {product['min_employees']} employees"
+        min_emp = int(product.get("min_employees", 1))
+        if employee_count < min_emp:
+            return False, f"Requires at least {min_emp} employees (profile has {employee_count})"
 
-        # 3. Minimum Sites check
+        # 3. Minimum Sites check (Catalogue truth: P10 requires 3 sites, ILL requires 1 site, etc.)
         min_sites_req = int(product.get("min_sites", 1))
-        if product.get("product_id") == "P10" and num_sites >= 2:
-            min_sites_req = 2  # Support multi-branch private networking for 2+ sites
         if num_sites < min_sites_req:
-            return False, f"Requires at least {min_sites_req} business locations"
+            return False, f"Requires at least {min_sites_req} business locations (profile has {num_sites})"
 
-        # 4. GSTIN requirement check
-        if str(product["requires_gstin"]).upper() == "Y" and not has_gstin:
-            return False, "Requires active GSTIN verification"
+        # 4. GSTIN requirement check: An unknown GST status must never be treated as confirmed GST eligibility
+        if str(product.get("requires_gstin", "N")).upper() == "Y":
+            if has_gstin is not True:
+                return False, "Requires active GSTIN verification (GSTIN not confirmed)"
+
+        # 5. Minimum contract duration check
+        if contract_months is not None:
+            min_c = int(product.get("min_contract_months", 1))
+            if contract_months < min_c:
+                return False, f"Requires minimum contract duration of {min_c} months (selected: {contract_months} months)"
+
+        # 6. Quantity restrictions
+        if quantity is not None:
+            if quantity <= 0:
+                return False, f"Quantity must be a positive integer (got {quantity})"
+            unit = str(product.get("unit", "")).lower().strip()
+            if unit == "per site" and quantity > num_sites:
+                return False, f"Quantity ({quantity}) cannot exceed total declared sites ({num_sites}) for site-level product"
+            if unit == "per account" and quantity > 1:
+                return False, f"Maximum 1 subscription allowed per account (requested {quantity})"
 
         return True, "Eligible"
 
@@ -138,7 +156,10 @@ class CatalogEngine:
                 "recommended_product_name": "Biz Fibre 100",
                 "typical_install_days": 5,
                 "monthly_price_inr": 999,
-                "message": "High-speed optical wireline fibre is verified and feasible at your address (5-day typical install)."
+                "message": "High-speed optical wireline fibre is verified and feasible at your address (5-day typical install).",
+                "is_simulated": True,
+                "mode": "DEMO_SIMULATED",
+                "simulation_notice": "DEMO / SIMULATED: Network feasibility is estimated based on postal prefix heuristics for demonstration and does not constitute a physical survey commitment."
             }
         else:
             return {
@@ -151,6 +172,9 @@ class CatalogEngine:
                 "recommended_product_name": "Biz 5G AirFiber 100",
                 "typical_install_days": 2,
                 "monthly_price_inr": 899,
-                "message": "Wireline optical digging is pending in your area. Seamlessly switched to Airtel Biz 5G AirFiber 100 (P04) — zero wires, instant 48-hour setup!"
+                "message": "Wireline optical digging is pending in your area. Seamlessly switched to Airtel Biz 5G AirFiber 100 (P04) — zero wires, instant 48-hour setup!",
+                "is_simulated": True,
+                "mode": "DEMO_SIMULATED",
+                "simulation_notice": "DEMO / SIMULATED: Network feasibility is estimated based on postal prefix heuristics for demonstration and does not constitute a physical survey commitment."
             }
 

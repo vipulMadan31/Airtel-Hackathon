@@ -15,8 +15,12 @@ except ImportError:
     pytesseract = None
 
 try:
-    import winocr
-except ImportError:
+    import sys
+    if sys.platform == "win32":
+        import winocr
+    else:
+        winocr = None
+except Exception:
     winocr = None
 
 from app.data_loader import DataLoader

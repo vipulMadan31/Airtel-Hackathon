@@ -111,10 +111,13 @@ The advisor is structured into dedicated single-responsibility modules under `ap
 * **Field-Level Confidence**: Tracks confidence at the individual field level rather than relying solely on page-level averages. Critical fields failing confidence checks trigger targeted manual review flags.
 * **DPDP Act 2023 Compliance**: Uploaded document binaries are processed in-memory or temporary storage and deleted post-verification, keeping only validated metadata.
 
-### 3. Order State Machine & Security Controls
+### 3. Order State Machine, Authoritative Pricing & Security Controls
+* **Catalogue as Single Source of Truth**: `product_catalogue.csv` is the authoritative truth for commercial terms, pricing floors/ceilings, city tier restrictions, site counts, minimum contract durations, dependencies, and statutory GST requirements.
+* **Server-Authoritative Pricing & Anti-Tamper Protection**: All quotes and orders are recalculate server-side via `validate_and_price_order()`. Frontend-submitted prices, unauthorized discount codes, and fabricated setup fee waivers are detected and strictly rejected.
+* **Clear Separation of Simulated vs. Real Operations**: Prototype simulations (network feasibility heuristics, test payment tokens, estimated installation schedules) are explicitly labeled as `DEMO / SIMULATED` across UI badges and API responses (`is_simulated: True`, `mode: "DEMO_SIMULATED"`). Fabricated field engineer commitments have been replaced with simulated dispatch notices.
 * **Server-Controlled KYC Verdict**: Orders cannot transition to payment or fulfillment without a server-validated KYC record with an approved verdict.
-* **Verified Payment Intents**: Client-side claims of payment success are rejected. Transactions require server-side verification and deterministic token generation (`₹499` booking token).
-* **Explicit Customer Consent**: Customer consent is not assumed; consent timestamp, purpose, and version are explicitly recorded upon affirmative user action.
+* **Verified Payment Intents**: Client-side claims of payment success are rejected. Transactions require server-side intent verification with configurable booking token amounts (`₹499`).
+* **Explicit Customer Consent**: Customer consent is not assumed; consent timestamp, purpose, and version are explicitly recorded upon affirmative user action under the DPDP Act 2023.
 * **Ownership Enforcement**: Read and write access to orders, KYC cases, and receipts is strictly scoped to the authenticated user ID or authorized administrative roles.
 * **Hardened Authentication**: Passwords hashed with individual cryptographic salts via PBKDF2-HMAC-SHA256. Public role-switch backdoors and universal passwords have been removed; auth APIs fail closed.
 
@@ -131,6 +134,34 @@ The advisor is structured into dedicated single-responsibility modules under `ap
 * **Storefront SPA**: Modern web portal with real-time quote preview, multi-item breakdown, and bilingual support.
 * **WhatsApp Web Simulator**: Mobile-first simulation (`/whatsapp_simulator.html`) sharing the same underlying advisor state, profile engine, and catalog rules.
 * **Real SMTP Notifications**: Connected via Google Workspace SMTP (`smtp.gmail.com:587`, STARTTLS) to dispatch real booking confirmations, B2B tax receipts, and installation schedules directly to customer email addresses.
+
+### 6. Regional Language Support & Localization Architecture
+* **Marathi (`mr`) Language Integration**: Added authentic, professionally verified Marathi translations alongside English and Hindi across the entire experience—Advisor conversation, product catalogue, quote breakdown, checkout, KYC guidelines, error notifications, and order tracker.
+* **Extensible Localization Registry**: Centralized translation dictionaries in [`app/static/locales.js`](file:///c:/Users/HP/Desktop/Airtel/app/static/locales.js) with a modular `registerLocale(langCode, dictionary)` API, engineered for rapid onboarding of Gujarati (`gu`), Tamil (`ta`), Telugu (`te`), Bengali (`bn`), Punjabi (`pa`), Kannada (`kn`), and Malayalam (`ml`).
+* **Safe Human Translations for Commercial & Statutory Terms**: Statutory pricing, GST disclosures, and DPDP 2023 legal consent forms utilize verified human-crafted copy rather than unvalidated generative translations.
+* **Cross-Session Language Persistence**: The selected language is persisted in local storage (`udyam_language`) and automatically synchronized with the server-side advisor session.
+
+### 7. Micro-Business & Non-GST Onboarding Journey
+* **Dedicated Onboarding Track**: Built a streamlined, self-serve flow designed specifically for Kirana stores, pharmacies, salons, and informal micro-enterprises.
+* **Interactive 3-Step Guidance Walkthrough**: Prominently guides non-technical merchants:
+  1. *Ask AI Assistant*: Consult the advisor in plain natural language (voice/text) for tailored bundles without tech jargon.
+  2. *Upload Business / Identity Proof*: Clear instructions on uploading PAN, Udyam Registration, or local trade licenses (no GSTIN required).
+  3. *Same-Day Dispatch & Activation*: Visual milestone tracker illustrating rapid SIM/Router dispatch within 24–48 hours.
+* **Non-GST Safe Mode**: One-click activation auto-filters the catalogue to zero-GST requirement products (e.g., Biz Fibre 100, Biz 5G AirFiber), eliminating frustrating compliance blockers.
+* **Mobile-First Experience**: Touch-friendly fast-action chips, clean high-contrast input cards, and responsive navigation tailored for mobile-first shopkeepers.
+
+### 8. Data-Driven Enterprise Admin & Partner Dashboards
+* **Zero Hardcoded Metrics**: All analytical telemetry on both the National Ops Dashboard (`/api/admin/metrics`) and Mitra Partner Portal (`/api/partner/metrics`) is computed dynamically from real database records (`customer_leads`, `orders`, `kyc_cases`, `support_tickets`, `customer_feedback`).
+* **Multi-Dimensional Analytical Filtering**: Real-time filtering across Date Ranges (Today, Last 7 Days, Last 30 Days, Custom), Business Segments (Retail, Healthcare, Tech, Hospitality), City/Circles, and Funnel Stages.
+* **Partner Isolation & Authorized Scoping**: Mitra partners only view metrics and lead streams strictly assigned to their territory or attribution ID, preventing cross-tenant data leakage.
+* **Authorized CSV Report Export**: Administrators can download complete lead funnel and operational telemetry as a structured CSV via `GET /api/admin/reports/export.csv`.
+
+### 9. Post-Activation Customer Retention Hub & Support Ticketing
+* **Dedicated Customer Portal View**: Customers can manage active connectivity plans, subscribed SaaS add-ons, monthly billing commitments, and historical tax receipts from `#customerDashboardView`.
+* **Self-Serve Priority Ticketing Engine**: Ingests support tickets (`/api/support/tickets`) categorized under `CONNECTIVITY`, `BILLING`, `INSTALLATION`, or `EQUIPMENT`.
+* **Ticket Milestone Lifecycle**: Tracks full ticket progress from `OPEN` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `RESOLVED` with diagnostic milestone timelines.
+* **Post-Activation CSAT & Proactive Retention Queue**: Collects 1–5 star customer satisfaction ratings with feedback text (`/api/support/feedback`). Unfavorable ratings ($\le 3$ stars) automatically trigger an alert and flag the customer into the **Dissatisfied Customers Outreach Queue** on the Admin Ops Console for proactive executive intervention.
+* **Strict Metric Separation**: Retention indicators (CSAT average, open ticket count, churn risk %) are strictly partitioned from acquisition funnel metrics.
 
 ---
 
@@ -188,7 +219,7 @@ Open your browser to `http://localhost:8000` for the Storefront, or `http://loca
 
 ### 5. Seeded Test Credentials
 
-The prototype is pre-seeded with individual credentials for testing the different user roles:
+The prototype is pre-seeded with individual credentials for local testing across user roles:
 
 | Role | Email | Password | Access Portal |
 | :--- | :--- | :--- | :--- |
@@ -196,35 +227,51 @@ The prototype is pre-seeded with individual credentials for testing the differen
 | **Airtel Mitra Partner** | `mitra@airtel.com` | `airtelmitra` | Click Mitra tab &rarr; Log in &rarr; Partner Portal & Lead Stream |
 | **MSME Customer** | `customer@business.in` | `customer123` | Click Customer tab &rarr; Sign In |
 
-*(New user accounts can be registered via `POST /api/auth/register`).*
+*(Public registration via `POST /api/auth/register` creates `MERCHANT` customer accounts only. Privileged `PARTNER` and `ADMIN` accounts are restricted and can only be provisioned by an authenticated administrator via `POST /api/auth/admin/create-user`).*
 
 ---
 
 ## 🧪 Test Suites & Verification
 
-The repository contains automated test suites verifying critical functionality:
+Run the entire automated test suite with a single unified command:
 
 ```powershell
-# 1. 9-Scenario AI Advisor Comprehensive Verification
+# Run the complete test suite (22/22 tests passing)
+pytest tests/ -v
+```
+
+Or execute individual test suites:
+
+```powershell
+# 1. P1 Experience, Retention, Marathi Localization & Data-Driven Dashboards
+pytest tests/test_p1_features.py -v
+
+# 2. Authoritative Catalogue Eligibility, Anti-Tamper Pricing & Simulation Transparency
+pytest tests/test_authoritative_pricing_and_simulation.py -v
+
+# 3. P0 Security, RBAC, Partner Isolation & Secure KYC Workflow
+pytest tests/test_p0_security_and_kyc.py -v
+
+# 4. 9-Scenario AI Advisor Comprehensive Verification
 python tests/test_advisor_scenarios.py
 
-# 2. Consultative Discovery & Location Gating Verification
-python test_gst_employee_clarification.py
+# 5. Ownership, Server KYC, Payment Intent & DPDP Consent Audit
+python tests/test_ownership_and_integrity.py
 
-# 3. Pincode & City Synchronization Verification
-python test_phase2_pincode_sync.py
-
-# 4. Clinic Multi-Turn Flow & Cart Verification
-python test_clinic_chat_flow.py
-
-# 5. Multi-Site Outlets & Add-on Removal Verification
-python test_multisite_chat_flow.py
-
-# 6. Post-KYC Payment & SMTP Tax Receipt Email Dispatch Test
-python tests/test_email_quote.py
+# 6. Enterprise Security Hardening & Fail-Closed RBAC Audit
+python tests/test_security_audit.py
 
 # 7. Mitra Lead Filtering & Multi-Role Authentication Test
 python tests/test_partner_leads_and_auth.py
+
+# 8. Mitra Lead Outreach Call & Atomic Removal Test
+python tests/test_lead_call_removal.py
+
+# 9. Post-KYC Payment & SMTP Tax Receipt Email Dispatch Test
+python tests/test_email_quote.py
+
+# 10. Independent KYC OCR & Document-Verification Evaluation Suite
+python tests/test_kyc_ocr_evaluation.py
 ```
 
 ---

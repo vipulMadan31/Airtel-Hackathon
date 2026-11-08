@@ -437,6 +437,11 @@ async def run_evaluation():
             dummy_rot.unlink()
 
     print("\n--- END-TO-END KYC VERDICT COMPLIANCE USING EXTRACTED OCR FIELDS ---")
+    from app.modules.auth import UserDatabase
+    user_db = UserDatabase.get_instance()
+    auth_res = user_db.authenticate("customer@business.in", "customer123")
+    eval_token = auth_res["token"]
+
     for app_code, expected in APPLICANT_EXPECTED_VERDICTS.items():
         ext = extracted_by_applicant.get(app_code, {})
         req = VerifyExtractedRequest(
@@ -446,9 +451,11 @@ async def run_evaluation():
             entity_name=ext.get("name"),
             bill_date=ext.get("bill_date"),
             blur_variance=1.03 if app_code == "K04" else 1000.0,
-            is_non_gst_mode=False
+            is_non_gst_mode=False,
+            consent_granted=True,
+            consent={"granted": True, "version": "v1.0", "purpose": "Evaluation"}
         )
-        res_verdict = verify_extracted_data(req)
+        res_verdict = verify_extracted_data(req, authorization=f"Bearer {eval_token}")
         assert res_verdict["verdict"] == expected["verdict"], (
             f"Verdict regression on applicant {app_code}! Expected {expected['verdict']}, got {res_verdict['verdict']}. "
             f"Reasons: {res_verdict.get('reasons')}"

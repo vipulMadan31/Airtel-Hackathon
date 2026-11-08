@@ -20,8 +20,8 @@ CORE PRINCIPLES:
    If information is missing, ask for it warmly in the customer's language.
 3. CONVERSATIONAL CONTINUITY:
    Remember facts stated across earlier turns. Never re-ask for details the customer already provided.
-4. BILINGUAL FLUENCY:
-   Respond fluently in the customer's language (English or Hindi/Hinglish).
+4. REGIONAL LANGUAGE FLUENCY:
+   Respond fluently in the customer's language (English, Hindi/Hinglish, or Marathi).
 """
 
 GEMINI_TOOLS_DECLARATIONS = [

@@ -31,6 +31,18 @@ if ENV_PATH.exists():
     except Exception:
         pass
 
+# Environment & Security Configuration
+APP_ENV = os.getenv("APP_ENV", os.getenv("ENV", "development")).lower()
+IS_PRODUCTION = APP_ENV in ["production", "prod"]
+DEMO_MODE = os.getenv("DEMO_MODE", "false" if IS_PRODUCTION else "true").lower() in ["true", "1", "yes"]
+
+# Commercial & Simulation Configuration
+BOOKING_TOKEN_AMOUNT_INR = float(os.getenv("BOOKING_TOKEN_AMOUNT_INR", "499.0"))
+SETUP_FEE_WAIVER_PROMO = os.getenv("SETUP_FEE_WAIVER_PROMO", "true").lower() in ["true", "1", "yes"]
+DIGITAL_DISCOUNT_ENABLED = os.getenv("DIGITAL_DISCOUNT_ENABLED", "true").lower() in ["true", "1", "yes"]
+VALID_DISCOUNT_CODES = {"DIGITAL100", "AIRTELSYNC2026", "SELFSERVE"}
+IS_SIMULATED_OPERATIONS = True
+
 # LLM Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

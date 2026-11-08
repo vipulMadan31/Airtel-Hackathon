@@ -203,32 +203,137 @@ class OrderStateMachine:
                     return d
         return None
 
+    def record_consent(
+        self,
+        user_id: str,
+        customer_email: str,
+        consent_type: str = "REGISTRY_VERIFICATION_CONSENT",
+        purpose: str = "Identity & Registry Verification under DPDP Act 2023",
+        version: str = "v1.0",
+        consent_text: str = "Explicit affirmative consent granted for registry verification.",
+        order_id: Optional[str] = None
+    ) -> int:
+        now_ts = datetime.now().isoformat()
+        with self._get_connection() as conn:
+            cursor = conn.execute("""
+            INSERT INTO consent_logs (order_id, user_id, customer_email, consent_type, version, consent_text, purpose, action, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                order_id or "",
+                user_id or "",
+                (customer_email or "").lower().strip(),
+                consent_type,
+                version,
+                consent_text,
+                purpose,
+                "EXPLICIT_AFFIRMATIVE_CONSENT_GRANTED",
+                now_ts
+            ))
+            conn.commit()
+            return cursor.lastrowid
+
+    def save_kyc_verification_session(
+        self,
+        session_id: str,
+        user_id: str,
+        customer_email: str,
+        blur_variance: float,
+        is_clear: bool,
+        extracted_fields: Optional[Dict[str, Any]] = None,
+        raw_text: Optional[str] = None
+    ):
+        now_ts = datetime.now().isoformat()
+        with self._get_connection() as conn:
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS kyc_verification_sessions (
+                session_id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                customer_email TEXT,
+                blur_variance REAL,
+                is_clear INTEGER,
+                extracted_fields_json TEXT,
+                raw_text TEXT,
+                created_at TEXT NOT NULL
+            )
+            """)
+            conn.execute("""
+            INSERT OR REPLACE INTO kyc_verification_sessions (
+                session_id, user_id, customer_email, blur_variance, is_clear, extracted_fields_json, raw_text, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                session_id, user_id, customer_email, blur_variance, 1 if is_clear else 0,
+                json.dumps(extracted_fields or {}), raw_text or "", now_ts
+            ))
+            conn.commit()
+
+    def get_kyc_verification_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            try:
+                row = conn.execute("SELECT * FROM kyc_verification_sessions WHERE session_id = ?", (session_id,)).fetchone()
+                if row:
+                    res = dict(row)
+                    res["extracted_fields"] = json.loads(res.get("extracted_fields_json") or "{}")
+                    res["is_clear"] = bool(res.get("is_clear"))
+                    return res
+            except Exception:
+                pass
+        return None
+
     def verify_order_ownership(self, order: Optional[Dict[str, Any]], user: Optional[Dict[str, Any]]) -> bool:
         if not order or not user:
             return False
         role = user.get("role", "MERCHANT")
         if role == "ADMIN":
+            # Explicitly authorized administrator
             return True
+
         if role == "PARTNER":
             partner_id = user.get("user_id")
+            # 1. Directly assigned/attributed partner
             if order.get("partner_attribution_id") and order.get("partner_attribution_id") == partner_id:
                 return True
-            assigned_pin = user.get("assigned_pincode")
-            if assigned_pin == "ALL":
+            if order.get("assigned_partner_id") and order.get("assigned_partner_id") == partner_id:
                 return True
+
+            # 2. Authorized territory match (assigned pincode or district prefix)
+            assigned_pin = str(user.get("assigned_pincode") or "").strip()
+            if not assigned_pin or assigned_pin == "ALL":
+                # Partners cannot have wildcard access to orders
+                return False
+
             inst_addr = order.get("installation_address") or {}
-            if isinstance(inst_addr, dict) and assigned_pin and assigned_pin in str(inst_addr.get("pincode", "")):
-                return True
-            return True
+            order_pin = ""
+            if isinstance(inst_addr, dict):
+                order_pin = str(inst_addr.get("pincode") or "").strip()
+            elif isinstance(inst_addr, str):
+                try:
+                    parsed = json.loads(inst_addr)
+                    if isinstance(parsed, dict):
+                        order_pin = str(parsed.get("pincode") or "").strip()
+                except Exception:
+                    order_pin = ""
+
+            if order_pin:
+                if order_pin == assigned_pin:
+                    return True
+                if len(assigned_pin) >= 3 and order_pin.startswith(assigned_pin[:3]):
+                    return True
+
+            # Partners do not have arbitrary order access outside their territory/assignment
+            return False
+
         # Role MERCHANT (Customer)
-        u_id = user.get("user_id")
-        u_email = (user.get("email") or "").lower().strip()
-        ord_uid = order.get("user_id")
-        ord_email = (order.get("customer_email") or "").lower().strip()
-        if ord_uid and ord_uid == u_id:
-            return True
-        if ord_email and ord_email == u_email:
-            return True
+        if role == "MERCHANT":
+            u_id = user.get("user_id")
+            u_email = (user.get("email") or "").lower().strip()
+            ord_uid = order.get("user_id")
+            ord_email = (order.get("customer_email") or "").lower().strip()
+            if ord_uid and ord_uid == u_id:
+                return True
+            if ord_email and ord_email == u_email:
+                return True
+            return False
+
         return False
 
     def create_order(
@@ -270,11 +375,104 @@ class OrderStateMachine:
                 f"Cannot create order: Validated server KYC case with approved verdict is required. Current case status: {verdict}. Frontend-asserted kyc_status is strictly rejected."
             )
 
+        # Confirm approved KYC case belongs to the authenticated customer creating this order
+        case_uid = kyc_case.get("user_id")
+        case_email = (kyc_case.get("customer_email") or "").lower().strip()
+        u_email = (customer_email or "").lower().strip()
+        is_owner = (case_uid and case_uid == user_id) or (case_email and case_email == u_email)
+        if not is_owner:
+            raise ValueError(
+                f"Cross-account security violation: Approved KYC case '{kyc_case.get('case_id')}' does not belong to authenticated customer '{user_id}'."
+            )
+
         server_kyc_status = "VERIFIED"
         matched_case_id = kyc_case.get("case_id")
 
+        # 3. Central Authoritative Recalculation & Tamper Rejection (Requirement 4)
+        from app.modules.pricing.calculator import pricing_calculator
+        from app.modules.advisor.profile import infer_tier_from_city, infer_location_from_pincode
+
+        # Resolve product quantities from bundle payload
+        product_quantities: Dict[str, int] = {}
+        if isinstance(bundle_data, dict):
+            if "product_quantities" in bundle_data and isinstance(bundle_data["product_quantities"], dict):
+                product_quantities = {k: int(v) for k, v in bundle_data["product_quantities"].items() if int(v or 0) > 0}
+            elif "selected_products" in bundle_data and isinstance(bundle_data["selected_products"], list) and bundle_data["selected_products"]:
+                for p in bundle_data["selected_products"]:
+                    product_quantities[p] = product_quantities.get(p, 0) + 1
+            elif "items" in bundle_data and isinstance(bundle_data["items"], list):
+                for it in bundle_data["items"]:
+                    if isinstance(it, dict):
+                        p_id = it.get("product_id")
+                        if not p_id and it.get("name"):
+                            n = it["name"].lower()
+                            if "300" in n: p_id = "P02"
+                            elif "1g" in n or "1000" in n: p_id = "P03"
+                            elif "airfiber" in n: p_id = "P04"
+                            elif "leased" in n and "100" in n: p_id = "P06"
+                            elif "leased" in n: p_id = "P05"
+                            elif "fibre" in n: p_id = "P01"
+                        if p_id:
+                            product_quantities[p_id] = product_quantities.get(p_id, 0) + int(it.get("quantity") or 1)
+
+        if not product_quantities:
+            product_quantities = {"P01": 1}
+
+        # Derive location and city tier from installation address
+        pincode_val = None
+        city_val = None
+        if isinstance(installation_address, dict):
+            pincode_val = installation_address.get("pincode")
+            city_val = installation_address.get("city")
+        
+        city_tier = 2
+        if city_val:
+            city_tier = infer_tier_from_city(city_val)
+        elif pincode_val:
+            city_tier = infer_location_from_pincode(str(pincode_val))[1]
+
+        # Derive GST status from server-verified KYC case
+        case_details = kyc_case.get("details") or {}
+        is_non_gst = kyc_case.get("is_non_gst_mode") or case_details.get("is_non_gst_mode")
+        has_gstin = bool(kyc_case.get("id_number") and not is_non_gst) if kyc_case.get("doc_type") == "GST" else False
+
+        submitted_m = None
+        submitted_s = None
+        waive_setup = True
+        if isinstance(bundle_data, dict):
+            for k in ["total_monthly_inr", "monthly_recurring_total", "subtotal_inr"]:
+                if k in bundle_data and bundle_data[k] is not None:
+                    submitted_m = bundle_data[k]
+                    break
+            for k in ["one_time_setup_inr", "setup_charges_total"]:
+                if k in bundle_data and bundle_data[k] is not None:
+                    submitted_s = bundle_data[k]
+                    break
+            if "waive_setup_fee" in bundle_data:
+                waive_setup = bool(bundle_data["waive_setup_fee"])
+            elif submitted_s is not None and float(submitted_s) > 0:
+                waive_setup = False
+
+        # Recalculate quote authoritatively; rejects manipulated prices, invalid SKUs, or violations
+        authoritative_quote = pricing_calculator.validate_and_price_order(
+            product_quantities=product_quantities,
+            city_tier=city_tier,
+            city=city_val,
+            pincode=str(pincode_val) if pincode_val else None,
+            employee_count=int(bundle_data.get("employee_count") or 1) if isinstance(bundle_data, dict) else 1,
+            num_sites=int(bundle_data.get("num_sites") or 1) if isinstance(bundle_data, dict) else 1,
+            has_gstin=has_gstin,
+            contract_months=bundle_data.get("contract_months") if isinstance(bundle_data, dict) else None,
+            apply_digital_discount=bundle_data.get("apply_digital_discount", True) if isinstance(bundle_data, dict) else True,
+            waive_setup_fee=waive_setup,
+            discount_code=bundle_data.get("discount_code") if isinstance(bundle_data, dict) else None,
+            customer_submitted_monthly_total=submitted_m,
+            customer_submitted_setup_fee=submitted_s
+        )
+
         order_id = f"UDYAM-{uuid.uuid4().hex[:6].upper()}"
-        install_date = (datetime.now() + timedelta(days=typical_install_days)).strftime("%Y-%m-%d")
+        typical_days = authoritative_quote.get("typical_install_days", typical_install_days)
+        install_date = (datetime.now() + timedelta(days=typical_days)).strftime("%Y-%m-%d")
 
         with self._get_connection() as conn:
             conn.execute("""
@@ -290,13 +488,13 @@ class OrderStateMachine:
                 business_name,
                 contact_phone,
                 language,
-                json.dumps(bundle_data),
-                bundle_data.get("total_monthly_inr", 0.0),
+                json.dumps(authoritative_quote),
+                authoritative_quote.get("total_monthly_inr", 0.0),
                 server_kyc_status,
                 3, # Milestone 3: Order Confirmed / Scheduled
                 install_date,
-                "Ramesh Sharma (Field Lead)",
-                "+91 98765 43210",
+                "SIMULATED / DEMO: Assigned Field Tech (Slot Pending Real Dispatch)",
+                "+91-DEMO-SIMULATED",
                 None,
                 partner_id,
                 json.dumps(installation_address) if installation_address else None,
@@ -383,6 +581,10 @@ class OrderStateMachine:
             res["bundle"] = json.loads(res["bundle_json"])
             res["dpdp_consent_recorded"] = True
             res["is_assisted"] = bool(res.get("partner_attribution_id"))
+            res["is_simulated"] = True
+            res["order_mode"] = "SIMULATED_DEMO"
+            res["simulation_notice"] = "DEMO / SIMULATED ONBOARDING: Staged order is a prototype simulation. Field engineer contact and installation schedule are simulated placeholders and do not constitute an operational dispatch commitment."
+            res["installation_commitment"] = "ESTIMATED_PENDING_SURVEY"
             if res.get("receipt_json"):
                 try:
                     res["receipt"] = json.loads(res["receipt_json"])

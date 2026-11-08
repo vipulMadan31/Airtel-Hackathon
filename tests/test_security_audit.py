@@ -33,20 +33,40 @@ def test_security_audit():
     assert r2.status_code == 401, f"Expected 401 for unauthorized bypass, got {r2.status_code}"
     print("  [PASS] Arbitrary email bypass with 'airteladmin' strictly blocked (HTTP 401)")
 
-    # Test 1c: Individual registration for partner with unique password works
+    # Test 1c: Public registration for partner is blocked; admin workflow creates partner
     partner_email = f"partner_{uuid.uuid4().hex[:6]}@agency.in"
     unique_pwd = f"SecuredSecret#{uuid.uuid4().hex[:8]}"
-    r_reg = requests.post(f"{base}/api/auth/register", json={
+    r_reg_public = requests.post(f"{base}/api/auth/register", json={
         "email": partner_email,
         "password": unique_pwd,
         "name": "Rohtak Authorized Mitra",
         "role": "PARTNER",
         "phone": "+91 98765 43210"
     })
+    assert r_reg_public.status_code == 403, f"Expected 403, got {r_reg_public.status_code}"
+    print("  [PASS] Public registration as PARTNER blocked (HTTP 403)")
+
+    # Admin provisions partner
+    r_admin_login = requests.post(f"{base}/api/auth/login", json={
+        "email": "admin@airtel.com",
+        "password": "airteladmin",
+        "role": "ADMIN"
+    })
+    assert r_admin_login.status_code == 200
+    admin_token = r_admin_login.json()["access_token"]
+
+    r_reg = requests.post(f"{base}/api/auth/admin/create-user", json={
+        "email": partner_email,
+        "password": unique_pwd,
+        "name": "Rohtak Authorized Mitra",
+        "role": "PARTNER",
+        "phone": "+91 98765 43210",
+        "assigned_pincode": "124001"
+    }, headers={"Authorization": f"Bearer {admin_token}"})
     assert r_reg.status_code == 200, f"Registration failed: {r_reg.text}"
     reg_data = r_reg.json()
     assert reg_data["user"]["role"] == "PARTNER"
-    print(f"  [PASS] Individual Partner account registered: {partner_email}")
+    print(f"  [PASS] Individual Partner account created via admin workflow: {partner_email}")
 
     # Test 1d: Login with wrong password fails closed
     r_wrong = requests.post(f"{base}/api/auth/login", json={

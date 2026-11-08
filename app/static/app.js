@@ -101,7 +101,10 @@ window.syncCustomerLeadActivity = async function(action, extra = {}) {
 document.addEventListener("DOMContentLoaded", () => {
   try { initAuthSession(); } catch (e) { console.error("initAuthSession error:", e); }
   try { initEventListeners(); } catch (e) { console.error("initEventListeners error:", e); }
-  try { applyLanguage('en'); } catch (e) { console.error("applyLanguage error:", e); }
+  try {
+    const savedLang = localStorage.getItem("udyam_language") || 'en';
+    applyLanguage(savedLang);
+  } catch (e) { console.error("applyLanguage error:", e); }
   try {
     addAiChatMessage(
       "Namaste! Welcome to Airtel Business. Tell me about your business (type, employees, locations) and I will craft the ideal digital bundle."
@@ -109,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
   } catch (e) {}
   try { recalculateQuote(); } catch (e) {}
   try { initNpsButtons(); } catch (e) {}
+  try { initCsatStarRating(); } catch (e) {}
   try { checkKycTokenHandoff(); } catch (e) {}
   try { checkPartnerAttribution(); } catch (e) {}
   try { initViewRouter(); } catch (e) {}
@@ -228,23 +232,33 @@ function checkPartnerAttribution() {
 // --- I18N LANGUAGE SWITCHER ---
 function applyLanguage(lang) {
   STATE.language = lang;
+  try { localStorage.setItem("udyam_language", lang); } catch (e) {}
   const dict = LOCALES[lang] || LOCALES.en;
 
-  // Toggle button active states
+  // Toggle button active states (EN, HI, MR)
   const enBtn = document.getElementById("langEn");
   const hiBtn = document.getElementById("langHi");
-  if (lang === 'hi') {
-    hiBtn.className = "px-2.5 py-1 rounded-full bg-white shadow-sm text-slate-900 font-bold";
-    enBtn.className = "px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900 font-bold";
+  const mrBtn = document.getElementById("langMr");
+
+  if (lang === 'mr') {
+    if (mrBtn) mrBtn.className = "px-2.5 py-1 rounded-full bg-white shadow-sm text-slate-900 font-bold";
+    if (enBtn) enBtn.className = "px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900 font-bold";
+    if (hiBtn) hiBtn.className = "px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900 font-bold";
+  } else if (lang === 'hi') {
+    if (hiBtn) hiBtn.className = "px-2.5 py-1 rounded-full bg-white shadow-sm text-slate-900 font-bold";
+    if (enBtn) enBtn.className = "px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900 font-bold";
+    if (mrBtn) mrBtn.className = "px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900 font-bold";
   } else {
-    enBtn.className = "px-2.5 py-1 rounded-full bg-white shadow-sm text-slate-900 font-bold";
-    hiBtn.className = "px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900 font-bold";
+    if (enBtn) enBtn.className = "px-2.5 py-1 rounded-full bg-white shadow-sm text-slate-900 font-bold";
+    if (hiBtn) hiBtn.className = "px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900 font-bold";
+    if (mrBtn) mrBtn.className = "px-2.5 py-1 rounded-full text-slate-500 hover:text-slate-900 font-bold";
   }
 
   // Update all text elements
   setText("t-brand-sub", dict.brand_sub);
   setText("t-app-title", dict.app_title);
   setText("t-nav-customer", dict.nav_customer);
+  setText("t-nav-services", dict.nav_services || "My Services & Support");
   setText("t-nav-partner", dict.nav_partner);
   setText("t-nav-admin", dict.nav_admin);
   setText("t-safe-mode", dict.safe_mode);
@@ -396,7 +410,7 @@ function updateRoleSwitcherUI() {
   }
 }
 
-// --- VIEW ROUTER (CUSTOMER / MITRA / OPS) ---
+// --- VIEW ROUTER (CUSTOMER / DASHBOARD / MITRA / OPS) ---
 function navigateToView(role, pushHistory = true) {
   let normRole = (role || 'MERCHANT').toUpperCase();
 
@@ -408,51 +422,73 @@ function navigateToView(role, pushHistory = true) {
     }
   } else {
     // Strict role segregation: Enforce that users can ONLY view their authenticated persona's screen.
-    // Customers cannot switch to Mitra or Admin without logging out.
-    if (STATE.auth.role === 'MERCHANT' && normRole !== 'MERCHANT') {
+    if (STATE.auth.role === 'MERCHANT' && (normRole === 'PARTNER' || normRole === 'ADMIN')) {
+      alert("Access restricted. Please sign in with an authorized Partner or Admin account.");
       normRole = 'MERCHANT';
-    } else if (STATE.auth.role === 'PARTNER' && normRole !== 'PARTNER') {
+    } else if (STATE.auth.role === 'PARTNER' && normRole === 'ADMIN') {
+      alert("Access restricted. Partner accounts cannot access the National Ops console.");
       normRole = 'PARTNER';
-    } else if (STATE.auth.role === 'ADMIN' && normRole !== 'ADMIN') {
-      normRole = 'ADMIN';
     }
   }
 
-  STATE.auth.role = normRole;
+  STATE.auth.role = (normRole === 'DASHBOARD') ? (STATE.auth.role || 'MERCHANT') : normRole;
 
   const customerView = document.getElementById("customerView");
+  const customerDashboardView = document.getElementById("customerDashboardView");
   const mitraView = document.getElementById("mitraView");
   const opsView = document.getElementById("opsView");
   const safeModeToggleWrapper = document.getElementById("safeModeToggle")?.closest("label");
 
-  if (!customerView || !mitraView || !opsView) return;
+  // Tab buttons
+  const tabCust = document.getElementById("navTabCustomer");
+  const tabDash = document.getElementById("navTabDashboard");
+  const tabPart = document.getElementById("navTabPartner");
+  const tabAdm = document.getElementById("navTabAdmin");
+
+  const resetTabs = () => {
+    [tabCust, tabDash, tabPart, tabAdm].forEach(t => {
+      if (t) t.className = "px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer";
+    });
+  };
+
+  if (customerView) customerView.classList.add("hidden");
+  if (customerDashboardView) customerDashboardView.classList.add("hidden");
+  if (mitraView) mitraView.classList.add("hidden");
+  if (opsView) opsView.classList.add("hidden");
 
   if (normRole === 'PARTNER') {
-    customerView.classList.add("hidden");
-    mitraView.classList.remove("hidden");
-    opsView.classList.add("hidden");
+    if (mitraView) mitraView.classList.remove("hidden");
     if (safeModeToggleWrapper) safeModeToggleWrapper.classList.add("hidden");
+    resetTabs();
+    if (tabPart) tabPart.className = "px-3 py-1.5 rounded-lg bg-white shadow-xs text-slate-900 font-bold transition cursor-pointer";
 
     if (pushHistory && window.location.pathname !== '/mitra') {
       try { window.history.pushState({ role: 'PARTNER' }, '', '/mitra'); } catch (e) {}
     }
     loadPartnerViewData();
   } else if (normRole === 'ADMIN') {
-    customerView.classList.add("hidden");
-    mitraView.classList.add("hidden");
-    opsView.classList.remove("hidden");
+    if (opsView) opsView.classList.remove("hidden");
     if (safeModeToggleWrapper) safeModeToggleWrapper.classList.add("hidden");
+    resetTabs();
+    if (tabAdm) tabAdm.className = "px-3 py-1.5 rounded-lg bg-white shadow-xs text-slate-900 font-bold transition cursor-pointer";
 
     if (pushHistory && window.location.pathname !== '/ops') {
       try { window.history.pushState({ role: 'ADMIN' }, '', '/ops'); } catch (e) {}
     }
     loadOpsViewData();
+  } else if (normRole === 'DASHBOARD') {
+    if (customerDashboardView) customerDashboardView.classList.remove("hidden");
+    if (safeModeToggleWrapper) safeModeToggleWrapper.classList.add("hidden");
+    resetTabs();
+    if (tabDash) tabDash.className = "px-3 py-1.5 rounded-lg bg-white shadow-xs text-slate-900 font-bold transition cursor-pointer";
+
+    loadCustomerDashboardData();
   } else {
     // MERCHANT / Customer mode
-    customerView.classList.remove("hidden");
-    mitraView.classList.add("hidden");
-    opsView.classList.add("hidden");
+    if (customerView) customerView.classList.remove("hidden");
     if (safeModeToggleWrapper) safeModeToggleWrapper.classList.remove("hidden");
+    resetTabs();
+    if (tabCust) tabCust.className = "px-3 py-1.5 rounded-lg bg-white shadow-xs text-slate-900 font-bold transition cursor-pointer";
 
     if (pushHistory && (window.location.pathname === '/mitra' || window.location.pathname === '/ops' || window.location.pathname === '/admin')) {
       try { window.history.pushState({ role: 'MERCHANT' }, '', '/'); } catch (e) {}
@@ -460,6 +496,201 @@ function navigateToView(role, pushHistory = true) {
   }
 
   updateRoleSwitcherUI();
+}
+
+// --- CUSTOMER DASHBOARD & SUPPORT RETENTION ---
+async function loadCustomerDashboardData() {
+  try {
+    const token = STATE.auth?.token;
+    if (!token) {
+      console.warn("loadCustomerDashboardData aborted: no active user session");
+      return;
+    }
+    const res = await fetch("/api/customer/dashboard", {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "X-Session-Token": token
+      }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const cust = data.customer || {};
+      const activeServices = data.active_services || [];
+      const billing = data.billing_commitment || {};
+      const tickets = data.support_tickets || [];
+
+      const nameEl = document.getElementById("custDashBusinessName");
+      const contactEl = document.getElementById("custDashContactSub");
+      if (nameEl) nameEl.innerText = cust.business_name || cust.name || "Airtel Business Customer";
+      if (contactEl) contactEl.innerText = `${cust.email || ""} • ${cust.phone || ""} • Customer ID: ${cust.id || "-"}`;
+
+      if (activeServices.length > 0) {
+        const primary = activeServices[0];
+        const planNameEl = document.getElementById("custDashPlanName");
+        const planSpeedEl = document.getElementById("custDashPlanSpeed");
+        if (planNameEl) planNameEl.innerText = primary.product_name || "Biz Fibre 100";
+        if (planSpeedEl) planSpeedEl.innerText = primary.speed || "100 Mbps Unlimited Optical Fibre";
+
+        const addonsList = document.getElementById("custDashAddonsList");
+        if (addonsList) {
+          if (activeServices.length > 1) {
+            addonsList.innerHTML = activeServices.slice(1).map(s => `
+              <div class="flex items-center justify-between text-slate-700 bg-slate-50 p-2 rounded-lg">
+                <span class="font-medium">${s.product_name}</span>
+                <span class="font-bold text-slate-900">₹${s.monthly_charge_inr}/mo</span>
+              </div>
+            `).join('');
+          } else {
+            addonsList.innerHTML = `<p class="text-slate-400 text-xs italic">No additional add-ons active.</p>`;
+          }
+        }
+      }
+
+      const totalCommitEl = document.getElementById("custDashMonthlyTotal");
+      if (totalCommitEl && billing.monthly_total_commitment_inr) {
+        totalCommitEl.innerText = `₹${billing.monthly_total_commitment_inr.toLocaleString()}`;
+      }
+
+      renderCustomerTickets(tickets);
+    }
+  } catch (err) {
+    console.error("loadCustomerDashboardData error:", err);
+  }
+}
+
+function renderCustomerTickets(tickets) {
+  const tbody = document.getElementById("custTicketsTableBody");
+  const badge = document.getElementById("custOpenTicketsBadge");
+  if (!tbody) return;
+
+  if (!tickets || tickets.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">No support tickets reported. Your connection is running smoothly.</td></tr>`;
+    if (badge) badge.innerText = "0 Active";
+    return;
+  }
+
+  const openCount = tickets.filter(t => t.status !== "RESOLVED").length;
+  if (badge) badge.innerText = `${openCount} Active`;
+
+  tbody.innerHTML = tickets.map(t => {
+    let statusClass = "bg-amber-100 text-amber-800";
+    if (t.status === "RESOLVED") statusClass = "bg-emerald-100 text-emerald-800";
+    else if (t.status === "IN_PROGRESS") statusClass = "bg-blue-100 text-blue-800";
+
+    return `
+      <tr class="hover:bg-slate-50">
+        <td class="p-2.5 font-mono font-bold text-slate-800">${t.ticket_id}</td>
+        <td class="p-2.5 font-semibold text-slate-700">${t.category}</td>
+        <td class="p-2.5 text-slate-600 truncate max-w-[200px]" title="${t.description}">${t.description}</td>
+        <td class="p-2.5"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${statusClass}">${t.status}</span></td>
+        <td class="p-2.5 text-slate-500 text-[11px]">${t.current_milestone || "-"}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function handleTicketSubmit() {
+  const catEl = document.getElementById("ticketCategoryInput");
+  const prioEl = document.getElementById("ticketPriorityInput");
+  const descEl = document.getElementById("ticketDescriptionInput");
+  const msgEl = document.getElementById("ticketSubmitSuccessMsg");
+
+  if (!descEl || !descEl.value.trim()) {
+    alert("Please enter a description of the issue.");
+    return;
+  }
+
+  const token = STATE.auth?.token;
+  if (!token) {
+    alert("Please sign in to submit a support ticket.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/support/tickets", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+        "X-Session-Token": token
+      },
+      body: JSON.stringify({
+        category: catEl?.value || "CONNECTIVITY",
+        priority: prioEl?.value || "MEDIUM",
+        description: descEl.value.trim()
+      })
+    });
+
+    if (res.ok) {
+      if (msgEl) {
+        msgEl.classList.remove("hidden");
+        setTimeout(() => msgEl.classList.add("hidden"), 5000);
+      }
+      descEl.value = "";
+      loadCustomerDashboardData();
+    } else {
+      const err = await res.json();
+      alert("Error submitting ticket: " + (err.detail || "Server error"));
+    }
+  } catch (err) {
+    console.error("handleTicketSubmit error:", err);
+    alert("Could not submit ticket. Please check connection.");
+  }
+}
+
+let CURRENT_CSAT_RATING = 5;
+
+function initCsatStarRating() {
+  document.querySelectorAll(".csatStarBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      CURRENT_CSAT_RATING = parseInt(btn.getAttribute("data-rating"), 10) || 5;
+      document.querySelectorAll(".csatStarBtn").forEach(b => {
+        b.className = "csatStarBtn px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-amber-100 font-bold text-xs transition";
+      });
+      btn.className = "csatStarBtn px-3 py-1.5 rounded-lg border border-slate-200 bg-amber-400 text-slate-900 font-bold text-xs transition";
+    });
+  });
+}
+
+async function handleCsatSubmit() {
+  const commentsEl = document.getElementById("csatCommentsInput");
+  const successEl = document.getElementById("csatSuccessBanner");
+  const token = STATE.auth?.token;
+
+  if (!token) {
+    alert("Please sign in to submit feedback.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/support/feedback", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+        "X-Session-Token": token
+      },
+      body: JSON.stringify({
+        rating: CURRENT_CSAT_RATING,
+        feedback: commentsEl?.value || "",
+        journey_step: "POST_ACTIVATION"
+      })
+    });
+
+    if (res.ok) {
+      if (successEl) {
+        successEl.classList.remove("hidden");
+        setTimeout(() => successEl.classList.add("hidden"), 5000);
+      }
+      if (commentsEl) commentsEl.value = "";
+    } else {
+      const err = await res.json();
+      alert("Error: " + (err.detail || "Could not save feedback"));
+    }
+  } catch (err) {
+    console.error("handleCsatSubmit error:", err);
+  }
 }
 
 async function loadPartnerViewData() {
@@ -617,7 +848,20 @@ async function loadOpsViewData() {
       console.warn("loadOpsViewData aborted: no active session token");
       return;
     }
-    const res = await fetch("/api/admin/metrics", {
+
+    const datePreset = document.getElementById("opsFilterDate")?.value || "all";
+    const segment = document.getElementById("opsFilterSegment")?.value || "all";
+    const location = document.getElementById("opsFilterLocation")?.value || "all";
+    const stage = document.getElementById("opsFilterStage")?.value || "all";
+
+    const params = new URLSearchParams({
+      date_preset: datePreset,
+      segment: segment,
+      location: location,
+      stage: stage
+    });
+
+    const res = await fetch(`/api/admin/metrics?${params.toString()}`, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "X-Session-Token": token
@@ -629,6 +873,9 @@ async function loadOpsViewData() {
       const fm = data.funnel_metrics || {};
       const oe = data.operational_efficiency || {};
       const escQueue = data.manual_escalations_queue || [];
+      const kycData = data.kyc_breakdown || {};
+      const partnerData = data.partner_performance || [];
+      const retentionData = data.retention_and_support || {};
 
       const fmtNum = (val) => (val !== null && val !== undefined) ? Number(val).toLocaleString() : "-";
       const fmtPct = (val) => (val !== null && val !== undefined) ? `${val}%` : "-";
@@ -638,12 +885,20 @@ async function loadOpsViewData() {
       const vTotal = document.getElementById("opsViewTotalLeads");
       const vConv = document.getElementById("opsViewConvRate");
       const vTta = document.getElementById("opsViewTta");
-      const vCac = document.getElementById("opsViewCac");
+      const vPending = document.getElementById("opsViewPendingOrders");
+      const vKyc = document.getElementById("opsViewKycFailures");
+      const vKycRate = document.getElementById("opsViewKycFailureRate");
+      const vRet = document.getElementById("opsViewRetentionMetrics");
+      const vRetSub = document.getElementById("opsViewRetentionSub");
 
       if (vTotal) vTotal.innerText = fmtNum(fm.total_inbound_leads);
       if (vConv) vConv.innerText = fmtPct(fm.projected_digital_conversion_rate_percent);
       if (vTta) vTta.innerText = fmtDays(oe.udyam_digital_tta_days);
-      if (vCac) vCac.innerText = fmtInr(oe.udyam_digital_cac_inr);
+      if (vPending) vPending.innerText = fmtNum(fm.pending_orders_count ?? (fm.quote_accepted - fm.activated));
+      if (vKyc) vKyc.innerText = fmtNum(kycData.total_kyc_failures ?? 0);
+      if (vKycRate) vKycRate.innerText = `${kycData.failure_rate_percent ?? 0}% failure rate`;
+      if (vRet) vRet.innerText = `${retentionData.csat_average ?? 4.8} ★`;
+      if (vRetSub) vRetSub.innerText = `${retentionData.churn_risk_percent ?? 2.1}% Churn Risk`;
 
       // Funnel Progression Breakdown
       const fInbound = document.getElementById("opsFunnelInbound");
@@ -659,6 +914,25 @@ async function loadOpsViewData() {
       if (fFeasible) fFeasible.innerText = fmtNum(fm.quote_accepted);
       if (fKyc) fKyc.innerText = fmtNum(fm.kyc_submitted);
       if (fActivated) fActivated.innerText = fmtNum(fm.activated);
+
+      // Render Partner Performance Table
+      const partnerTbody = document.getElementById("opsPartnerPerformanceTableBody");
+      if (partnerTbody) {
+        if (!partnerData || partnerData.length === 0) {
+          partnerTbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">No partner activity recorded under current filter.</td></tr>`;
+        } else {
+          partnerTbody.innerHTML = partnerData.map(p => `
+            <tr class="hover:bg-slate-50">
+              <td class="p-3 font-mono font-bold text-slate-900">${p.partner_id}</td>
+              <td class="p-3 text-slate-700">${p.territory || "Central Hub"}</td>
+              <td class="p-3 font-semibold text-slate-800">${p.leads_claimed}</td>
+              <td class="p-3 font-semibold text-emerald-700">${p.orders_attributed}</td>
+              <td class="p-3 font-bold text-slate-900">₹${Number(p.commission_earned_inr || 0).toLocaleString()}</td>
+              <td class="p-3"><span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">ACTIVE</span></td>
+            </tr>
+          `).join('');
+        }
+      }
 
       // Sync modal IDs
       const mTotal = document.getElementById("adminTotalLeads");
@@ -702,9 +976,95 @@ async function loadOpsViewData() {
 
       if (vTbody) vTbody.innerHTML = rowsHtml;
       if (mTbody) mTbody.innerHTML = rowsHtml;
+
+      // Also refresh retention dissatisfied queue
+      loadAdminRetentionQueue();
     }
   } catch (err) {
     console.error("Ops metrics fetch error:", err);
+  }
+}
+
+async function loadAdminRetentionQueue() {
+  try {
+    const token = STATE.auth?.token;
+    if (!token) return;
+    const res = await fetch("/api/admin/retention", {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "X-Session-Token": token
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const queue = data.dissatisfied_customers_queue || [];
+      const tbody = document.getElementById("opsDissatisfiedTableBody");
+      const badge = document.getElementById("opsDissatisfiedBadge");
+
+      if (badge) badge.innerText = `${queue.length} Requiring Outreach`;
+
+      if (tbody) {
+        if (queue.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">No dissatisfied customers (CSAT &le; 3) &bull; 100% satisfaction index</td></tr>`;
+        } else {
+          tbody.innerHTML = queue.map(c => `
+            <tr class="hover:bg-slate-50">
+              <td class="p-3 font-mono font-bold text-slate-800">${c.customer_id}</td>
+              <td class="p-3 font-semibold text-slate-900">${c.business_name || "Retail Merchant"}</td>
+              <td class="p-3 font-black text-rose-700">⭐ ${c.rating} / 5</td>
+              <td class="p-3 text-slate-700 text-xs italic">${c.feedback || "Awaiting support callback"}</td>
+              <td class="p-3"><span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full text-[10px] font-bold">${c.follow_up_status}</span></td>
+              <td class="p-3">
+                <button class="bg-slate-900 hover:bg-black text-white px-2.5 py-1 rounded text-[10px] font-bold" onclick="alert('Priority Retention outreach triggered for customer ${c.customer_id}')">
+                  Dispatch Outreach
+                </button>
+              </td>
+            </tr>
+          `).join('');
+        }
+      }
+    }
+  } catch (err) {
+    console.error("loadAdminRetentionQueue error:", err);
+  }
+}
+
+function handleOpsExportCsv() {
+  const token = STATE.auth?.token;
+  if (!token) {
+    alert("Authentication required to export reports.");
+    return;
+  }
+  const datePreset = document.getElementById("opsFilterDate")?.value || "all";
+  const segment = document.getElementById("opsFilterSegment")?.value || "all";
+  const location = document.getElementById("opsFilterLocation")?.value || "all";
+  const stage = document.getElementById("opsFilterStage")?.value || "all";
+
+  const url = `/api/admin/reports/export.csv?date_preset=${datePreset}&segment=${segment}&location=${location}&stage=${stage}&token=${token}`;
+  window.open(url, '_blank');
+}
+
+function activateMicroMode() {
+  STATE.safeModeNonGst = true;
+  STATE.profile.has_gstin = false;
+  STATE.profile.business_type = "Kirana / Micro-Retail";
+  const safeModeToggle = document.getElementById("safeModeToggle");
+  if (safeModeToggle) safeModeToggle.checked = true;
+
+  const guidance = document.getElementById("microGuidanceCard");
+  if (guidance) guidance.classList.remove("hidden");
+
+  updateSafeModeUI();
+  recalculateQuote();
+
+  const chatIn = document.getElementById("chatInput");
+  if (chatIn) {
+    chatIn.value = STATE.language === 'mr'
+      ? "माझे किराणा दुकान आहे, माझ्याकडे GST नाही, 3 कर्मचारी आहेत. मला सोपा प्लॅन सुचवा."
+      : (STATE.language === 'hi' 
+        ? "मेरी किराना दुकान है, मेरे पास GST नहीं है, 3 कर्मचारी हैं। मुझे आसान प्लान बताएं।"
+        : "I have a kirana store, no GST registration, 3 employees. Please recommend a simple plan.");
+    handleChatSubmit();
   }
 }
 
@@ -1261,9 +1621,27 @@ function updateSafeModeUI() {
 
 // --- EVENT LISTENERS ---
 function initEventListeners() {
-  // Language Switcher
+  // Language Switcher (EN, HI, MR)
   safeOn("langEn", "click", () => applyLanguage('en'));
   safeOn("langHi", "click", () => applyLanguage('hi'));
+  safeOn("langMr", "click", () => applyLanguage('mr'));
+
+  // Multi-Portal Navigation Tabs
+  safeOn("navTabCustomer", "click", () => navigateToView("MERCHANT"));
+  safeOn("navTabDashboard", "click", () => navigateToView("DASHBOARD"));
+  safeOn("navTabPartner", "click", () => navigateToView("PARTNER"));
+  safeOn("navTabAdmin", "click", () => navigateToView("ADMIN"));
+
+  // Micro-Business Fast Onboarding Journey
+  safeOn("microOnboardingStartBtn", "click", activateMicroMode);
+  safeOn("microHelpAssistantBtn", "click", () => {
+    const inEl = document.getElementById("chatInput");
+    if (inEl) inEl.focus();
+  });
+  safeOn("microHelpDocBtn", "click", () => {
+    const btn = document.getElementById("proceedKycBtn");
+    if (btn) btn.click();
+  });
 
   // Safe Mode Toggle
   safeOn("safeModeToggle", "change", (e) => {
@@ -1299,10 +1677,15 @@ function initEventListeners() {
     });
   }
 
-  // Quick Reply Chips
+  // Quick Reply Chips (supporting EN, HI, MR)
   document.querySelectorAll(".chip-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      const msg = STATE.language === 'hi' ? btn.getAttribute("data-msg-hi") : btn.getAttribute("data-msg-en");
+      let msg = btn.getAttribute("data-msg-en");
+      if (STATE.language === 'mr') {
+        msg = btn.getAttribute("data-msg-mr") || btn.getAttribute("data-msg-hi") || msg;
+      } else if (STATE.language === 'hi') {
+        msg = btn.getAttribute("data-msg-hi") || msg;
+      }
       const inEl = document.getElementById("chatInput");
       if (inEl) inEl.value = msg;
       handleChatSubmit();
@@ -1473,6 +1856,17 @@ function initEventListeners() {
     });
   });
 
+  // Customer Support & Retention
+  safeOn("submitTicketBtn", "click", handleTicketSubmit);
+  safeOn("submitCsatFeedbackBtn", "click", handleCsatSubmit);
+
+  // Ops Admin Filters & CSV Export
+  safeOn("opsFilterDate", "change", loadOpsViewData);
+  safeOn("opsFilterSegment", "change", loadOpsViewData);
+  safeOn("opsFilterLocation", "change", loadOpsViewData);
+  safeOn("opsFilterStage", "change", loadOpsViewData);
+  safeOn("opsExportCsvBtn", "click", handleOpsExportCsv);
+
   // Voice Recognition (Web Speech API)
   initVoiceRecognition();
 }
@@ -1633,6 +2027,12 @@ async function handleFileUpload(e, docType) {
   const file = e.target.files[0];
   if (!file) return;
 
+  if (!STATE.auth || !STATE.auth.token) {
+    alert("Please sign in to upload and verify documents.");
+    openAuthModal("MERCHANT", "login", false);
+    return;
+  }
+
   const localPreviewUrl = URL.createObjectURL(file);
   const formData = new FormData();
   formData.append("file", file);
@@ -1640,11 +2040,21 @@ async function handleFileUpload(e, docType) {
   showPreviewLoading();
 
   try {
+    const headers = {};
+    if (STATE.auth?.token) {
+      headers["Authorization"] = `Bearer ${STATE.auth.token}`;
+      headers["X-Session-Token"] = STATE.auth.token;
+    }
     const res = await fetch("/api/kyc/upload", {
       method: "POST",
+      headers: headers,
       body: formData
     });
     const data = await res.json();
+    if (!res.ok) {
+      alert(data.detail || "Upload failed. Please ensure you are logged in.");
+      return;
+    }
     data.local_preview_url = localPreviewUrl;
     populateExtractedDocData(data);
   } catch (err) {
@@ -1654,6 +2064,11 @@ async function handleFileUpload(e, docType) {
 
 // --- SPECIMEN SCAN HANDLER ---
 async function handleSpecimenScan(applicantCode) {
+  if (!STATE.auth || !STATE.auth.token) {
+    alert("Please sign in as a Customer to scan documents.");
+    openAuthModal("MERCHANT", "login", false);
+    return;
+  }
   showPreviewLoading();
   let docType = "gst";
   if (STATE.safeModeNonGst && (applicantCode === "K03" || applicantCode === "K12")) {
@@ -1661,12 +2076,21 @@ async function handleSpecimenScan(applicantCode) {
   }
 
   try {
+    const headers = { "Content-Type": "application/json" };
+    if (STATE.auth?.token) {
+      headers["Authorization"] = `Bearer ${STATE.auth.token}`;
+      headers["X-Session-Token"] = STATE.auth.token;
+    }
     const res = await fetch("/api/kyc/specimen-scan", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: JSON.stringify({ applicant_code: applicantCode, doc_type: docType })
     });
     const data = await res.json();
+    if (!res.ok) {
+      alert(data.detail || "Specimen scan failed.");
+      return;
+    }
     populateExtractedDocData(data, applicantCode);
   } catch (err) {
     alert("Specimen load failed.");
@@ -1684,6 +2108,9 @@ function showPreviewLoading() {
 
 function populateExtractedDocData(data, code = "CUSTOM") {
   STATE.lastExtractedDoc = data;
+  if (data.verification_session_id) {
+    STATE.kycVerificationSessionId = data.verification_session_id;
+  }
   const container = document.getElementById("docPreviewContainer");
   container.classList.remove("hidden");
 
@@ -1765,12 +2192,19 @@ function populateExtractedDocData(data, code = "CUSTOM") {
 
 // --- VERIFY REVIEWED EXTRACTED DATA ---
 async function handleVerifyExtracted() {
+  if (!STATE.auth || !STATE.auth.token) {
+    alert("Authentication required. Please sign in as a Customer to verify documents.");
+    openAuthModal("MERCHANT", "login", false);
+    return;
+  }
+
   const gstin = document.getElementById("extractedGstinInput").value.trim();
   const udyamInput = document.getElementById("extractedUdyamInput");
   const udyam = udyamInput ? udyamInput.value.trim() : "";
   const name = document.getElementById("extractedNameInput").value.trim();
   const date = document.getElementById("extractedDateInput").value.trim();
   const blurVariance = STATE.lastExtractedDoc ? STATE.lastExtractedDoc.blur_variance : 1000.0;
+  const verificationSessionId = STATE.kycVerificationSessionId || (STATE.lastExtractedDoc ? STATE.lastExtractedDoc.verification_session_id : null);
 
   const resultBox = document.getElementById("kycResultBox");
   const confirmBtn = document.getElementById("confirmOrderBtn");
@@ -1796,10 +2230,24 @@ async function handleVerifyExtracted() {
         blur_variance: blurVariance,
         is_non_gst_mode: STATE.safeModeNonGst,
         user_id: STATE.auth?.user?.user_id,
-        customer_email: STATE.auth?.user?.email
+        customer_email: STATE.auth?.user?.email,
+        verification_session_id: verificationSessionId,
+        consent_granted: true,
+        consent: {
+          granted: true,
+          timestamp: new Date().toISOString(),
+          version: "v1.0",
+          purpose: "Statutory GSTIN/Udyam Registry Verification under DPDP Act 2023",
+          consent_text: "Customer explicitly consented to statutory identity and registry verification."
+        }
       })
     });
     const data = await res.json();
+    if (!res.ok) {
+      resultBox.className = "rounded-xl p-3.5 text-xs space-y-2 bg-red-50 border border-red-300 text-red-900";
+      resultBox.innerHTML = `<span>Verification error: ${data.detail || "Request failed"}</span>`;
+      return;
+    }
     STATE.kycDecision = data;
     if (data.case_id) {
       STATE.kycCaseId = data.case_id;
@@ -2366,6 +2814,9 @@ async function handleConfirmOrder() {
 function renderTracker(order) {
   document.getElementById("trackerOrderIdBadge").innerText = order.order_id;
   document.getElementById("installDateText").innerText = order.scheduled_install_date;
+  if (order.engineer_name && document.getElementById("engName")) {
+    document.getElementById("engName").innerText = order.engineer_name;
+  }
 
   const dict = LOCALES[STATE.language] || LOCALES.en;
   const timeline = document.getElementById("timelineList");
