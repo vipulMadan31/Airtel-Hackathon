@@ -1495,6 +1495,48 @@ def get_customer_dashboard(
             orders.append(od)
 
     tickets = support_service.get_user_tickets(uid)
+    user_feedback = []
+    with support_service._get_connection() as conn:
+        fb_rows = conn.execute(
+            "SELECT * FROM customer_feedback WHERE user_id = ? OR LOWER(customer_email) = ? ORDER BY created_at DESC",
+            (uid, u_email)
+        ).fetchall()
+        user_feedback = [dict(r) for r in fb_rows]
+
+    active_services = []
+    monthly_subtotal = 999.0
+    if orders:
+        latest = orders[0]
+        b_data = latest.get("bundle") or {}
+        p_quantities = b_data.get("product_quantities") or {}
+        monthly_subtotal = b_data.get("monthly_recurring_total") or (round(latest.get("monthly_total", 999.0) / 1.18, 2) if latest.get("monthly_total") else 999.0)
+        
+        for pid, qty in p_quantities.items():
+            prod_info = loader.get_product(pid)
+            p_name = prod_info.get("product_name", pid) if prod_info else pid
+            p_speed = prod_info.get("speed") if prod_info and prod_info.get("speed") else "High-Speed Business Connectivity"
+            p_charge = prod_info.get("price_inr") if prod_info else 0.0
+            active_services.append({
+                "product_id": pid,
+                "product_name": p_name,
+                "quantity": qty,
+                "speed": p_speed,
+                "monthly_charge_inr": p_charge
+            })
+
+    if not active_services:
+        active_services = [
+            {
+                "product_id": "P01",
+                "product_name": "Biz Fibre 100",
+                "quantity": 1,
+                "speed": "100 Mbps Unlimited Optical Fibre",
+                "monthly_charge_inr": 999.0
+            }
+        ]
+
+    gst_amt = round(monthly_subtotal * 0.18, 2)
+    total_commitment = round(monthly_subtotal + gst_amt, 2)
 
     return {
         "status": "SUCCESS",
@@ -1514,21 +1556,15 @@ def get_customer_dashboard(
         "active_services_count": len(orders),
         "orders": orders,
         "latest_order": orders[0] if orders else None,
-        "active_services": [
-            {
-                "product_id": (orders[0].get("primary_product_id") if orders else "P01"),
-                "product_name": (orders[0].get("primary_product_id") if orders else "Biz Fibre 100"),
-                "speed": "100 Mbps Unlimited Optical Fibre",
-                "monthly_charge_inr": (orders[0].get("total_monthly_recurring_inr") if orders else 999)
-            }
-        ],
+        "active_services": active_services,
         "billing_commitment": {
-            "monthly_subtotal_inr": (orders[0].get("monthly_subtotal_inr") if orders else 999),
-            "gst_inr": (orders[0].get("gst_inr") if orders else 179.82),
-            "monthly_total_commitment_inr": (orders[0].get("total_monthly_recurring_inr") if orders else 1178.82)
+            "monthly_subtotal_inr": monthly_subtotal,
+            "gst_inr": gst_amt,
+            "monthly_total_commitment_inr": total_commitment
         },
         "tickets": tickets,
         "support_tickets": tickets,
+        "customer_feedback": user_feedback,
         "open_tickets_count": sum(1 for t in tickets if t.get("status") in ["OPEN", "IN_PROGRESS"])
     }
 

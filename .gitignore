@@ -18,6 +18,8 @@ Thumbs.db
 
 # Local Runtime DB & Uploads
 udyam_orders.db
+app.db
+*.db
 database.sqlite
 cloudflared.exe
 uploads/*

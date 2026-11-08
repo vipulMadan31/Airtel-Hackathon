@@ -223,7 +223,11 @@ class DashboardService:
             open_tickets = sum(1 for t in tickets if t.get("status") in ["OPEN", "IN_PROGRESS"])
             critical_tickets = sum(1 for t in tickets if t.get("priority") in ["HIGH", "CRITICAL"] and t.get("status") != "RESOLVED")
 
-            fb_rows = conn.execute("SELECT * FROM customer_feedback").fetchall()
+            fb_rows = conn.execute("""
+                SELECT fb.*, u.name as customer_name, u.phone as customer_phone
+                FROM customer_feedback fb
+                LEFT JOIN users u ON fb.user_id = u.user_id
+            """).fetchall()
             feedbacks = [dict(r) for r in fb_rows]
             avg_csat = round(sum(f["rating"] for f in feedbacks) / len(feedbacks), 1) if feedbacks else 4.6
             dissatisfied_count = sum(1 for f in feedbacks if f.get("is_dissatisfied"))
@@ -234,6 +238,8 @@ class DashboardService:
                 {
                     "feedback_id": f["feedback_id"],
                     "user_id": f["user_id"],
+                    "customer_name": f.get("customer_name") or "MSME Customer",
+                    "customer_phone": f.get("customer_phone") or "",
                     "customer_email": f["customer_email"],
                     "order_id": f["order_id"],
                     "rating": f["rating"],
